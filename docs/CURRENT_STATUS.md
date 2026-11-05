@@ -111,4 +111,4 @@
 ### 2026-11-05 — 기상 중계 자동 (D-041)
 - **완료**: 중계 주소 기본값 내장(`DEFAULT_WX_PROXY`, `resolveWxProxy`), Settings 안내 문구 "보통은 비워 두세요". 테스트 83/83, tsc·build 통과
 - **Worker 제한**: 사용자가 `ALLOWED_ORIGINS` 설정 → kevin-ihc.github.io·localhost:5173 200, 다른 사이트 403 확인
-- **미해결**: GitHub 반영(push) 여부 사용자 확인 대기
+- **반영**: GitHub push·배포 완료(27aa6c7). 배포 사이트에서 입력 없이 Worker로 TAF·SIGMET 수신 확인 (새 버전은 새로고침 1~2회 후 적용 — K-09)
