@@ -15,6 +15,8 @@ export interface UpsertResponse {
 }
 
 export class GasError extends Error {}
+/** 서버에 닿지도 못함 (비행기 모드·Wi-Fi 없음 등) — 서버 오류와 구분해 짧게 자동 재시도 (D-042) */
+export class NetworkError extends GasError {}
 
 export async function postToGas<T>(cfg: GasConfig, body: Record<string, unknown>, timeoutMs = 20000): Promise<T> {
   const ctrl = new AbortController();
@@ -38,6 +40,8 @@ export async function postToGas<T>(cfg: GasConfig, body: Record<string, unknown>
     return data as T;
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') throw new GasError(`timeout ${timeoutMs / 1000}s`);
+    // fetch 자체가 실패(응답 없음) = 연결 없음. iOS는 비행기 모드에서도 navigator.onLine이 true일 수 있음
+    if (e instanceof TypeError) throw new NetworkError('연결 안 됨 (자동 재시도)');
     throw e;
   } finally {
     clearTimeout(timer);

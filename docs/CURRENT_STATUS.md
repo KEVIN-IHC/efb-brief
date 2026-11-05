@@ -8,11 +8,11 @@
 
 | 항목 | 상태 |
 |---|---|
-| 현재 Phase | **Phase 3 기상 지도 구현 완료(로컬) + Cloudflare 기상 중계 설치됨 — 사용자 확인 대기**. 다음: 아이패드 테스트 → Phase 3.5 또는 4 |
+| 현재 Phase | **Phase 3 기상 지도 완료 — 아이패드에서 사용자 확인("잘 작동함", 2026-11-05)**. 다음: 실제 구글 시트 연동 → Phase 3.5 또는 4 |
 | 테스트 | ✅ `npm test` 81개 통과 (실제 OFP 샘플 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-05 Phase 3) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
-| 아이패드 실기기 | ❓ **한 번도 확인 안 함** — 배포 주소 준비됨: https://kevin-ihc.github.io/efb-brief/ |
-| 실제 구글 시트 연동 | ❓ **확인 안 함** (Mock GAS로만 검증) |
+| 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
+| 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
 | Git·호스팅 | ✅ 공개 저장소 https://github.com/KEVIN-IHC/efb-brief (main), GitHub Actions → Pages 자동 배포. 커밋 작성자 = GitHub 비공개 이메일(저장소 로컬 설정) |
 | 로컬 서버 | 개발 `npm run dev` → :5173 / 배포판 미리보기 `npm run local` → :4173 |
 
@@ -20,11 +20,11 @@
 
 | Phase | 범위 | 상태 | 비고 |
 |---|---|---|---|
-| 0 뼈대 | PWA·IndexedDB·상태 배지·outbox 동기화·Apps Script | ✅ 로컬 / ❓ 아이패드 | 완료 조건(아이패드 홈 화면 설치 → 비행기 모드 메모 → 시트에 1회 저장) 중 **아이패드·실제 시트는 미확인**. Mac에서 오프라인 저장 → 복귀 시 1회 업로드는 확인 |
+| 0 뼈대 | PWA·IndexedDB·상태 배지·outbox 동기화·Apps Script | ✅ 로컬 / ✅ 아이패드 설치·실행 / ❓ 실제 시트 | 완료 조건(아이패드 홈 화면 설치 → 비행기 모드 메모 → 시트에 1회 저장) 중 **아이패드·실제 시트는 미확인**. Mac에서 오프라인 저장 → 복귀 시 1회 업로드는 확인 |
 | 1 OFP 대시보드 | 더미 OFP 대시보드·루트표, PDF 업로드·텍스트 추출 | ✅ | 이후 1.5에서 화면 교체 |
 | 1.5 실제 파서 | Aviator 파서 | ✅ | 샘플 10개(A388·B78X, ICN↔LAX·SYD↔ICN) 전부 교차검증 통과. 추가: Lido식 화면, 주간/야간, CRZ WIND, 난류(SR), OFP 열기 버튼 |
 | 2 순항 기록 | 웨이포인트 체크·편차·그래프 | ✅ 로컬 / ⏳ 사용자 확인 | 완료 조건(오프라인 전 구간 기록 → 온라인 일괄 동기화) Mac에서 56개 지점으로 확인 |
-| 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ 로컬 / ⏳ 사용자 확인 | 완료 조건 3개 Mac 개발 서버에서 확인. 아이패드·배포판은 Cloudflare 중계 필요(K-17) |
+| 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ (Mac 검증 + 아이패드 사용자 확인) | 배포판은 Cloudflare Worker 중계 자동 사용(D-041) |
 | 3.5 4D | 시간 슬라이더·SIGMET 교차 | ⏳ | |
 | 4 NOTAM | OFP NOTAM 파싱·분류 | ⏳ | 구간(`NOTAM PACKAGE 1/2/3`)만 찾음. 공식 근거 기반(D-030) |
 | 5 매뉴얼·MEL·얼러트 | | ⏳ | MEL/CDL 목록은 OFP에서 추출됨(매뉴얼 매칭 없음) |
@@ -45,7 +45,7 @@
 
 | 항목 | 상태 | 메모 |
 |---|---|---|
-| 아이패드 실기기 테스트 | ❓ | 사용자 계획: "로컬 → 아이패드 실사용 → GitHub" 순서 |
+| 아이패드 실기기 테스트 | ✅ | 2026-11-05 사용자 확인 |
 | 실제 Apps Script 배포·연동 | ❓ | `apps-script/Code.gs` v0.2.0 (칸 `seq, unit, void` 추가). 사용자가 설치한 적 없음 |
 | 연료·SR·중량 경고 기준 | ⏳ 임시값 | 회사 매뉴얼 근거 필요 (원본 명세 미결 #5) |
 | 사용자 정의 점검 목록 | ⏳ | 원본 명세 §11 "체크 항목"의 사용자 정의 부분 |
@@ -73,7 +73,7 @@
 
 1. **사용자 Phase 3 확인** — `LOCAL_TEST.md` §9
 2. ~~Cloudflare Worker 기상 중계~~ ✅ 설치됨 (2026-11-05). GitHub Pages 주소가 정해지면 Worker 변수 `ALLOWED_ORIGINS` 설정
-3. **아이패드 실사용 테스트** — Safari로 https://kevin-ihc.github.io/efb-brief/ → 공유 → 홈 화면에 추가 → (중계 주소 입력 불필요 — D-041) → OFP 열기·비행기 모드 확인
+3. ~~아이패드 실사용 테스트~~ ✅ 사용자 확인 (2026-11-05). 실사용 중 문제 생기면 KNOWN_ISSUES에 추가
 4. 실제 Apps Script 설치·연동 확인
 5. ~~Worker `ALLOWED_ORIGINS`~~ ✅ 설정됨 (2026-11-05: github.io·localhost 5173/4173 허용, 그 외 403 확인)
 6. Phase 3.5(4D 슬라이더·SIGMET 교차) 또는 Phase 4(NOTAM) — 사용자 선택
@@ -112,3 +112,13 @@
 - **완료**: 중계 주소 기본값 내장(`DEFAULT_WX_PROXY`, `resolveWxProxy`), Settings 안내 문구 "보통은 비워 두세요". 테스트 83/83, tsc·build 통과
 - **Worker 제한**: 사용자가 `ALLOWED_ORIGINS` 설정 → kevin-ihc.github.io·localhost:5173 200, 다른 사이트 403 확인
 - **반영**: GitHub push·배포 완료(27aa6c7). 배포 사이트에서 입력 없이 Worker로 TAF·SIGMET 수신 확인 (새 버전은 새로고침 1~2회 후 적용 — K-09)
+
+### 2026-11-05 — 아이패드 확인
+- 사용자가 배포판을 아이패드 홈 화면 앱으로 사용해 보고 "잘 작동함" 보고. Phase 3 사용자 확인 완료로 처리. 구글 시트 실연동은 여전히 미확인
+
+### 2026-11-05 — 구글 시트 실연동 + 오프라인 복귀 자동 전송 수정
+- **완료**: 사용자가 Apps Script 설치·배포, 아이패드 Settings 연결 테스트 성공. 서버 헬스체크·틀린 토큰 거부(`unauthorized`) 확인. 온라인 기록은 시트에 저장됨(사용자 확인)
+- **문제→수정**: 비행기 모드 후 복귀 시 failed로 남음 → D-042 (연결 없음은 실패로 안 셈, 복귀·화면 복귀 즉시 재전송, 30초 점검). K-21
+- **변경 파일**: `src/sync/{gasClient,outbox,syncManager}.ts`, `src/sync/outbox.test.ts`, DECISIONS(D-042), KNOWN_ISSUES(K-21)
+- **테스트**: `npm test` 84/84, tsc·build 통과. 개발 브라우저에서 6건 실패→자동 전송, 서버 각 1회 확인
+- **다음**: GitHub 반영 후 아이패드에서 비행기 모드 → 복귀 자동 전송 재확인

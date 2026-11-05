@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _resetDBForTests, getDB } from '../db/schema';
 import { setSetting } from '../db/settings';
-import { FAIL_THRESHOLD, flushOutbox, getOutboxCounts, pruneSent, saveLog } from './outbox';
+import { FAIL_THRESHOLD, flushOutbox, getOutboxCounts, NETWORK_RETRY_MS, pruneSent, saveLog } from './outbox';
 
 // 서버(Apps Script) 흉내: logId 기준 멱등
 function fakeServer() {
@@ -74,7 +74,7 @@ describe('outbox', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     await saveLog(memo('x'));
-    expect((await flushOutbox()).status).toBe('error');
+    expect((await flushOutbox()).status).toBe('offline'); // 응답 없음 = 연결 끊김으로 보고 자동 재시도
     expect(await getOutboxCounts()).toEqual({ pending: 1, failed: 0 });
 
     const r = await flushOutbox({ force: true });
@@ -82,10 +82,8 @@ describe('outbox', () => {
     expect(stored.size).toBe(1);
   });
 
-  it('실패 시 백오프로 대기하고, 5회 이상 실패하면 failed', async () => {
-    const fetchMock = vi.fn(async () => {
-      throw new TypeError('Load failed');
-    });
+  it('서버 오류는 백오프로 대기하고, 5회 이상 실패하면 failed', async () => {
+    const fetchMock = vi.fn(async () => new Response('busy', { status: 500 }));
     vi.stubGlobal('fetch', fetchMock);
     await saveLog(memo('x'));
     await flushOutbox();
@@ -98,8 +96,33 @@ describe('outbox', () => {
     const [item] = await (await getDB()).getAll('outbox');
     expect(item.retries).toBe(FAIL_THRESHOLD);
     expect(item.status).toBe('failed');
-    expect(item.lastError).toBe('Load failed');
+    expect(item.lastError).toBe('HTTP 500');
     expect(await getOutboxCounts()).toEqual({ pending: 1, failed: 1 });
+  });
+
+  it('연결 없음(iOS 비행기 모드, onLine=true여도)은 실패로 세지 않고 30초 뒤 자동 재시도 → 복귀 시 1회 저장 (D-042)', async () => {
+    const fail = vi.fn(async () => {
+      throw new TypeError('Load failed');
+    });
+    vi.stubGlobal('fetch', fail);
+    await saveLog(memo('x'));
+    for (let i = 0; i < 8; i++) expect((await flushOutbox({ force: true })).status).toBe('offline');
+    const [item] = await (await getDB()).getAll('outbox');
+    expect(item.status).toBe('pending');
+    expect(item.retries).toBe(0);
+    expect(item.nextAttemptAt - Date.now()).toBeLessThanOrEqual(NETWORK_RETRY_MS);
+    expect(await getOutboxCounts()).toEqual({ pending: 1, failed: 0 });
+
+    // 연결 복귀: 30초가 지나면 일반 점검(force 아님)으로도 전송
+    const { stored, fetchMock } = fakeServer();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + NETWORK_RETRY_MS + 1000);
+    const r = await flushOutbox();
+    vi.useRealTimers();
+    expect(r).toMatchObject({ status: 'ok', sent: 1 });
+    expect(stored.size).toBe(1);
+    expect(await getOutboxCounts()).toEqual({ pending: 0, failed: 0 });
   });
 
   it('토큰 오류 등 서버 거부도 실패로 처리', async () => {

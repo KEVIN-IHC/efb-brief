@@ -6,7 +6,7 @@ import { getDB, type FlightRecord, type LogRecord, type OutboxItem } from '../db
 import { getGasConfig, setSetting } from '../db/settings';
 import { isOnline } from '../lib/time';
 import { uuid } from '../lib/uuid';
-import { upsertLogs } from './gasClient';
+import { NetworkError, upsertLogs } from './gasClient';
 
 export const FAIL_THRESHOLD = 5;
 const MAX_BATCH = 50;
@@ -59,6 +59,17 @@ export function flushOutbox(opts: { force?: boolean } = {}): Promise<FlushResult
   return inflight;
 }
 
+/** 연결 없음은 실패 횟수에 세지 않고 30초 뒤 다시 (D-042) */
+export const NETWORK_RETRY_MS = 30_000;
+
+async function markNetworkWait(items: OutboxItem[], error: string) {
+  const db = await getDB();
+  const tx = db.transaction('outbox', 'readwrite');
+  const next = Date.now() + NETWORK_RETRY_MS;
+  for (const it of items) await tx.store.put({ ...it, lastError: error, nextAttemptAt: next });
+  await tx.done;
+}
+
 async function markFailure(items: OutboxItem[], error: string) {
   const db = await getDB();
   const tx = db.transaction('outbox', 'readwrite');
@@ -106,6 +117,12 @@ async function doFlush(force: boolean): Promise<FlushResult> {
         resp = await upsertLogs(cfg, due.map((i) => i.payload), flights);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
+        if (e instanceof NetworkError) {
+          await markNetworkWait(due, msg);
+          result.status = 'offline';
+          result.error = msg;
+          break;
+        }
         await markFailure(due, msg);
         result.failed += due.length;
         result.error = msg;
@@ -137,6 +154,7 @@ async function doFlush(force: boolean): Promise<FlushResult> {
     notify();
   }
 
+  if (result.status === 'offline' && !result.sent && !result.failed) return result; // 연결 없음 → 다음 점검 때 자동 재시도
   result.status = result.failed ? (result.sent ? 'partial' : 'error') : result.sent ? 'ok' : 'idle';
   return result;
 }
