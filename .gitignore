@@ -1,0 +1,14 @@
+# 회사 OFP·매뉴얼 원본 — 절대 커밋 금지
+/private
+*.pdf
+
+node_modules
+dist
+dev-dist
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage
+.clasp.json
