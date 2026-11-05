@@ -73,9 +73,9 @@
 
 1. **사용자 Phase 3 확인** — `LOCAL_TEST.md` §9
 2. ~~Cloudflare Worker 기상 중계~~ ✅ 설치됨 (2026-11-05). GitHub Pages 주소가 정해지면 Worker 변수 `ALLOWED_ORIGINS` 설정
-3. **아이패드 실사용 테스트** — Safari로 https://kevin-ihc.github.io/efb-brief/ → 공유 → 홈 화면에 추가 → Settings 기상 중계 주소 입력 → OFP 열기·비행기 모드 확인
+3. **아이패드 실사용 테스트** — Safari로 https://kevin-ihc.github.io/efb-brief/ → 공유 → 홈 화면에 추가 → (중계 주소 입력 불필요 — D-041) → OFP 열기·비행기 모드 확인
 4. 실제 Apps Script 설치·연동 확인
-5. Worker `ALLOWED_ORIGINS` = `https://kevin-ihc.github.io,http://localhost:5173,http://localhost:4173` (선택)
+5. ~~Worker `ALLOWED_ORIGINS`~~ ✅ 설정됨 (2026-11-05: github.io·localhost 5173/4173 허용, 그 외 403 확인)
 6. Phase 3.5(4D 슬라이더·SIGMET 교차) 또는 Phase 4(NOTAM) — 사용자 선택
 
 ## 8. 세션 인계 (가장 최근 작업)
@@ -107,3 +107,8 @@
 - **확인**: https://kevin-ihc.github.io/efb-brief/ 200, SW 활성, `/private/` 404, 바람(Open-Meteo) 수신. METAR 등은 기기별로 중계 주소 입력 필요
 - **테스트**: `npm test` 82/82, `tsc -b` 통과
 - **주의**: 저장소는 공개. 앞으로도 커밋 전에 회사 OFP 원문·실제 편명·등록번호가 코드·문서·테스트에 들어가지 않게 확인
+
+### 2026-11-05 — 기상 중계 자동 (D-041)
+- **완료**: 중계 주소 기본값 내장(`DEFAULT_WX_PROXY`, `resolveWxProxy`), Settings 안내 문구 "보통은 비워 두세요". 테스트 83/83, tsc·build 통과
+- **Worker 제한**: 사용자가 `ALLOWED_ORIGINS` 설정 → kevin-ihc.github.io·localhost:5173 200, 다른 사이트 403 확인
+- **미해결**: GitHub 반영(push) 여부 사용자 확인 대기

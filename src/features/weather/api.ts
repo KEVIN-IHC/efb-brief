@@ -8,16 +8,26 @@ import type { Metar, Sigmet, Taf, WindPoint, WindsData } from './types';
 
 export const TIMEOUT_MS = 15_000;
 
-/** 기상 중계 주소. 비어 있으면 같은 서버의 /wx (개발·미리보기 서버 내장 중계) */
+/**
+ * 기본 기상 중계 = 사용자 Cloudflare Worker (D-041). 공개 기상 자료만 전달하는 주소라 비밀값 아님.
+ * Worker 쪽 ALLOWED_ORIGINS로 이 앱 사이트에서만 쓰이게 제한한다.
+ */
+export const DEFAULT_WX_PROXY = 'https://efb-wx.kaisian1004.workers.dev';
+
 /** localhost·사설 IP(같은 Wi-Fi에서 Mac 서버 접속) */
 export const isLocalHost = (h: string) => h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.local') || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h);
 
-export async function getWxProxyBase(): Promise<string> {
-  const s = ((await getSetting('wxProxyUrl')) ?? '').trim().replace(/\/+$/, '');
+/** 기상 중계 주소: Settings 입력값 → (Mac 테스트 서버) 내장 /wx → (그 외) 기본 Worker */
+export function resolveWxProxy(setting: string | undefined, href: string): string {
+  const s = (setting ?? '').trim().replace(/\/+$/, '');
   if (s) return s;
-  // 내장 중계(/wx)는 Mac 개발·미리보기 서버에만 있음. 배포판(GitHub Pages 등)은 주소 입력 필요
-  if (!isLocalHost(location.hostname)) throw new Error('기상 중계 주소 미설정 — Settings → 기상 중계 주소에 입력');
-  return new URL('./wx', location.href).href.replace(/\/+$/, '');
+  const u = new URL(href);
+  if (isLocalHost(u.hostname)) return new URL('./wx', href).href.replace(/\/+$/, '');
+  return DEFAULT_WX_PROXY;
+}
+
+export async function getWxProxyBase(): Promise<string> {
+  return resolveWxProxy(await getSetting('wxProxyUrl'), location.href);
 }
 
 export async function fetchJson<T = unknown>(url: string, timeoutMs = TIMEOUT_MS): Promise<T> {

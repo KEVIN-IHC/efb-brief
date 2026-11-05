@@ -246,3 +246,9 @@
 - **확인 사실** Open-Meteo에 과거 날짜(약 4주 전)를 요청하면 응답이 약 20초(현재 날짜는 약 3초)로 느려 시간 초과가 남.
 - **결정** 비행 끝(마지막 ETO)이 하루 넘게 지났거나 출발이 14일 넘게 남았으면 현재 시각 기준 예보를 받고 화면에 "⚠ 현재 시각 예보" 표시. 바람 요청 시간 제한은 40초(다른 기상은 15초).
 - **영향** `src/features/weather/api.ts` (`fetchWinds`)
+
+### D-041 기상 중계 주소 기본값 내장 (입력 없이 자동)
+- **날짜** 2026-11-05 (사용자 요청: "중계 주소 없어도 자동으로")
+- **결정** `src/features/weather/api.ts` `DEFAULT_WX_PROXY` = 사용자 Worker 주소. 순서: Settings 입력값 → Mac 테스트 서버(localhost·사설 IP)면 내장 `/wx` → 그 외(GitHub Pages·아이패드) 기본 Worker. D-034의 "Settings에 주소를 넣는다"를 선택 사항으로 바꿈.
+- **이유** 기기마다 주소를 입력하는 번거로움 제거. 주소는 공개 기상 전달용이라 비밀값이 아님(토큰 하드코딩 금지 규칙과 무관). 공개 저장소에 주소가 보이므로 Worker `ALLOWED_ORIGINS`로 이 사이트만 허용 권장.
+- **영향** `src/features/weather/api.ts`(`resolveWxProxy`), `SettingsPage.tsx`, Worker 이름·계정이 바뀌면 이 상수를 고쳐 다시 배포

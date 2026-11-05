@@ -23,11 +23,9 @@
 - `…workers.dev/awc/metar?ids=RKSI&format=json` 을 열면 인천 METAR JSON이 보여야 합니다
 
 ## 4. 앱에 넣기
-1. 앱 **Settings → 기상 중계 주소**에 `https://efb-wx.<내 계정 이름>.workers.dev` 입력 (끝에 `/` 없이)
-2. **저장** → **연결 테스트** → "연결 성공"
-3. Weather 탭 **지금 갱신**
+- 기본 주소가 앱에 들어 있어(D-041 `DEFAULT_WX_PROXY`) **입력할 필요 없습니다.** Worker 이름·계정을 바꿨을 때만 Settings → 기상 중계 주소에 새 주소를 넣거나, 코드의 기본값을 고쳐 다시 배포합니다
 
-## 5. (선택, 나중에) 내 사이트에서만 쓰게 제한
+## 5. (권장) 내 사이트에서만 쓰게 제한 — 주소가 공개 저장소에 보이므로
 GitHub Pages 주소가 정해지면: Worker → **Settings → Variables and Secrets → Add**
 - 이름 `ALLOWED_ORIGINS`, 값 예: `https://내아이디.github.io,http://localhost:5173,http://localhost:4173`
 - 저장 후 다시 Deploy. 그러면 다른 웹사이트가 이 중계를 쓸 수 없습니다(완전한 차단은 아님 — 공개 기상 자료라 위험은 낮음)

@@ -128,4 +128,10 @@ describe('기상 중계 주소', () => {
     expect(isLocalHost('192.168.0.5')).toBe(true);
     expect(isLocalHost('kevin-ihc.github.io')).toBe(false);
   });
+  it('비우면 자동: 배포판은 기본 Worker, Mac 서버는 /wx, 입력값이 우선', async () => {
+    const { resolveWxProxy, DEFAULT_WX_PROXY } = await import('./api');
+    expect(resolveWxProxy('', 'https://kevin-ihc.github.io/efb-brief/#weather')).toBe(DEFAULT_WX_PROXY);
+    expect(resolveWxProxy(undefined, 'http://localhost:5173/#weather')).toBe('http://localhost:5173/wx');
+    expect(resolveWxProxy(' https://my.proxy/ ', 'https://kevin-ihc.github.io/efb-brief/')).toBe('https://my.proxy');
+  });
 });

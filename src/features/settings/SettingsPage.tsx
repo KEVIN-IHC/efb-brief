@@ -3,7 +3,7 @@ import { DISCLAIMER_TEXT } from '../../app/Disclaimer';
 import { isStandalone } from '../../app/InstallBanner';
 import type { OutboxItem } from '../../db/schema';
 import { getGasConfig, getSetting, setSetting } from '../../db/settings';
-import { fetchJson, getWxProxyBase } from '../weather/api';
+import { DEFAULT_WX_PROXY, fetchJson, getWxProxyBase } from '../weather/api';
 import { formatDayZ } from '../../lib/time';
 import { pingGas } from '../../sync/gasClient';
 import { getUnsentItems, outboxEvents } from '../../sync/outbox';
@@ -97,8 +97,7 @@ function WxProxyCard() {
         <h3>기상 중계 주소</h3>
       </div>
       <p className="muted small">
-        METAR·TAF·SIGMET(aviationweather.gov)은 브라우저에서 직접 받을 수 없어 중계를 거칩니다. 비워 두면 이 서버의 내장 중계(<code>/wx</code>, Mac 테스트용)를 씁니다. 아이패드·GitHub
-        Pages에서는 Cloudflare Worker 주소를 넣어야 합니다.
+        METAR·TAF·SIGMET(aviationweather.gov)은 브라우저에서 직접 받을 수 없어 중계를 거칩니다. <b>보통은 비워 두세요</b> — 자동으로 기본 중계(Cloudflare)를 씁니다. Mac 테스트 서버에서는 내장 중계(<code>/wx</code>)를 씁니다. 다른 중계를 쓸 때만 입력합니다.
       </p>
       <label className="label" htmlFor="wx-proxy">
         중계 주소
@@ -109,7 +108,7 @@ function WxProxyCard() {
         inputMode="url"
         autoCapitalize="off"
         autoCorrect="off"
-        placeholder="https://efb-wx.(계정).workers.dev — Mac 테스트 서버에선 비워도 됨"
+        placeholder={`비우면 자동: ${DEFAULT_WX_PROXY}`}
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
