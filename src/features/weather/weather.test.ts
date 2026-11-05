@@ -120,3 +120,12 @@ describe('공항 목록·위성', () => {
     expect(t.every((x) => x.z >= 3 && x.z <= 5)).toBe(true);
   });
 });
+
+describe('기상 중계 주소', () => {
+  it('로컬 서버 판별', async () => {
+    const { isLocalHost } = await import('./api');
+    expect(isLocalHost('localhost')).toBe(true);
+    expect(isLocalHost('192.168.0.5')).toBe(true);
+    expect(isLocalHost('kevin-ihc.github.io')).toBe(false);
+  });
+});

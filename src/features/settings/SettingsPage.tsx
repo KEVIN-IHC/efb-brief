@@ -109,7 +109,7 @@ function WxProxyCard() {
         inputMode="url"
         autoCapitalize="off"
         autoCorrect="off"
-        placeholder="비우면 내장 중계 (예: https://wx.이름.workers.dev)"
+        placeholder="https://efb-wx.(계정).workers.dev — Mac 테스트 서버에선 비워도 됨"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />

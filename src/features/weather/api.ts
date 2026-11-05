@@ -9,9 +9,15 @@ import type { Metar, Sigmet, Taf, WindPoint, WindsData } from './types';
 export const TIMEOUT_MS = 15_000;
 
 /** 기상 중계 주소. 비어 있으면 같은 서버의 /wx (개발·미리보기 서버 내장 중계) */
+/** localhost·사설 IP(같은 Wi-Fi에서 Mac 서버 접속) */
+export const isLocalHost = (h: string) => h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.local') || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h);
+
 export async function getWxProxyBase(): Promise<string> {
   const s = ((await getSetting('wxProxyUrl')) ?? '').trim().replace(/\/+$/, '');
-  return s || new URL('./wx', location.href).href.replace(/\/+$/, '');
+  if (s) return s;
+  // 내장 중계(/wx)는 Mac 개발·미리보기 서버에만 있음. 배포판(GitHub Pages 등)은 주소 입력 필요
+  if (!isLocalHost(location.hostname)) throw new Error('기상 중계 주소 미설정 — Settings → 기상 중계 주소에 입력');
+  return new URL('./wx', location.href).href.replace(/\/+$/, '');
 }
 
 export async function fetchJson<T = unknown>(url: string, timeoutMs = TIMEOUT_MS): Promise<T> {

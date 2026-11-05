@@ -36,7 +36,7 @@
 - **대안** `doGet?token=` 조회 → 토큰 노출로 기각.
 - **영향** `apps-script/Code.gs`, `src/sync/gasClient.ts`
 
-### D-005 호스팅 = GitHub Pages, 단 로컬·아이패드 확인 후 업로드
+### D-005 호스팅 = GitHub Pages, 단 로컬·아이패드 확인 후 업로드 — (2026-11-05 사용자 요청으로 아이패드 확인 전 업로드: KEVIN-IHC/efb-brief, 공개)
 - **날짜** 2026-11-05 (원본 명세 미결 #7 해결)
 - **결정** GitHub Pages(무료는 **공개 저장소**). `base: './'`라 Cloudflare Pages로도 그대로 배포 가능. 사용자 요청으로 **로컬에서 충분히 테스트하고 아이패드에서 써본 뒤** GitHub에 올린다. 배포 워크플로 `.github/workflows/deploy.yml` 준비됨(아직 미사용).
 - **대안** Cloudflare Pages. 비공개 저장소(Pro 필요).

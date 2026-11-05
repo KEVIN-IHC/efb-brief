@@ -11,9 +11,9 @@
 | 현재 Phase | **Phase 3 기상 지도 구현 완료(로컬) + Cloudflare 기상 중계 설치됨 — 사용자 확인 대기**. 다음: 아이패드 테스트 → Phase 3.5 또는 4 |
 | 테스트 | ✅ `npm test` 81개 통과 (실제 OFP 샘플 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-05 Phase 3) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
-| 아이패드 실기기 | ❓ **한 번도 확인 안 함** (HTTPS 필요 — Cloudflare 임시 터널 또는 GitHub Pages) |
+| 아이패드 실기기 | ❓ **한 번도 확인 안 함** — 배포 주소 준비됨: https://kevin-ihc.github.io/efb-brief/ |
 | 실제 구글 시트 연동 | ❓ **확인 안 함** (Mock GAS로만 검증) |
-| Git | ⏳ `git init` 완료, **커밋 0개** (스테이징도 오래된 상태). GitHub 업로드 안 함 |
+| Git·호스팅 | ✅ 공개 저장소 https://github.com/KEVIN-IHC/efb-brief (main), GitHub Actions → Pages 자동 배포. 커밋 작성자 = GitHub 비공개 이메일(저장소 로컬 설정) |
 | 로컬 서버 | 개발 `npm run dev` → :5173 / 배포판 미리보기 `npm run local` → :4173 |
 
 ## 2. Phase별 상태 (원본 명세 §15 기준)
@@ -51,7 +51,7 @@
 | 사용자 정의 점검 목록 | ⏳ | 원본 명세 §11 "체크 항목"의 사용자 정의 부분 |
 | 민감정보 마스킹 업로드 옵션 | ⏳ | 원본 명세 §16 |
 | 비행 종료 7일 후 캐시 자동 삭제 | ⏳ | 원본 명세 §9.3 (Phase 3 오프라인 패키지와 함께) |
-| Git 첫 커밋 / GitHub 업로드 | ⏳ | 사용자 결정 대기 |
+| Git 첫 커밋 / GitHub 업로드 | ✅ | 2026-11-05 |
 
 ## 5. 현재 오류
 
@@ -73,9 +73,9 @@
 
 1. **사용자 Phase 3 확인** — `LOCAL_TEST.md` §9
 2. ~~Cloudflare Worker 기상 중계~~ ✅ 설치됨 (2026-11-05). GitHub Pages 주소가 정해지면 Worker 변수 `ALLOWED_ORIGINS` 설정
-3. 아이패드 실사용 테스트 (Cloudflare 임시 터널 또는 GitHub Pages)
+3. **아이패드 실사용 테스트** — Safari로 https://kevin-ihc.github.io/efb-brief/ → 공유 → 홈 화면에 추가 → Settings 기상 중계 주소 입력 → OFP 열기·비행기 모드 확인
 4. 실제 Apps Script 설치·연동 확인
-5. Git 첫 커밋
+5. Worker `ALLOWED_ORIGINS` = `https://kevin-ihc.github.io,http://localhost:5173,http://localhost:4173` (선택)
 6. Phase 3.5(4D 슬라이더·SIGMET 교차) 또는 Phase 4(NOTAM) — 사용자 선택
 
 ## 8. 세션 인계 (가장 최근 작업)
@@ -101,3 +101,9 @@
 - **테스트**: `npm test` 81/81, `tsc -b` 통과
 - **미해결**: 아이패드 실기기, `ALLOWED_ORIGINS` 미설정(모든 사이트 허용 — 공개 기상이라 위험 낮음). Worker 이름은 사용자가 `efb-wz` → `efb-wx`로 변경(주소 `https://efb-wx.<계정>.workers.dev`), 앱 설정 갱신·연결 확인
 - **다음**: 아이패드 실사용 테스트 → Phase 3.5 또는 4
+
+### 2026-11-05 — GitHub 첫 업로드·Pages 배포
+- **완료**: 공개 전 정리(항공사명 4곳·실제 등록번호 1곳 일반화, 실제 OFP 값 고정 테스트 기대값을 `private/samples/ofp-01.expect.json`으로 이동 — 공개 저장소에는 형식 예시만), 첫 커밋, `gh repo create KEVIN-IHC/efb-brief --public`, Pages(build_type=workflow) 활성화, Actions 배포 성공(테스트·빌드 통과). 배포판에서 중계 주소가 비어 있으면 "기상 중계 주소 미설정" 안내(`isLocalHost`)
+- **확인**: https://kevin-ihc.github.io/efb-brief/ 200, SW 활성, `/private/` 404, 바람(Open-Meteo) 수신. METAR 등은 기기별로 중계 주소 입력 필요
+- **테스트**: `npm test` 82/82, `tsc -b` 통과
+- **주의**: 저장소는 공개. 앞으로도 커밋 전에 회사 OFP 원문·실제 편명·등록번호가 코드·문서·테스트에 들어가지 않게 확인
