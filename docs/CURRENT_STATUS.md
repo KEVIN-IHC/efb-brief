@@ -8,7 +8,7 @@
 
 | 항목 | 상태 |
 |---|---|
-| 현재 Phase | **Phase 4 NOTAM 로컬 구현·검증 완료 — 사용자 확인 대기** (커밋·배포 안 함). Phase 3까지 배포·사용자 확인 완료 |
+| 현재 Phase | **Phase 4 NOTAM 구현·배포 완료 (e236b29, 2026-11-10)** — 아이패드 실사용 확인 대기. Phase 3까지 사용자 확인 완료 |
 | 테스트 | ✅ `npm test` 111개 통과 (실제 OFP 샘플 10개 + NOTAM 원문 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 Phase 4) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
@@ -26,7 +26,7 @@
 | 2 순항 기록 | 웨이포인트 체크·편차·그래프 | ✅ 로컬 / ⏳ 사용자 확인 | 완료 조건(오프라인 전 구간 기록 → 온라인 일괄 동기화) Mac에서 56개 지점으로 확인 |
 | 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ (Mac 검증 + 아이패드 사용자 확인) | 배포판은 Cloudflare Worker 중계 자동 사용(D-041) |
 | 3.5 4D | 시간 슬라이더·SIGMET 교차 | ⏳ | |
-| 4 NOTAM | OFP NOTAM 파싱·분류 | ✅ 로컬 / ⏳ 사용자 확인 | D-043. 샘플 10개 패키지별 건수 일치, NOTAM 탭(공항·FIR·분류·강조·근거·원문 이동). 미커밋 |
+| 4 NOTAM | OFP NOTAM 파싱·분류 | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-043. 샘플 10개 패키지별 건수 일치, NOTAM 탭(공항·FIR·분류·강조·근거·원문 이동). e236b29 배포 |
 | 5 매뉴얼·MEL·얼러트 | | ⏳ | MEL/CDL 목록은 OFP에서 추출됨(매뉴얼 매칭 없음) |
 | 6 AI 보조 | | ⏳ | |
 
@@ -76,7 +76,7 @@
 3. ~~아이패드 실사용 테스트~~ ✅ 사용자 확인 (2026-11-05). 실사용 중 문제 생기면 KNOWN_ISSUES에 추가
 4. 실제 Apps Script 설치·연동 확인
 5. ~~Worker `ALLOWED_ORIGINS`~~ ✅ 설정됨 (2026-11-05: github.io·localhost 5173/4173 허용, 그 외 403 확인)
-6. ~~Phase 4(NOTAM)~~ 로컬 완료 (2026-11-10) → **사용자 확인**(`LOCAL_TEST.md` §10) → 커밋·배포는 사용자 요청 시
+6. ~~Phase 4(NOTAM)~~ 배포 완료 (2026-11-10, e236b29) → **아이패드에서 실제 OFP로 확인**(`LOCAL_TEST.md` §10)
 7. Phase 3.5(4D 슬라이더·SIGMET 교차) 또는 Phase 5 — 사용자 선택
 8. NOTAM 후속(선택): 근거 문서 원문 대조(K-23), D) 시간표(K-22)
 
@@ -87,9 +87,10 @@
 - **샘플 결과**: 10개 모두 패키지별 "머리 줄 수 = 추출 건수" + 끝 표시 확인 (예: 샘플 1 = 67/142/85). 샘플 1의 7건을 원문과 직접 대조(번호·위치·기간·본문·분류·칩) — 기대값은 `private/samples/notam.expect.json`(커밋 금지)
 - **변경 파일**: `src/features/ofp/parser/{notam.ts(신규),sections.ts,extractors.ts,index.ts,parser.test.ts,samples.test.ts}`, `src/features/ofp/{types.ts,OfpPage.tsx,sourceJump.ts(신규)}`, `src/features/notam/{refs,classify,relevance}.ts·NotamPage.tsx·notam.test.ts(신규)`, `src/app/{App.tsx,tabs.tsx,styles.css}`, 문서(DECISIONS D-043, KNOWN_ISSUES K-16🟢·K-22~24, PROJECT_SPEC §5.3·§5.8, ARCHITECTURE, LOCAL_TEST §10)
 - **테스트**: `npm test` 111/111, `tsc -b` 통과, `npm run build` 통과. 개발 브라우저에 샘플 1을 넣어(임시 127.0.0.1 서버, 확인 후 종료·삭제) NOTAM 탭 295항목 표시, 원문 링크 → OFP 원문 L1047 강조 확인, 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 콘솔 오류 없음(임시 서버 연결 1건 제외). PDF 추출(pdfText) 변경 없어 샘플 텍스트 재생성은 안 함
-- **해결 못 한 것**: 사용자 확인 전. 커밋·push·배포 안 함. 근거 문서 일부 원문 대조 전(K-23), D) 시간표 미해석(K-22). 공항 안 순서는 OFP 원문 순서 그대로(회사 권고가 앞에 와서 긴 공항은 스크롤 많음)
+- **해결 못 한 것**: 아이패드 실사용 확인 전. 근거 문서 일부 원문 대조 전(K-23), D) 시간표 미해석(K-22). 공항 안 순서는 OFP 원문 순서 그대로(회사 권고가 앞에 와서 긴 공항은 스크롤 많음)
 - **주의**: 개발 브라우저(앱 내장 브라우저) IndexedDB에 샘플 1 원문이 현재 비행으로 들어 있음 — Mac 안에만 있음
-- **다음**: 사용자 확인(`LOCAL_TEST.md` §10) → 요청 시 커밋·배포 → Phase 3.5 또는 5
+- **배포**: 사용자 요청("확인 후 배포")으로 커밋 e236b29 push → GitHub Actions 성공, 배포 사이트 새 버전(`aviator-1.3`) 확인, `/private/` 404. 커밋 전 실제 편명·등록번호·NOTAM 번호 혼입 검사 통과
+- **다음**: 아이패드에서 실제 OFP로 NOTAM 탭 확인(`LOCAL_TEST.md` §10, 새 버전은 새로고침 1~2회 후 — K-09) → Phase 3.5 또는 5
 
 ### 2026-11-05 — 구글 시트 실연동 + 오프라인 복귀 자동 전송 수정
 - **완료**: 사용자가 Apps Script 설치·배포, 아이패드 Settings 연결 테스트 성공. 온라인 기록은 시트에 저장됨(사용자 확인)
