@@ -65,3 +65,60 @@ describe.skipIf(!files.includes('ofp-01.txt') || !existsSync(join(DIR, 'ofp-01.e
     expect(o.crzWind!.points.find((x) => x.name === c.split.point)!.byFl[Number(c.split.fl)]).toEqual(c.split.v);
   });
 });
+
+// NOTAM (Phase 4): 패키지별 건수와 지정 항목을 원문과 대조. 기대값은 private/samples/notam.expect.json (회사 자료)
+const NOTAM_EXP = join(DIR, 'notam.expect.json');
+describe.skipIf(files.length === 0 || !existsSync(NOTAM_EXP))('NOTAM 원문 대조', () => {
+  const exp = existsSync(NOTAM_EXP) ? JSON.parse(readFileSync(NOTAM_EXP, 'utf8')) : { counts: {} };
+  for (const f of files) {
+    it(`${f} 패키지별 건수·원문 위치`, async () => {
+      const text = readFileSync(join(DIR, f), 'utf8');
+      const src = text.split('\n');
+      const n = parseAviatorOfp(text).ofp!.notams!;
+      expect(n.packages.map((p) => p.counts.parsed), '패키지별 건수').toEqual(exp.counts[f]);
+      for (const p of n.packages) {
+        expect(p.endFound).toBe(true);
+        expect(p.counts.headLines).toBe(p.counts.parsed);
+        let prev = p.startLine;
+        for (const l of p.locations) {
+          expect(src[l.line - 1]).toContain(`${l.icao}/`);
+          for (const it of l.items) {
+            // 머리 줄 = 원문의 그 줄, 줄 번호는 앞으로만 진행 (겹침·역순 없음)
+            if (it.id) expect(src[it.line - 1].replace(/\s+/g, ' ')).toContain(it.id);
+            expect(it.line).toBeGreaterThan(prev);
+            for (const s of it.lines) expect(src[s.n - 1].replace(/\s+$/, '')).toBe(s.text);
+            prev = it.lines[it.lines.length - 1].n;
+            expect(prev).toBeLessThan(p.endLine);
+          }
+        }
+      }
+    });
+  }
+
+  it.skipIf(!files.includes('ofp-01.txt'))('ofp-01 지정 NOTAM', async () => {
+    const { classifyNotam } = await import('../../notam/classify');
+    const n = parseAviatorOfp(readFileSync(join(DIR, 'ofp-01.txt'), 'utf8')).ofp!.notams!;
+    const e = exp.ofp01;
+    expect(n.firOrder).toEqual(e.firOrder);
+    const locs = n.packages.flatMap((p) => p.locations);
+    for (const x of e.items) {
+      const loc = locs.find((l) => l.pkg === x.pkg && l.role === x.role && l.icao === x.icao)!;
+      expect(loc, `${x.id} 공항`).toBeDefined();
+      const it = loc.items.find((i) => i.id === x.id)!;
+      expect(it, x.id).toBeDefined();
+      expect(it.line).toBe(x.line);
+      expect(it.kind).toBe(x.kind);
+      for (const k of ['loc', 'category', 'from', 'to', 'open', 'lower', 'upper'] as const) if (x[k] !== undefined) expect(it[k], `${x.id}.${k}`).toBe(x[k]);
+      if (x.textStart) expect(it.text.startsWith(x.textStart)).toBe(true);
+      if (x.commentStart) expect(it.comment?.startsWith(x.commentStart)).toBe(true);
+      const c = classifyNotam(it);
+      expect(c.group, `${x.id} 그룹`).toBe(x.group);
+      if (x.chips) expect(c.chips.map((k) => k.id), `${x.id} 칩`).toEqual(x.chips);
+      if (x.runways) expect(c.runways).toEqual(x.runways);
+      if (x.key !== undefined) expect(c.key).toBe(x.key);
+    }
+    const t = locs.find((l) => l.pkg === e.textItem.pkg && l.icao === e.textItem.icao)!.items.find((i) => i.kind === 'text')!;
+    expect(t.category).toBe(e.textItem.category);
+    expect(t.line).toBe(e.textItem.line);
+  });
+});

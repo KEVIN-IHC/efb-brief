@@ -673,3 +673,48 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .wind-icon svg { fill: var(--seg-2); flex: none; }
 .wind-icon span, .wind-icon small { font: 600 10px var(--mono); color: var(--text); text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg); }
 .wind-icon small { color: var(--text-dim); }
+
+/* ===== NOTAM (Phase 4) ===== */
+:root { --ntm-runway: #e2574c; --ntm-navaid: #e0a43a; --ntm-airspace: #c45ad1; --ntm-company: #4a8fd9; --ntm-key-soft: rgba(226, 87, 76, 0.08); }
+:root[data-theme="light"] { --ntm-runway: #c0332a; --ntm-navaid: #a2620a; --ntm-airspace: #8e2a9c; --ntm-company: #1f5fae; --ntm-key-soft: rgba(192, 51, 42, 0.06); }
+.ntm { display: grid; gap: var(--sp-4); min-width: 0; }
+.ntm .strong { font-weight: 700; color: var(--text); }
+.ntm .linkish { background: none; border: 0; padding: 0 2px; margin-left: var(--sp-2); color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; min-height: 0; }
+.ntm .doc-h .linkish { margin-left: 0; }
+.ntm-pkgs { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); margin: var(--sp-3) 0; }
+@media (min-width: 768px) { .ntm-pkgs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ntm-pkg { display: grid; gap: 2px; text-align: left; min-height: var(--touch); padding: var(--sp-2) var(--sp-3); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); font: inherit; cursor: pointer; min-width: 0; }
+.ntm-groupsum { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); font-size: var(--fs-sm); }
+.ntm-gs { border-left: 3px solid var(--line-strong); padding-left: var(--sp-2); }
+.ntm-refs { margin-top: var(--sp-3); font-size: var(--fs-sm); }
+.ntm-refs summary, .ntm-info summary, .ntm-foot summary { cursor: pointer; color: var(--text-dim); min-height: var(--touch); display: flex; align-items: center; }
+.ntm-refs ul { margin: var(--sp-2) 0 0; padding-left: 1.2em; display: grid; gap: var(--sp-2); line-height: 1.45; word-break: break-word; }
+.ntm-chk { margin-left: var(--sp-2); }
+.ntm-controls { display: grid; gap: var(--sp-2); min-width: 0; }
+.ntm-controls .segmented { margin-bottom: 0; }
+.ntm-controls p { margin: 0; }
+.ntm-filters, .ntm-index { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ntm-f, .ntm-idx { min-height: var(--touch); padding: 0 var(--sp-3); border: 1px solid var(--line); border-left-width: 3px; border-radius: var(--radius-sm); background: var(--panel); color: var(--text-dim); font: 600 var(--fs-sm) var(--font); cursor: pointer; }
+.ntm-f.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.ntm-idx { border-left-width: 1px; font-weight: 500; }
+.ntm-locname { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); word-break: break-word; }
+.ntm-win { margin: 0 0 var(--sp-2); word-break: break-word; }
+.ntm-pre { margin: 0; font: var(--fs-sm)/1.45 var(--mono); white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: var(--text); }
+.ntm-sub { color: var(--text-dim); }
+.ntm-item { margin-top: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--line); border-left: 4px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--panel); display: grid; gap: var(--sp-2); min-width: 0; }
+.ntm-item.key { background: var(--ntm-key-soft); }
+.ntm-item.off-time { opacity: 0.72; }
+.ntm-top, .ntm-time, .ntm-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.ntm-g { font: 800 0.66rem/1 var(--font); letter-spacing: 0.06em; padding: 4px 7px; border-radius: 4px; background: var(--raised); color: var(--text-dim); }
+.ntm-comment { border-top: 1px dashed var(--line-strong); padding-top: var(--sp-2); }
+.ntm-comment .ntm-pre { color: var(--ntm-company); }
+.ntm-foot { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); }
+.ntm-foot .linkish { min-height: var(--touch); }
+.ntm-why { margin: 0; padding-left: 1.2em; display: grid; gap: var(--sp-1); line-height: 1.45; word-break: break-word; }
+.ntm-info { font-size: var(--fs-sm); }
+/* 그룹 색: 활주로·항행시설·공역(핵심)·회사만 색, 나머지는 기본 */
+.g-runway.ntm-item, .ntm-f.g-runway, .ntm-gs.g-runway { border-left-color: var(--ntm-runway); }
+.g-navaid.ntm-item, .ntm-f.g-navaid, .ntm-gs.g-navaid { border-left-color: var(--ntm-navaid); }
+.g-airspace.ntm-item, .ntm-f.g-airspace, .ntm-gs.g-airspace { border-left-color: var(--ntm-airspace); }
+.g-company.ntm-item, .ntm-f.g-company { border-left-color: var(--ntm-company); }
+.ntm-g.g-runway { color: var(--ntm-runway); } .ntm-g.g-navaid { color: var(--ntm-navaid); } .ntm-g.g-airspace { color: var(--ntm-airspace); } .ntm-g.g-company { color: var(--ntm-company); }

@@ -157,6 +157,70 @@ export interface OfpData {
   cargo?: string;
   /** 노선 연료 소모 통계: 실제 − 계획 */
   fuelStats?: { period?: string; items: { label: string; value: number }[] };
+  /** OFP NOTAM PACKAGE 1/2/3 (Phase 4). 원문 구조 그대로 — 분류는 화면에서 규칙으로 계산 */
+  notams?: OfpNotams;
+}
+
+/** 원문 한 줄 (n = 원문 뷰어 줄 번호) */
+export interface SrcText {
+  n: number;
+  text: string;
+}
+
+export interface OfpNotamItem {
+  /** notam = 당국 NOTAM(번호 있음) · company = 회사 권고(COAD 등) · text = 제목 아래 자유 글(번호·유효기간 없음) */
+  kind: 'notam' | 'company' | 'text';
+  id?: string; // 예: A0001/26, COAD01/26, AIP SUP 1/26
+  loc?: string; // 머리 줄의 위치 지시자 (RKSI)
+  /** OFP가 붙인 분류 제목 (◼ RUNWAY) */
+  category: string;
+  categoryLine?: number;
+  fromText?: string;
+  toText?: string;
+  from?: string; // ISO UTC
+  to?: string; // ISO UTC — UFN·PERM이면 없음
+  open?: 'UFN' | 'PERM';
+  schedule?: string; // D)
+  lower?: string; // F)
+  upper?: string; // G)
+  /** E) 본문 (회사 권고·자유 글은 본문 전체) */
+  text: string;
+  comment?: string; // COMMENT) — 회사 주석
+  line: number; // 머리 줄
+  /** 원문 줄 (페이지 꼬리말 제외) */
+  lines: SrcText[];
+}
+
+export interface OfpNotamLocation {
+  pkg: 1 | 2 | 3;
+  role: string; // DEP · DEST · ALTN · ETP · EDTO · ERA · 3% ERA · REFILE · FIR
+  icao: string;
+  name: string;
+  line: number;
+  /** 공항 머리 아래 정보 줄 (1. RUNWAY : … / 2. COMPANY RADIO : …) */
+  info: SrcText[];
+  /** SEE THE SAME AIRPORT IN PACKAGE n */
+  seeAlso?: number;
+  noNotams?: boolean;
+  items: OfpNotamItem[];
+}
+
+export interface OfpNotamPackage {
+  no: 1 | 2 | 3;
+  startLine: number;
+  endLine: number;
+  /** END OF … PACKAGE n 표시를 찾았는가 */
+  endFound: boolean;
+  header: SrcText[];
+  locations: OfpNotamLocation[];
+  /** 누락 점검: 날짜로 시작하는 머리 줄 수 vs 추출된 NOTAM·회사 권고 수 */
+  counts: { headLines: number; parsed: number };
+}
+
+export interface OfpNotams {
+  packages: OfpNotamPackage[];
+  /** PACKAGE 3 머리의 FIR: 목록 (통과 순서) */
+  firOrder: string[];
 }
 
 export interface OfpRecord {

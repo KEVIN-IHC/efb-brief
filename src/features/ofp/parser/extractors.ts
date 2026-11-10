@@ -1,6 +1,6 @@
 // 섹션별 추출기 목록. 각 추출기는 원문 줄 번호와 함께 값을 기록한다 (FieldTrace).
 import { fmtHm, fmtKg } from '../../../lib/format';
-import type { OfpAlternate, OfpEtp, OfpWaypoint } from '../types';
+import type { OfpAlternate, OfpEtp, OfpNotams, OfpWaypoint } from '../types';
 import {
   AC_CODE,
   parseAlternates,
@@ -21,6 +21,7 @@ import {
 } from './aviator';
 import { cutFplBlock, dofToDate, parseFpl, type FplData } from './fpl';
 import { lineOf } from './lines';
+import { parseNotams } from './notam';
 import { sectionLines } from './sections';
 import type { DocLine, ExtractorResult, FieldTrace, ParsedPartial, Section, SectionId } from './types';
 
@@ -40,6 +41,7 @@ export interface ExtractCtx {
     edto?: EdtoInfo;
     wind?: WindSummary;
     dispatch?: AviatorDispatch;
+    notams?: OfpNotams;
   };
 }
 
@@ -238,6 +240,35 @@ const windExtractor: Extractor = {
   },
 };
 
+// ---------- NOTAM PACKAGE 1/2/3 ----------
+const notamExtractor: Extractor = {
+  id: 'notam',
+  label: 'NOTAM 패키지 1/2/3',
+  section: 'notam1',
+  run(ctx) {
+    const idx = (n: number) => n - 1; // 줄 번호 → 배열 위치
+    const ranges = (['notam1', 'notam2', 'notam3'] as const).flatMap((id, k) => {
+      const s = ctx.sections.find((x) => x.id === id && !x.ignored);
+      return s ? [{ no: (k + 1) as 1 | 2 | 3, from: idx(s.startLine), to: idx(s.endLine) }] : [];
+    });
+    const n = parseNotams(ctx.lines, ranges);
+    if (!n) return { status: 'failed', fields: [], message: 'NOTAM 패키지를 해석하지 못함' };
+    ctx.av.notams = n;
+    const fields: FieldTrace[] = [];
+    const problems: string[] = [];
+    for (const p of n.packages) {
+      const items = p.locations.reduce((s, l) => s + l.items.length, 0);
+      fields.push(...tr(ctx, `notam.pkg${p.no}`, `PACKAGE ${p.no}`, `공항·FIR ${p.locations.length} · 항목 ${items} (머리 줄 ${p.counts.headLines} = 추출 ${p.counts.parsed})`, p.startLine));
+      for (const l of p.locations) fields.push(...tr(ctx, `notam.pkg${p.no}.${l.role}.${l.icao}`, `[${l.role}] ${l.icao}`, l.seeAlso ? `PACKAGE ${l.seeAlso} 참조` : l.noNotams ? 'NOTAM 없음' : `${l.items.length}건`, l.line));
+      if (!p.endFound) problems.push(`PACKAGE ${p.no} 끝 표시 없음`);
+      if (p.counts.headLines !== p.counts.parsed) problems.push(`PACKAGE ${p.no} 머리 줄 ${p.counts.headLines} ≠ 추출 ${p.counts.parsed}`);
+    }
+    if (n.packages.length < 3) problems.push(`패키지 ${n.packages.length}/3개만 찾음`);
+    const total = n.packages.reduce((s, p) => s + p.counts.parsed, 0);
+    return { status: problems.length ? 'partial' : 'ok', fields, message: problems.length ? problems.join(' / ') : `NOTAM·회사 권고 ${total}건` };
+  },
+};
+
 export const EXTRACTORS: Extractor[] = [
   fplExtractor,
   headerExtractor,
@@ -248,7 +279,7 @@ export const EXTRACTORS: Extractor[] = [
   etpExtractor,
   dispatchExtractor,
   windExtractor,
-  { id: 'notam', label: 'NOTAM 패키지', section: 'notam1', pendingNote: 'Phase 4' },
+  notamExtractor,
 ];
 
 export { AC_CODE };

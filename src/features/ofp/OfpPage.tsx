@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSourceJump } from './sourceJump';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { useActiveFlight } from '../flight/activeFlight';
 import { NavLog } from './doc/NavLog';
@@ -47,6 +48,14 @@ export function OfpPage() {
       /* ignore */
     }
   };
+  // 다른 탭(NOTAM)에서 원문 위치 요청 → PDF·추출 원문 뷰어로
+  const pending = useSourceJump((s) => s.pending);
+  useEffect(() => {
+    if (!pending) return;
+    setSub('raw');
+    setFocus(pending);
+    useSourceJump.setState({ pending: null });
+  }, [pending]);
   const o = ofp?.parsed;
   const jumpToSource = ofp?.rawText
     ? (n: number) => {

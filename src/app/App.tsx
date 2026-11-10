@@ -10,6 +10,7 @@ import { OfpOpenButton } from '../features/ofp/OfpOpenButton';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { WeatherPage } from '../features/weather/WeatherPage';
 import { MapPage } from '../features/map/MapPage';
+import { NotamPage } from '../features/notam/NotamPage';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
 const readHash = (): TabId => {
@@ -84,6 +85,7 @@ export function App() {
           {tab === 'settings' && <SettingsPage />}
           {tab === 'weather' && <WeatherPage />}
           {tab === 'map' && <MapPage />}
+          {tab === 'notam' && <NotamPage />}
           {current.phase && (
             <section className="card placeholder">
               {current.icon}

@@ -7,7 +7,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.2';
+export const AVIATOR_PARSER_VERSION = 'aviator-1.3'; // 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -108,6 +108,7 @@ function assemble(ctx: ExtractCtx, texts: string[]): OfpData | undefined {
     pax: d?.pax?.value,
     cargo: d?.cargo?.value,
     fuelStats: d?.stats ? { period: d.stats.period, items: d.stats.items } : undefined,
+    notams: ctx.av.notams,
   };
 }
 
@@ -193,6 +194,19 @@ function runChecks(ctx: ExtractCtx): CheckResult[] {
       if (c.dir !== p.windDir || c.spd !== p.windSpd) bad.push(p.name);
     }
     add('windNav', 'CRZ WIND ↔ NAV LOG 바람', cmp ? bad.length === 0 : null, cmp ? (bad.length ? `불일치: ${bad.join(', ')}` : `${cmp}개 지점 일치`) : '비교할 지점 없음', [ws.line]);
+  }
+
+  // 8) NOTAM 누락 점검: 패키지마다 날짜로 시작하는 머리 줄 수 = 추출 건수, 끝 표시 확인
+  const nt = ctx.av.notams;
+  if (nt) {
+    const bad = nt.packages.filter((p) => !p.endFound || p.counts.headLines !== p.counts.parsed);
+    add(
+      'notamCount',
+      'NOTAM 머리 줄 수 = 추출 건수',
+      nt.packages.length === 3 && bad.length === 0,
+      nt.packages.map((p) => `P${p.no} ${p.counts.parsed}/${p.counts.headLines}${p.endFound ? '' : ' (끝 표시 없음)'}`).join(' · '),
+      nt.packages.map((p) => p.startLine),
+    );
   }
 
   return checks;

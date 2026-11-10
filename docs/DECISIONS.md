@@ -258,3 +258,20 @@
 - **원인** 비행기 모드에서 저장·화면 복귀 때마다 전송 시도 → 실패 5회로 `failed` + 백오프(최대 30분). 온라인 복귀 시에도 백오프를 지켜 바로 보내지 않음. iOS는 `navigator.onLine`·`online` 이벤트가 믿을 만하지 않음.
 - **결정** ① fetch 자체 실패(TypeError = 서버에 닿지 못함)는 `NetworkError`로 구분: 실패 횟수 증가 없이 `pending` 유지, 30초 뒤 재시도. ② `online` 이벤트·앱 화면 복귀 시 대기시간 무시하고 즉시 전송(force). ③ 점검 주기 5분 → 30초(보낼 항목 없으면 네트워크 요청 없음). 서버 오류(HTTP 오류·토큰 거부·타임아웃)는 기존 백오프·5회 `failed` 그대로.
 - **영향** `src/sync/gasClient.ts`, `src/sync/outbox.ts`(`markNetworkWait`, `NETWORK_RETRY_MS`), `src/sync/syncManager.ts`, `src/sync/outbox.test.ts`
+
+## NOTAM (Phase 4)
+
+### D-043 OFP NOTAM 추출·분류 규칙 (숨기지 않고 분류·강조)
+- **날짜** 2026-11-10 (사용자 승인 "이대로 진행")
+- **확인 사실** 샘플 10개 모두 같은 구조: `NOTAM PACKAGE 1`(출발·도착·교체) / `2`(ETP·EDTO·ERA·REFILE 공항) / `3`(FIR). 공항 머리 `[DEP]RKSI/ …`, OFP 자체 분류 제목 `◼ RUNWAY` 등, NOTAM 머리 줄 `시작 - 종료(UFN·PERM) 위치 번호`, 본문 `D) E) F) G) COMMENT)`. **Q) 줄 없음**. 끝 표시 `END OF (NOTAM) PACKAGE n FOR`. 기존 구간 정규식은 시작 줄(공백 여러 칸)을 못 찾고 끝 줄을 시작으로 잡고 있었음.
+- **결정**
+  1. 추출: 패키지 → 공항·FIR → 분류 제목 → 항목(번호·위치·유효기간 UTC·필드·원문 줄). 제목 아래 번호 없는 글은 `text` 항목, 공항 머리 아래 줄은 정보 줄 — 패키지 안 어떤 줄도 버리지 않음(페이지 꼬리말만 제외). 누락 점검: 패키지마다 "날짜로 시작하는 머리 줄 수 = 추출 건수" + 끝 표시(교차검증 `notamCount`)
+  2. 분류: OFP 분류 제목 → 앱 그룹(활주로·항행시설·공역·접근/출발·유도로/계류장·통신·공항/장애물·기타·회사). 근거로 제목 줄 번호 + 대응 NOTAM Code 주제 그룹(Doc 8400, **앱 해석**이라고 표시)
+  3. 강조 칩: E) 본문의 약어(CLSD·U/S·NOT AVBL·ACT 등 Doc 8400 / OTS·UNUSBL FAA JO 7930.2 / 간섭·무인기 등 일반 낱말은 "공식 약어 아님"). COMMENT)(회사 주석)는 칩 근거에서 제외. 활주로·항행시설·공역 그룹 + 강한 칩(폐쇄·사용 불가·공역 활성) = 강조
+  4. 관련성: 공항은 ETD~ETA, FIR은 NAV LOG의 FIR 진입 ETO로 통과 시간대(출발 FIR = 이륙~첫 진입, ADIZ 제외, 없으면 ETD~ETA)와 B)~C) 유효기간 겹침 표시. **D) 시간표는 해석하지 않음** → "시간표 있음 — 원문 확인"
+  5. **규칙으로 숨기지 않음.** 기종·게이트별 숨김 없음. 화면에는 사용자가 고르는 보기 필터만 있고, 필터로 가려진 건수를 항상 표시
+  6. 회사 권고(COAD·COMPANY ADVISORY·TECHNICAL INFORMATION·COMPANY MINIMA)와 COMMENT)는 "회사"로 구분 — 당국 NOTAM 아님 표시
+  7. 근거 문서 목록(`src/features/notam/refs.ts`): 확인한 것만 위치 표기, 원문 대조 전인 것(Doc 8400 약어, FAA JO 7930.2, GNSS G 그룹)은 화면에 "원문 대조 필요"
+- **대안** 본문 키워드만으로 분류 → OFP가 이미 제목으로 분류해 두었으므로 기각(근거가 더 분명). D) 시간표 해석 → 형식이 다양해 오판 위험, 보류. ETD~ETA 밖 NOTAM 숨김 → 안전 관련이라 기각(표시만)
+- **영향** `src/features/ofp/parser/{notam,sections,extractors,index}.ts`(파서 `aviator-1.3`), `src/features/ofp/types.ts`(`OfpData.notams`), `src/features/notam/*`, `src/features/ofp/sourceJump.ts`, `OfpPage.tsx`
+

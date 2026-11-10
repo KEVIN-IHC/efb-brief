@@ -120,12 +120,12 @@ describe('parseAviatorOfp', () => {
     expect(FAKE.split('\n')[dof.line - 1]).toContain('DOF/261105');
   });
 
-  it('형식이 안 맞으면 failed, 구간이 없으면 missing, 규칙 없으면 pending (조용히 빠지지 않음)', () => {
+  it('형식이 안 맞으면 failed, 구간이 없으면 missing, 일부만 있으면 partial (조용히 빠지지 않음)', () => {
     const st = Object.fromEntries(r.extractors.map((e) => [e.id, e.status]));
     expect(st.fuel).toBe('failed');
     expect(st.etp).toBe('missing');
     expect(st.wind).toBe('missing');
-    expect(st.notam).toBe('pending');
+    expect(st.notam).toBe('partial'); // 패키지 1만 있음 → 부분 추출로 드러남
     expect(r.ofp).toBeUndefined(); // 불완전하면 조립하지 않음
   });
 

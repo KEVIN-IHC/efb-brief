@@ -1,19 +1,24 @@
 // Aviator OFP 구간 나누기.
-// 표시 문자열은 참고 분석(private/reference) 기준 — 회사 샘플로 확인하면 verified: true 로 바꾼다.
+// 표시 문자열은 회사 샘플 10개로 확인함 (verified: true). 새 표시를 추가하면 샘플로 확인 전까지 false.
 import { isPageMark } from './lines';
+import { NOTAM_PKG_START } from './notam';
 import type { DocLine, Section, SectionDef, SectionId } from './types';
 
+/** NOTAM_PKG_START에서 패키지 번호만 고정 */
+const pkgStart = (n: 1 | 2 | 3) => new RegExp(NOTAM_PKG_START.source.replace('([123])', String(n)));
+
 export const AVIATOR_SECTIONS: SectionDef[] = [
-  { id: 'altnRoute', label: 'ROUTE TO ALTN', start: /ROUTE TO ALTN/, verified: false, note: '메인 루트 테이블 종료 직후' },
-  { id: 'refile', label: 'REFILE FLT PLAN', start: /REFILE FLT PLAN/, verified: false, note: '독립 루트 — 메인 루트와 섞이면 안 됨' },
-  { id: 'end', label: 'END OF JEPPESEN DATAPLAN', start: /END OF JEPPESEN/, verified: false },
-  { id: 'etp', label: 'EQUAL TIME POINT', start: /EQUAL TIME POINT/, verified: false },
-  { id: 'windSummary', label: 'WIND/TEMP SUMMARY', start: /START OF WIND AND TEMPERATURE SUMMARY/, verified: false },
+  { id: 'altnRoute', label: 'ROUTE TO ALTN', start: /ROUTE TO ALTN/, verified: true, note: '메인 루트 테이블 종료 직후' },
+  { id: 'refile', label: 'REFILE FLT PLAN', start: /REFILE FLT PLAN/, verified: true, note: '독립 루트 — 메인 루트와 섞이면 안 됨' },
+  { id: 'end', label: 'END OF JEPPESEN DATAPLAN', start: /END OF JEPPESEN/, verified: true },
+  { id: 'etp', label: 'EQUAL TIME POINT', start: /EQUAL TIME POINT/, verified: true },
+  { id: 'windSummary', label: 'WIND/TEMP SUMMARY', start: /START OF WIND AND TEMPERATURE SUMMARY/, verified: true },
   { id: 'fpl', label: 'ATS FPL', start: /\(FPL-/, all: true, verified: true, note: 'ICAO Doc 4444 표준 형식' },
-  { id: 'dispatch', label: 'DISPATCH / COMPANY ADVISORY', start: /COMPANY ADVISORY|DISPATCH RELEASE/, verified: false },
-  { id: 'notam1', label: 'NOTAM PACKAGE 1', start: /NOTAM PACKAGE\s*1\b/, verified: false },
-  { id: 'notam2', label: 'NOTAM PACKAGE 2', start: /NOTAM PACKAGE\s*2\b/, verified: false },
-  { id: 'notam3', label: 'NOTAM PACKAGE 3', start: /NOTAM PACKAGE\s*3\b/, verified: false },
+  { id: 'dispatch', label: 'DISPATCH / COMPANY ADVISORY', start: /COMPANY ADVISORY|DISPATCH RELEASE/, verified: true },
+  // 시작 줄만 (끝 줄 "END OF NOTAM PACKAGE n FOR …"와 구분). 공백 수 제각각·항공사명 접두 허용
+  { id: 'notam1', label: 'NOTAM PACKAGE 1', start: pkgStart(1), verified: true, note: '출발·도착·교체 공항' },
+  { id: 'notam2', label: 'NOTAM PACKAGE 2', start: pkgStart(2), verified: true, note: 'ETP·EDTO·ERA·REFILE 공항' },
+  { id: 'notam3', label: 'NOTAM PACKAGE 3', start: pkgStart(3), verified: true, note: '경유 FIR' },
 ];
 
 const LABELS: Record<SectionId, string> = {
@@ -59,7 +64,7 @@ export function splitSections(lines: DocLine[]): { sections: Section[]; missing:
   // 메인 CFP: 문서 첫 줄 ~ 첫 종료 표시 전
   const firstTerm = Math.min(...starts.filter((s) => CFP_TERMINATORS.includes(s.id)).map((s) => s.idx), lines.length);
   const firstContent = Math.max(0, lines.findIndex((l) => !isPageMark(l)));
-  starts.push({ id: 'cfp', idx: firstContent, verified: false });
+  starts.push({ id: 'cfp', idx: firstContent, verified: true });
 
   // 후반부 CFP 복사본: 메인 CFP 대표 줄이 종료 표시 이후에 다시 나오면 그 지점부터 제외
   const sig = cfpSignature(lines, firstContent, firstTerm);
@@ -68,7 +73,7 @@ export function splitSections(lines: DocLine[]): { sections: Section[]; missing:
     const searchFrom = Math.min(firstTerm + 1, lastMarker);
     for (let i = searchFrom; i < lines.length; i++) {
       if (lines[i].text.trim() === sig && i > firstTerm) {
-        starts.push({ id: 'cfpCopy', idx: i, verified: false, ignored: true });
+        starts.push({ id: 'cfpCopy', idx: i, verified: true, ignored: true });
         break;
       }
     }

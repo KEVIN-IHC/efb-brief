@@ -56,6 +56,7 @@ IPBS/
       ├─ inflight/         # 순항 기록 (Phase 2)
       ├─ weather/          # 기상 받기·저장·갱신·Weather 탭 (Phase 3)
       ├─ map/              # Map 탭(Leaflet)·위성 조각 (Phase 3)
+      ├─ notam/            # NOTAM 분류·관련성·근거·NOTAM 탭 (Phase 4)
       ├─ dashboard/
       └─ settings/
 ```
@@ -92,12 +93,14 @@ IPBS/
 | `parser/lines.ts` | `DocLine{n,page,text}`, 페이지 잡음 판별 |
 | `parser/sections.ts` | Aviator 구간 표시 문자열(`verified` 플래그), 메인 CFP 끝·복사본 탐지 |
 | `parser/fpl.ts` | ICAO FPL 해석·블록 자르기·비교 |
+| `parser/notam.ts` | NOTAM PACKAGE 1/2/3 구조 추출(`parseNotams`): 패키지·공항/FIR·분류 제목·항목·필드·원문 줄, 누락 점검 수 (D-043) |
 | `parser/aviator.ts` | **Aviator 추출 규칙**: 헤더, 연료(`FUEL_ROW`), 중량, 루트 로그(3줄/지점 `ROW_A/B/C`), 교체공항·ERA, ETP(LOLV/EDTO)·드리프트다운, 디스패치, 바람 요약 |
 | `parser/extractors.ts` | 추출기 목록(각각 `FieldTrace` 기록), 상태 ok/partial/failed/pending/missing |
-| `parser/index.ts` | `parseAviatorOfp()` → 조립(`assemble`) + 교차검증 8종. **`AVIATOR_PARSER_VERSION`** |
+| `parser/index.ts` | `parseAviatorOfp()` → 조립(`assemble`) + 교차검증 9종(NOTAM 건수 포함). **`AVIATOR_PARSER_VERSION`** (현재 `aviator-1.3`) |
 | `margins.ts` | 한계 여유 판정(kg 기준 → lbs 환산), ETP는 CFR 있을 때만 |
 | `turbulence.ts` | SR 수준·연속 구간 묶기 (임시 기준) |
 | `useOfp.ts` | 업로드 목록 훅, `ofpEvents` |
+| `sourceJump.ts` | 다른 탭에서 원문 줄로 이동 (`jumpToOfpSource(n)` → `#ofp` PDF·추출 탭) |
 | `OfpOpenButton.tsx` | 어디서나 PDF 열기 → `importOfpFile()` (`useOfpImport` 진행 상태) |
 | `OfpPage.tsx` | 하위 탭 OFP / NAV LOG / CRZ WIND / PDF·추출 |
 | `RawPdfView.tsx`, `ParsePanel.tsx` | 업로드 목록·추출 결과·원문 뷰어(줄 이동) |
@@ -125,6 +128,16 @@ IPBS/
 | `map/MapPage.tsx` | Leaflet: 내장 지도(pane `ne`) · 위성(pane `sat`, GridLayer) · 루트·ETP · 공항 · SIGMET · 바람 화살표. 개발 중 `window.__efbMap` |
 
 - 개발 서버 중계: `vite.config.ts` `wxProxyPlugin` (`/wx/awc/{metar,taf,isigmet,airsigmet}` GET만 → aviationweather.gov)
+
+### 3.7b NOTAM `src/features/notam/` (Phase 4, D-043)
+| 파일 | 역할 |
+|---|---|
+| `refs.ts` | 근거 문서 목록(PANS-AIM 부록 3, Doc 8400 약어·NOTAM Code, FAA JO 7930.2, OFP 원문, 회사 자료) + `checked` |
+| `classify.ts` | OFP 분류 제목 → 그룹(`HEADING`), 본문 약어 칩(`KW`), RWY 추출, 강조 판단, 근거(`Reason`) |
+| `relevance.ts` | 비행 시간대(ETD~ETA), FIR 통과 시간대(NAV LOG `fir`·ETO), 유효기간 겹침 |
+| `NotamPage.tsx` | 요약(패키지 건수 점검)·보기 필터·공항 목록·항목 카드(근거·원문 링크) |
+
+- 데이터: `OfpData.notams`(파서가 원문 구조만 저장). 분류는 화면에서 계산 → 규칙을 고쳐도 재파싱 불필요
 
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
@@ -179,7 +192,7 @@ EntrySheet 저장 → saveLog({kind:'wpt', seq, ata, fuel, unit} | {kind:'memo'}
 ## 7. 테스트·검증
 
 - `npm test` (Vitest, node 환경, fake-indexeddb) — `src/**/*.test.ts`
-  - `sync/outbox.test.ts` 오프라인·멱등·백오프 / `ofp/parser/parser.test.ts` 가짜 텍스트 / `ofp/parser/samples.test.ts` **실제 샘플**(`private/samples/*.txt` 있을 때만, 없으면 건너뜀) / `inflight/*.test.ts` / 기타
+  - `sync/outbox.test.ts` 오프라인·멱등·백오프 / `ofp/parser/parser.test.ts` 가짜 텍스트 / `ofp/parser/samples.test.ts` **실제 샘플**(`private/samples/*.txt` 있을 때만, 없으면 건너뜀. NOTAM 건수·지정 항목 기대값은 `private/samples/notam.expect.json`) / `notam/notam.test.ts` 가짜 NOTAM 구조·분류·관련성 / `inflight/*.test.ts` / 기타
 - `npx tsc -b` 타입 검사, `npm run build` 빌드
 - 실제 샘플 텍스트 재생성: `npx vite-node tools/extract-ofp.ts private/samples/*.pdf`
 - 화면 확인: 개발 브라우저에서 360/375·768·1180·1440px, 주간/야간, `document.documentElement.scrollWidth - innerWidth === 0`
