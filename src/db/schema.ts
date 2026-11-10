@@ -1,10 +1,11 @@
 // IndexedDB 스키마 (SPEC §6). Phase 0에서는 logs / outbox / settings / flights 만 실제로 사용하고,
 // 나머지 store는 이후 Phase를 위해 미리 생성해 둔다 (나중에 store 추가 = DB 버전 업 + 마이그레이션 필요).
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { ManualItem, ManualMeta, ManualPage } from '../features/manual/types';
 import type { OfpRecord, OfpWaypoint } from '../features/ofp/types';
 
 export const DB_NAME = 'efb';
-export const DB_VERSION = 1;
+export const DB_VERSION = 3;
 
 export interface FlightRecord {
   flightId: string;
@@ -67,9 +68,25 @@ export interface EfbDB extends DBSchema {
   mapTiles: { key: [number, number, number]; value: { z: number; x: number; y: number; blob: Blob } };
   logs: { key: string; value: LogRecord; indexes: { byFlight: string } };
   outbox: { key: string; value: OutboxItem; indexes: { byStatus: OutboxStatus } };
-  manualIndex: { key: [string, string]; value: Loose<'docId' | 'section', string> };
-  melItems: { key: string; value: Loose<'itemNo', string> };
+  /** v2 (D-044): 매뉴얼 묶음 — 문서 정보 / 쪽 / MEL·CDL 항목 */
+  manualDocs: { key: string; value: ManualMeta & { importedAt: string } };
+  manualPages: { key: [string, number]; value: ManualPage & { docId: string } };
+  manualItems: { key: [string, string]; value: ManualItem & { docId: string }; indexes: { byItem: string } };
   settings: { key: string; value: SettingRow };
+  /** v3 (D-046): 얼러트 확인·이력 — 처음 뜬 시각, 확인 시각 */
+  alerts: { key: [string, string]; value: AlertRecord; indexes: { byFlight: string } };
+}
+
+export interface AlertRecord {
+  flightId: string;
+  /** `${ruleId}:${key}:${severity}` */
+  id: string;
+  ruleId: string;
+  severity: 'info' | 'caution' | 'warning';
+  title: string;
+  detail?: string;
+  firstSeenAt: string;
+  ackAt?: string;
 }
 
 export type EfbDatabase = IDBPDatabase<EfbDB>;
@@ -89,11 +106,25 @@ export function getDB(): Promise<EfbDatabase> {
           db.createObjectStore('mapTiles', { keyPath: ['z', 'x', 'y'] });
           db.createObjectStore('logs', { keyPath: 'logId' }).createIndex('byFlight', 'flightId');
           db.createObjectStore('outbox', { keyPath: 'opId' }).createIndex('byStatus', 'status');
-          db.createObjectStore('manualIndex', { keyPath: ['docId', 'section'] });
-          db.createObjectStore('melItems', { keyPath: 'itemNo' });
+          // v1 당시 매뉴얼 자리 store — v2에서 교체됨 (아래)
+          (db as unknown as IDBDatabase).createObjectStore('manualIndex', { keyPath: ['docId', 'section'] });
+          (db as unknown as IDBDatabase).createObjectStore('melItems', { keyPath: 'itemNo' });
           db.createObjectStore('settings', { keyPath: 'key' });
         }
-        // 이후 버전: if (oldVersion < 2) { ... }
+        if (oldVersion < 2) {
+          // v1의 빈 자리 store(manualIndex·melItems)는 쓰인 적 없음 → 지우고 매뉴얼 store 3개로 교체 (D-044)
+          const names = db.objectStoreNames as unknown as DOMStringList;
+          const legacy = db as unknown as IDBDatabase;
+          if (names.contains('manualIndex')) legacy.deleteObjectStore('manualIndex');
+          if (names.contains('melItems')) legacy.deleteObjectStore('melItems');
+          db.createObjectStore('manualDocs', { keyPath: 'docId' });
+          db.createObjectStore('manualPages', { keyPath: ['docId', 'seq'] });
+          db.createObjectStore('manualItems', { keyPath: ['docId', 'itemNo'] }).createIndex('byItem', 'itemNo');
+        }
+        if (oldVersion < 3) {
+          db.createObjectStore('alerts', { keyPath: ['flightId', 'id'] }).createIndex('byFlight', 'flightId');
+        }
+        // 이후 버전: if (oldVersion < 4) { ... }
       },
       blocked() {
         console.warn('[db] 다른 탭이 이전 버전 DB를 열고 있음');

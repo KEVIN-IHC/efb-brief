@@ -10,7 +10,7 @@ import { useActiveFlight } from '../flight/activeFlight';
 import { Cell, DocSection, LevelPill } from '../ofp/doc/ui';
 import { OfpOpenButton } from '../ofp/OfpOpenButton';
 import { latestActuals, saveWaypointActual, useFlightLogs, voidWaypointActual } from './actuals';
-import { buildChecks, FUEL_DEV_RULES, fuelDevLevel, nextWaypoint, project, revisedEto } from './deviation';
+import { buildChecks, FUEL_DEV_RULES, fuelDevLevel, landingStage, nextWaypoint, project, revisedEto, STAGE_LABEL, STAGE_LEVEL } from './deviation';
 import { EntrySheet } from './EntrySheet';
 import { FuelChart } from './FuelChart';
 import { reminders } from './reminders';
@@ -46,6 +46,7 @@ export function InflightPage() {
   const actuals = useMemo(() => latestActuals(logs), [logs]);
   const checks = useMemo(() => (o ? buildChecks(o, actuals) : []), [o, actuals]);
   const proj = useMemo(() => (o ? project(o, checks) : null), [o, checks]);
+  const landTone = (v: number | undefined) => (o && v !== undefined ? (STAGE_LEVEL[landingStage(o, v)] === 'ok' ? undefined : STAGE_LEVEL[landingStage(o, v)]) : undefined);
   const next = nextWaypoint(checks);
   const rem = o && proj ? reminders(o, checks, proj, now) : [];
   const U = o?.unit.toUpperCase() ?? '';
@@ -65,7 +66,7 @@ export function InflightPage() {
       {o && proj && (
         <DocSection
           title={`Inflight · ${flight.flightNo} ${flight.dep}→${flight.arr}`}
-          meta={<LevelPill level={proj.level}>{proj.level === 'ok' ? 'FUEL OK' : proj.level === 'caution' ? 'FUEL CAUTION' : 'BELOW ALTN+FINAL'}</LevelPill>}
+          meta={<LevelPill level={proj.level}>{STAGE_LABEL[proj.stage]}</LevelPill>}
           className="span-all"
         >
           {next ? (
@@ -83,9 +84,10 @@ export function InflightPage() {
             <Cell k="ΔTIME (MIN)" v={proj.last ? dtText(proj.timeDevMin) : '—'} tone={Math.abs(proj.timeDevMin) >= 10 ? 'caution' : undefined} />
             <Cell k={`ΔFUEL (${U})`} v={proj.lastFuel ? fmtSigned(proj.lastFuel.fuelDev!) : '—'} tone={proj.lastFuel ? fuelDevLevel(o, proj.lastFuel.fuelDev) : undefined} />
             <Cell k="ETA (REVISED)" v={formatZ(proj.eta)} />
-            <Cell k="LANDING · PLAN BURN" v={proj.landingIfPlanBurn !== undefined ? fmtKg(proj.landingIfPlanBurn) : fmtKg(proj.plannedLanding)} tone={proj.landingIfPlanBurn !== undefined && proj.landingIfPlanBurn < proj.minLanding ? 'warning' : undefined} />
-            <Cell k="LANDING · TREND" v={proj.landingIfTrend !== undefined ? fmtKg(proj.landingIfTrend) : '—'} tone={proj.landingIfTrend !== undefined && proj.landingIfTrend < proj.minLanding ? 'warning' : undefined} />
+            <Cell k="LANDING · PLAN BURN" v={proj.landingIfPlanBurn !== undefined ? fmtKg(proj.landingIfPlanBurn) : fmtKg(proj.plannedLanding)} tone={landTone(proj.landingIfPlanBurn)} />
+            <Cell k="LANDING · TREND" v={proj.landingIfTrend !== undefined ? fmtKg(proj.landingIfTrend) : '—'} tone={landTone(proj.landingIfTrend)} />
             <Cell k="ALTN + FINAL" v={fmtKg(proj.minLanding)} />
+            <Cell k="FINAL × 130%" v={fmtKg(proj.minFuelPrep)} />
             <Cell k="TREND / HR" v={proj.trendPerHour !== undefined ? fmtSigned(proj.trendPerHour) : '—'} />
           </div>
           <p className="doc-foot muted">

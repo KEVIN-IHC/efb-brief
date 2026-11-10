@@ -34,10 +34,13 @@ describe('편차·예상', () => {
     expect(p.landingIfTrend!).toBeLessThan(p.landingIfPlanBurn!);
   });
 
-  it('예상 착륙 연료 < ALTN + FINAL 이면 경고', () => {
-    const min = o.fuel.alternate + o.fuel.finalReserve; // 7,800
-    const p = project(o, buildChecks(o, new Map([[8, act(8, 0, -(12600 - min) - 100)]])));
-    expect(p.level).toBe('warning');
+  it('착륙 예상 단계 (D-048): < ALTN+FINAL 주의 · < FINAL×130% 경고 · < FINAL 경고', () => {
+    const fin = o.fuel.finalReserve;
+    const at = (landing: number) => project(o, buildChecks(o, new Map([[8, act(8, 0, landing - 12600)]])));
+    expect(at(o.fuel.alternate + fin - 100)).toMatchObject({ stage: 'belowAltnFinal', level: 'caution' });
+    expect(at(fin * 1.3 - 100)).toMatchObject({ stage: 'minFuelPrep', level: 'warning', minFuelPrep: fin * 1.3 });
+    expect(at(fin - 100)).toMatchObject({ stage: 'belowFinal', level: 'warning' });
+    expect(at(12600)).toMatchObject({ stage: 'ok', level: 'ok' });
   });
 
   it('다음 지점·수정 ETO', () => {

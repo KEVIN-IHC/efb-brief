@@ -17,13 +17,46 @@ export interface WptCheck {
   fuelDev?: number; // + 계획보다 많음
 }
 
-/** ⚠ 임시 기준 — 회사 매뉴얼로 확정 필요 (SPEC §17-5) */
+/**
+ * 연료 기준 (D-048, D-025 대체). 착륙 예상 단계의 근거 위치: FOM 8.2.1 · 8.2.1.1 · 8.2.1.2 (내용 요약은 비공개 메모).
+ * 편차 %는 회사 매뉴얼에 수치 근거가 없어 임시.
+ */
 export const FUEL_DEV_RULES = {
-  /** 실제 연료가 계획보다 TRIP의 이 비율 이상 적으면 주의 */
+  /** 임시: 실제 연료가 계획보다 TRIP의 이 비율 이상 적으면 주의 */
   cautionPctOfTrip: 0.02,
-  /** 예상 착륙 연료가 (ALTN + FINAL RES) + 이 비율 × FINAL RES 이하면 주의, (ALTN+FINAL) 미만이면 경고 */
-  landingCautionPctOfFinal: 0.5,
-  basis: '임시 기준 · 편차 TRIP의 −2% 주의 · 예상 착륙 연료 < ALTN+FINAL 경고 · 회사 매뉴얼 확인 필요',
+  /** FINAL RES 대비 배수 (근거 FOM 8.2.1.1) */
+  minFuelPrepOfFinal: 1.3,
+  basis: '예상 착륙 < FINAL 경고(FOM 8.2.1.2) · < FINAL×130% 경고(FOM 8.2.1.1) · < ALTN+FINAL 주의(FOM 8.2.1) · 편차 TRIP −2% 주의는 임시 기준',
+};
+
+/** 착륙 예상 단계 (심한 순) */
+export type LandingStage = 'belowFinal' | 'minFuelPrep' | 'belowAltnFinal' | 'devCaution' | 'ok';
+
+export function landingStage(o: OfpData, landing: number | undefined, fuelDev?: number): LandingStage {
+  const fin = o.fuel.finalReserve;
+  if (landing !== undefined) {
+    if (landing < fin) return 'belowFinal';
+    if (landing < fin * FUEL_DEV_RULES.minFuelPrepOfFinal) return 'minFuelPrep';
+    if (landing < o.fuel.alternate + fin) return 'belowAltnFinal';
+  }
+  if (fuelDev !== undefined && fuelDev < -o.fuel.trip * FUEL_DEV_RULES.cautionPctOfTrip) return 'devCaution';
+  return 'ok';
+}
+
+export const STAGE_LEVEL: Record<LandingStage, 'ok' | 'caution' | 'warning'> = {
+  belowFinal: 'warning',
+  minFuelPrep: 'warning',
+  belowAltnFinal: 'caution',
+  devCaution: 'caution',
+  ok: 'ok',
+};
+
+export const STAGE_LABEL: Record<LandingStage, string> = {
+  belowFinal: 'BELOW FINAL RES',
+  minFuelPrep: 'MIN FUEL PREP (FINAL×130%)',
+  belowAltnFinal: 'BELOW ALTN+FINAL',
+  devCaution: 'FUEL DEV',
+  ok: 'FUEL OK',
 };
 
 export function buildChecks(o: OfpData, actuals: Map<number, Actual>): WptCheck[] {
@@ -51,6 +84,10 @@ export interface Projection {
   landingIfTrend?: number;
   trendPerHour?: number;
   level: 'ok' | 'caution' | 'warning';
+  /** 무엇 때문에 그 level 인지 (D-048) */
+  stage: LandingStage;
+  /** FINAL RES × 130% (MINIMUM FUEL 선포 준비 기준) */
+  minFuelPrep: number;
   eta: string; // 수정 ETA
 }
 
@@ -79,16 +116,11 @@ export function project(o: OfpData, checks: WptCheck[]): Projection {
       landingIfTrend = landingIfPlanBurn + trendPerHour * remainH;
     }
   }
-  const worst = Math.min(...[landingIfPlanBurn, landingIfTrend].filter((x): x is number => x !== undefined), Infinity);
-  const level: Projection['level'] =
-    worst === Infinity
-      ? 'ok'
-      : worst < minLanding
-        ? 'warning'
-        : worst < minLanding + o.fuel.finalReserve * FUEL_DEV_RULES.landingCautionPctOfFinal || (lastF && lastF.fuelDev! < -o.fuel.trip * FUEL_DEV_RULES.cautionPctOfTrip)
-          ? 'caution'
-          : 'ok';
-  return { last: lastC, lastFuel: lastF, timeDevMin, plannedLanding, minLanding, landingIfPlanBurn, landingIfTrend, trendPerHour, level, eta };
+  const worst = [landingIfPlanBurn, landingIfTrend].filter((x): x is number => x !== undefined);
+  const stage = landingStage(o, worst.length ? Math.min(...worst) : undefined, lastF?.fuelDev);
+  const level = STAGE_LEVEL[stage];
+  const minFuelPrep = o.fuel.finalReserve * FUEL_DEV_RULES.minFuelPrepOfFinal;
+  return { last: lastC, lastFuel: lastF, timeDevMin, plannedLanding, minLanding, landingIfPlanBurn, landingIfTrend, trendPerHour, level, stage, minFuelPrep, eta };
 }
 
 /** 지점별 편차 수준 (목록 색) */

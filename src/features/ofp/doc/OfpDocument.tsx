@@ -277,6 +277,11 @@ export function MelBlock({ o }: { o: OfpData }) {
           ))}
         </ul>
       )}
+      {o.mel.length > 0 && (
+        <p className="doc-foot">
+          <a href="#mel">매뉴얼 항목 보기 (등급·조건·쪽) →</a>
+        </p>
+      )}
     </DocSection>
   );
 }

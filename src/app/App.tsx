@@ -11,6 +11,8 @@ import { SettingsPage } from '../features/settings/SettingsPage';
 import { WeatherPage } from '../features/weather/WeatherPage';
 import { MapPage } from '../features/map/MapPage';
 import { NotamPage } from '../features/notam/NotamPage';
+import { ManualPage } from '../features/manual/ManualPage';
+import { MelPage } from '../features/manual/MelPage';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
 const readHash = (): TabId => {
@@ -86,6 +88,8 @@ export function App() {
           {tab === 'weather' && <WeatherPage />}
           {tab === 'map' && <MapPage />}
           {tab === 'notam' && <NotamPage />}
+          {tab === 'mel' && <MelPage />}
+          {tab === 'manual' && <ManualPage />}
           {current.phase && (
             <section className="card placeholder">
               {current.icon}

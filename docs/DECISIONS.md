@@ -151,7 +151,7 @@
 - **이유** 오프라인·멱등 동기화와 충돌 없음, 감사 추적.
 - **영향** `src/features/inflight/actuals.ts`, `src/db/schema.ts` (`LogRecord`), `apps-script/Code.gs` (칸 `seq, unit, void`)
 
-### D-025 연료 편차 경고 — 임시 기준
+### D-025 연료 편차 경고 — 임시 기준 — **착륙 예상 부분은 D-048로 대체**
 - **날짜** 2026-11-05
 - **결정** 편차 < −2% TRIP → 주의, 예상 착륙 연료 < ALTN+FINAL → 경고, ALTN+FINAL+0.5×FINAL 미만 → 주의. 예상은 두 가지(계획 소모 유지 / 현 추세 — 연료 기록 2개 이상·30분 이상 간격일 때). **회사 매뉴얼 기준 확인 필요**(미결).
 - **영향** `src/features/inflight/deviation.ts` (`FUEL_DEV_RULES`)
@@ -275,3 +275,65 @@
 - **대안** 본문 키워드만으로 분류 → OFP가 이미 제목으로 분류해 두었으므로 기각(근거가 더 분명). D) 시간표 해석 → 형식이 다양해 오판 위험, 보류. ETD~ETA 밖 NOTAM 숨김 → 안전 관련이라 기각(표시만)
 - **영향** `src/features/ofp/parser/{notam,sections,extractors,index}.ts`(파서 `aviator-1.3`), `src/features/ofp/types.ts`(`OfpData.notams`), `src/features/notam/*`, `src/features/ofp/sourceJump.ts`, `OfpPage.tsx`
 
+
+## 매뉴얼·MEL (Phase 5)
+
+### D-044 매뉴얼 넣기 = Mac 도구로 쪽 단위 묶음 → 기기 안 저장, 같은 매뉴얼은 개정 교체
+- **날짜** 2026-11-10 (사용자: "매뉴얼은 개정되면 언제든 갈아 끼우고, 새 걸 던져주면 변환해서 알아서 업데이트" · 계획 1단계 승인)
+- **확인 사실** 사용자가 pymupdf4llm(레이아웃 모드)로 변환한 A380 MEL·CDL·FCOM·FCTM MD 4개 수령(`private/manuals/inbox/`, PDF 원본 함께). 모든 쪽 끝에 쪽 표시(`MI-36-11 P 2/8`, `DSC-34-20-30-10 P 5/20`, CDL은 `27-22 P 1/2` = 항목 번호)와 운영사·기종 줄, 발행일(`at issue date 19 OCT 26`, `replacing last issue dated …`)이 있음. MEL 하위 항목(`36-11-01B`)마다 수리 등급·장착·필요 수량·플래카드 표, `(o)`/`(m)` 조건, OpsProc 참조. **OFP MEL 번호 끝 글자(A/B)는 하위 항목**(수리 등급 아님)
+- **결정**
+  1. "AI 학습"이 아니라 **색인 방식**: 매뉴얼을 쪽 단위로 나눠 기기에 저장 → 오프라인 검색·MEL 매칭은 규칙, AI 질의(Phase 6)는 관련 쪽만 보내고 출처 표시
+  2. Mac 도구 `npm run manuals`: `private/manuals/inbox`에 PDF나 MD를 넣으면 ① 같은 매뉴얼·같은(이후) 발행일 MD가 없는 PDF만 MD 변환(pymupdf4llm, `private/manuals/md/`) ② 매뉴얼(docId = 기종-종류, 예 `A380-MEL`)마다 가장 최근 발행일만 사용 ③ 묶음 `private/manuals/out/<docId>.efbman.json.gz` (변경 없으면 건너뜀). 전부 `private/`
+  3. 묶음 = 문서 정보(종류·기종·발행일·이전 발행일·쪽 수) + 쪽(쪽 표시·머리 제목·정리된 본문·MD 줄 번호) + MEL 하위 항목·CDL 항목(번호·제목·등급·수량·본문·쪽 표시·OpsProc 쪽). 쪽 표시를 못 찾은 부분은 버리지 않고 앞 쪽에 합침
+  4. 아이패드로 옮기기: 묶음 파일을 구글드라이브에 두고 **Settings → 매뉴얼 → 가져오기**(파일 앱에서 선택, D-029 유지 — GitHub 금지). 변환된 .md도 바로 가져올 수 있음(기기 안에서 같은 파서로 처리)
+  5. 같은 docId를 가져오면 **통째로 교체**(이전 개정 쪽·항목 남지 않음). 더 오래된 발행일은 확인을 받은 뒤에만
+  6. IndexedDB v2: 쓰이지 않던 `manualIndex`·`melItems`를 지우고 `manualDocs`·`manualPages`(키 [docId, seq])·`manualItems`(키 [docId, itemNo], 색인 `byItem`)
+- **대안** 원본 PDF 그대로 앱에 넣기 → 300MB, 기기 검색·항목 매칭 불가로 기각. Apps Script로 드라이브에서 자동 내려받기 → Apps Script 재배포 필요, 다음 단계에서 검토(지금은 파일 앱 선택). 매뉴얼 전체를 AI가 읽고 변환 → 토큰·보안 부담으로 기각(도구가 Mac 안에서 변환)
+- **영향** `src/features/manual/{types,parse,store,ManualCard}.ts(x)`, `src/db/schema.ts`(v2), `tools/manual-convert/{build.ts,pdf2md.py}`, `package.json`(`manuals`), `SettingsPage.tsx`, `styles.css`
+
+### D-045 MEL·CDL 자동 매칭과 매뉴얼 보기·검색 (원문 그대로, 해석 없음)
+- **날짜** 2026-11-10 (사용자: "2단계 진행")
+- **결정**
+  1. **MEL 탭**: 현재 OFP 디스패치 MEL/CDL 번호 → 가져온 매뉴얼 항목. 같은 번호(하위 항목) → 없으면 상위 항목(경고 표시) → 없으면 "못 찾음 — 원본 확인"(숨기지 않음). OFP 기종(A388→A380, B78X→B787)에 맞는 매뉴얼 우선, 다른 기종에서 찾으면 경고
+  2. 카드에 매뉴얼 원문 값만: 제목·수리 등급(CAT)·장착/필요 수량·플래카드, 본문에 있는 표시((o)·(m)·Crew Defer·Return To Gate·Contact MCC·Performance·연료 증가 %), 원문 펼치기, 쪽 열기·(o) 절차 쪽 열기. **조건을 요약·판정하지 않음**(디스패치 가능 여부는 정비·운항관리·원본 MEL)
+  3. **Manual 탭**: 매뉴얼·쪽 이동(앞뒤·되돌아가기), 쪽 표시·머리 제목·근거 줄(문서·발행일·쪽 표시·MD 줄), 본문 속 `Refer to …`(OpsProc·Item·DSC/PRO/LIM/PER… 쪽 코드·CDL 번호)를 누르면 해당 쪽으로(같은 매뉴얼 → 다른 매뉴얼 순, FCOM↔FCTM 포함). Ident 번호는 링크 아님
+  4. **검색**: 기기 안 단순 전문 검색(모든 낱말 AND, "구절", 머리 제목 가산, 관련도순 60개). 항목 번호·쪽 코드를 넣으면 바로 이동. 외부 라이브러리 없음(4개 매뉴얼 검색 약 0.1초)
+  5. 변환 규칙 `manual-1.2`: 원문 줄바꿈(<br>)을 `¦`로 보존해 화면에서 줄바꿈, (o) 절차 쪽은 목차(PLP·TOC) 제외. 이전 규칙 묶음은 Settings에 "다시 만들기 권장" 표시
+- **대안** MiniSearch 색인 → 매뉴얼이 13MB라 단순 검색으로 충분, 색인 저장·갱신 부담으로 보류. MEL 조건 자동 판정 → 오판 위험, 3단계 얼러트에서 근거와 함께 검토
+- **영향** `src/features/manual/{lookup.ts,ManualText.tsx,ManualPage.tsx,MelPage.tsx}`(신규), `parse.ts`, `ManualCard.tsx`, `src/app/{App.tsx,tabs.tsx,styles.css}`, `ofp/doc/OfpDocument.tsx`(MEL 블록 → MEL 탭 링크)
+
+### D-046 얼러트 엔진 — 규칙 파일·근거 필수·임시 기준 표시·확인/이력
+- **날짜** 2026-11-10 (사용자: "3단계 얼럿 진행")
+- **결정**
+  1. 구조(원본 명세 §13.1): 규칙 = 파일 하나(`src/features/alerts/rules/*`), `evaluate(ctx)`는 결과 **여러 개**를 돌려줄 수 있음(명세의 단일 결과에서 확장). 맥락 = OFP·순항 기록·MEL 매칭·매뉴얼 목록·받아 둔 기상
+  2. **근거 필수**: 얼러트마다 근거 줄 ≥1 — 매뉴얼 위치(누르면 Manual 탭) / OFP 원문 줄 / **임시 기준(매뉴얼 근거 없음, 노란 글씨)** / 앱 기준 / 자료 원문(SIGMET). 근거가 비면 엔진이 "근거 누락"으로 표시. 규칙이 실패해도 나머지는 실행하고 실패를 안내로 표시
+  3. 첫 규칙 9개: 연료 편차·착륙 예상(D-025 임시) · OFP 계획 여유(중량·블록·ETP, margins.ts 임시) · 결빙 관련 MEL × 루트 결빙 SIGMET(경고, 명세 §12.2 예시) · CDL 성능 제한(원문 수치 그대로) · 루트 SIGMET(200NM·시간대 겹침, 앱 기준) · HIGH SR 구간(D-023 임시) · MEL/CDL 매뉴얼 미확인 · 기상 자료 오래됨(앱 신선도 기준, 도착 1시간 뒤엔 판단 안 함) · MEL (o) 절차·Return To Gate 안내
+  4. 중복 금지: id = 규칙·상황 키·심각도. 심각도가 오르면 새 얼러트(다시 확인 필요)
+  5. 확인·이력: IndexedDB v3 `alerts`(처음 뜬 시각·확인 시각). 확인한 얼러트는 접어서 보이고, 지금은 해당 없는 것은 "이력"으로. 기기 안에만(동기화 안 함)
+  6. 화면: 대시보드 맨 위 Alerts 카드(심각도순·확인·모두 확인·근거 버튼 44px)
+  7. **판정하지 않는 것**: MEL 조건 충족 여부, 디스패치 가능 여부, 성능 수치 재계산. 원문 문구·수치만 보이고 "원문 확인"
+- **보류(근거 필요)**: 도착지 minima 근접·교체공항 planning minima·측풍/배풍 한계 — 회사 FOM 기준과 활주로 자료가 있어야 함. 임시 경고들의 회사 기준(미결 #5)
+- **대안** 기존 화면별 경고(Inflight 연료·OFP 여유·난류 색)를 지우고 엔진으로만 → 기존 화면 맥락이 사라져 기각. 같은 함수·기준값을 엔진이 그대로 써서 기준은 한 곳
+- **영향** `src/features/alerts/*`(신규), `src/db/schema.ts`(v3), `DashboardPage.tsx`(자리 표시 카드 교체), `manual/lookup.ts`(`loadMelMatches`), `MelPage.tsx`, `styles.css`
+
+### D-047 FOM(+FCRM) = 절 단위로 나눔, marker 목차 json으로 PDF 쪽 번호
+- **날짜** 2026-11-10 (사용자: FOM 변환본과 _meta.json 제공, "얘도 추가해")
+- **확인 사실** FOM은 다른 변환 도구(marker)로 만들어져 쪽 표시(`… P n/m`)가 없음. 대신 번호 제목(`#### 5.13.5.3 Fuel Monitoring (연료 점검)`, `S6.8.1`, `제 6 장`)과 제목 속 `<span id="page-N-…">`(0부터 PDF 쪽). 한 파일에 FOM 뒤로 FCRM이 이어짐(`# Flight Crew Reference Manual`). `_meta.json` = 목차(제목·쪽 번호)·쪽 통계, 그림 jpeg 96개 별도
+- **결정**
+  1. 쪽 표시가 거의 없고 번호 제목이 많으면 **절 단위**로 나눔: 번호 제목·"제 N 장"마다 한 덩어리(번호 없는 소제목은 안에). 근거 표시 = `FOM 5.13.5.3 · p.247`(절 번호 + PDF 쪽). FCRM 부분은 `FCRM 1.8.2`로 구분
+  2. PDF 쪽 번호: 제목의 span → 없으면 `_meta.json` 목차(같은 제목을 순서대로 맞춤). **json은 있으면 쓰고 없어도 됨** — MD 옆에 `<이름>_meta.json`으로 두면 도구가 자동 사용. 앱으로 옮기는 묶음에는 쪽 번호만 들어감(json 자체는 안 옮김)
+  3. 그림(jpeg)은 지금 넣지 않음 — 본문에 "[그림]" 표시
+  4. 종류 판정 순서: REFERENCE 줄 → 파일 이름(MEL·CDL·FCOM·FCTM·FOM·QRH) → 본문에서 가장 먼저 나오는 제목. 기종은 REFERENCE·파일 이름·머리 `_A380_` 표기만(본문 언급 무시) → FOM은 `GEN-FOM`. 개정·발행일은 파일 이름의 `R<번호>_<YYYYMMDD>`도 사용(`revision` 칸)
+  5. 검색에서 `FOM 6.5.3.1`·`5.13.5.3` 바로가기, 본문 `[FOM 1.4.4]`·`FCRM 1.8.2` 참조 링크
+- **영향** `src/features/manual/{parse.ts(manual-1.4, splitSections),types.ts(revision·splitMode·pdfPage),lookup.ts,ManualPage.tsx}`, `tools/manual-convert/build.ts`
+
+### D-048 연료 경고 기준을 FOM 근거로 교체 (D-025 대체) + 얼러트 FOM 근거 링크
+- **날짜** 2026-11-10 (사용자 승인 "안대로 진행")
+- **근거 위치** FOM 6.5.3.1 · 8.2.1 · 8.2.1.1 · 8.2.1.2 · 6.3.2.1 · 5.13.2.2 · 5.13.5.3 · S5.3.2.2 (내용 요약은 공개 저장소에 두지 않음 — `private/manuals/NOTES-fom-basis.md`). 편차 %·여유 t·SR 기준 수치는 FOM에 없음
+- **결정**
+  1. 착륙 예상(목적지, OFP 계획 FINAL RES 기준): < FINAL **경고**(FOM 8.2.1.2, 앱은 목적지 기준만) · < FINAL×130% **경고**(FOM 8.2.1.1) · < ALTN+FINAL **주의**(FOM 8.2.1). D-025의 "ALTN+FINAL+½FINAL 주의"는 삭제
+  2. 편차 TRIP −2% 주의는 **임시 기준 유지**(FOM 수치 없음)
+  3. Inflight 화면 표시도 같은 단계(`landingStage`, 라벨 BELOW FINAL RES / MIN FUEL PREP / BELOW ALTN+FINAL / FUEL DEV), FINAL×130% 칸 추가
+  4. 값은 그대로, 근거만 FOM: 블록 < 최소 요구 → FOM 6.3.2.1(1t 여유 주의는 임시), ETP → 5.13.2.2·5.13.5.3(1.5t 여유 주의는 임시), SR → S5.3.2.2(5·7 기준은 임시), 중량 2t → 임시 그대로
+  5. 얼러트 근거 줄은 FOM 절 코드로 가져온 FOM에서 위치를 찾아 링크(`fomRefs.ts`). FOM이 없으면 "FOM 미보유" 글자만
+- **영향** `src/features/inflight/{deviation.ts,InflightPage.tsx,deviation.test.ts}`, `src/features/alerts/{fomRefs.ts(신규),types.ts,useAlerts.ts,AlertsCard.tsx,rules/fuelProjection.ts,rules/planMargins.ts,rules/turbulence.ts,alerts.test.ts}`, `manual/lookup.ts`(`loadCodeRefs`)

@@ -74,7 +74,7 @@ IPBS/
 | `Disclaimer.tsx`, `InstallBanner.tsx` | 첫 실행 고지, iOS 홈 화면 안내 |
 
 ### 3.2 데이터 `src/db/`
-- `schema.ts` — DB `efb` v1. 스토어: `flights`(flightId) · `ofp`(flightId, `OfpRecord`) · `route`(flightId) · `logs`(logId, idx `byFlight`) · `outbox`(opId, idx `byStatus`) · `settings`(key) + 미사용 예약: `wxSnapshots`, `wxFrames`, `mapTiles`, `manualIndex`, `melItems`. **스토어 추가 = DB_VERSION 올리고 `upgrade`에 `if (oldVersion < 2)` 추가**
+- `schema.ts` — DB `efb` **v3**. 스토어: `flights`(flightId) · `ofp`(flightId, `OfpRecord`) · `route`(flightId) · `logs`(logId, idx `byFlight`) · `outbox`(opId, idx `byStatus`) · `settings`(key) · `wxSnapshots` · `wxFrames` · `mapTiles` · (v2, D-044) `manualDocs`(docId) · `manualPages`([docId, seq]) · `manualItems`([docId, itemNo], idx `byItem`) · (v3, D-046) `alerts`([flightId, id], idx `byFlight`). v1의 `manualIndex`·`melItems`는 v2에서 삭제. **스토어 추가 = DB_VERSION 올리고 `upgrade`에 `if (oldVersion < 2)` 추가**
 - `settings.ts` — `gasUrl`, `gasToken`, `lastSyncAt`, `disclaimerAckAt`, `activeFlightId`
 
 ### 3.3 동기화 `src/sync/`
@@ -139,6 +139,30 @@ IPBS/
 
 - 데이터: `OfpData.notams`(파서가 원문 구조만 저장). 분류는 화면에서 계산 → 규칙을 고쳐도 재파싱 불필요
 
+### 3.7c 매뉴얼 `src/features/manual/` (Phase 5, D-044)
+| 파일 | 역할 |
+|---|---|
+| `types.ts` | 묶음 형식 `ManualBundle`(meta·pages·items), `MANUAL_FORMAT_VERSION` |
+| `parse.ts` | 변환 MD → 묶음: 종류·기종·발행일·개정(`detectMeta`), 쪽 나누기(`splitPages`, 쪽 표시 경계) 또는 절 나누기(`splitSections`, marker 변환·FOM, D-047), MEL 하위 항목·CDL 항목 추출. `MANUAL_PARSER_VERSION` |
+| `store.ts` | 파일 읽기(gzip/JSON/MD), 저장(같은 docId 통째 교체·오래된 개정 확인), 목록·삭제, 번호로 항목 찾기(`findManualItems`) |
+| `ManualCard.tsx` | Settings → 매뉴얼 카드 |
+| `lookup.ts` | (D-045) 쪽 캐시, 탭 이동(`openManualPage`), OFP MEL/CDL 매칭(`matchMelItem`, 기종 변환), 표시 문구(`itemFlags`), 참조 찾기·이동(`findRefs`·`resolveRef`), 검색(`searchPages`·`directKey`) |
+| `ManualText.tsx` | 쪽 본문 표시(제목·굵게·표·목록·원문 줄바꿈 ¦, 참조 링크, 강조) |
+| `ManualPage.tsx` | Manual 탭: 검색·범위·결과, 매뉴얼·쪽 이동·되돌아가기 |
+| `MelPage.tsx` | MEL 탭: OFP MEL/CDL ↔ 매뉴얼 항목 카드 |
+- Mac 도구 `tools/manual-convert/build.ts`(`npm run manuals`) + `pdf2md.py`(pymupdf4llm). 입력 `private/manuals/inbox` → MD `private/manuals/md` → 묶음 `private/manuals/out/<docId>.efbman.json.gz` + `manifest.json`
+
+### 3.7d 얼러트 `src/features/alerts/` (Phase 5, D-046)
+| 파일 | 역할 |
+|---|---|
+| `types.ts` | `AlertRule`(id·name·threshold·manualRef·evaluate) · `AlertResult` · `Basis`(manual·ofp·temporary·app·data) · `FlightContext` |
+| `rules/*.ts` | 규칙 하나씩 (`rules/index.ts`의 `RULES`에 등록) |
+| `fomRefs.ts` | (D-048) 근거 FOM 절 코드·이름, `fomBasis`(가져온 FOM에서 위치 찾아 링크) |
+| `engine.ts` | 실행·중복 제거·심각도순, 실패 규칙 안내 |
+| `store.ts` | IndexedDB `alerts` 기록·확인·이력 |
+| `useAlerts.ts` | 현재 비행 맥락 만들기(OFP·기록·MEL 매칭·기상) → 실행 → 새 얼러트 기록 |
+| `AlertsCard.tsx` | 대시보드 카드 |
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지
@@ -177,7 +201,7 @@ EntrySheet 저장 → saveLog({kind:'wpt', seq, ata, fuel, unit} | {kind:'memo'}
 | 위성 조각 | IndexedDB `wxFrames` 키 `[layer, 'latest', 'z/x/y']` Blob | 30분마다 새로 받음, 7일 지나면 삭제 |
 | 지도·공항 데이터 | precache (`public/geo/*.json`) | 앱과 함께 오프라인 |
 | 지도 레이어 선택 | localStorage `efb.mapLayers` | |
-| 매뉴얼 | (예약 스토어) | Phase 5 |
+| 매뉴얼 | IndexedDB `manualDocs`·`manualPages`·`manualItems` | 가져온 묶음, 같은 매뉴얼은 교체. A380 4종 약 13MB |
 
 ## 6. 외부 연동
 

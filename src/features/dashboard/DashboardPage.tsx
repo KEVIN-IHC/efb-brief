@@ -8,6 +8,7 @@ import { etpMargin, fuelMargin, limitMargin, worstLevel, type Margin } from '../
 import { OfpOpenButton } from '../ofp/OfpOpenButton';
 import { turbulenceZones } from '../ofp/turbulence';
 import { useMemo } from 'react';
+import { AlertsCard } from '../alerts/AlertsCard';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, nextWaypoint, project, revisedEto } from '../inflight/deviation';
 
@@ -55,6 +56,8 @@ export function DashboardPage() {
           <OfpOpenButton variant={isDemo ? 'primary' : 'plain'} label={isDemo ? '회사 OFP 열기' : '다른 OFP 열기'} />
         </div>
       </DocSection>
+
+      <AlertsCard />
 
       {o && fuel && wts && tightest && (
         <a className="card-link" href="#ofp">
@@ -133,10 +136,6 @@ export function DashboardPage() {
           </DocSection>
         </a>
       )}
-
-      <DocSection title="Alerts">
-        <p className="muted small">얼러트 엔진은 Phase 5에서 구현</p>
-      </DocSection>
 
       <DocSection title="Sync">
         <ul className="kv dense">

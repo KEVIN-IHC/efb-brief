@@ -150,12 +150,14 @@ API 키가 필요하면 Cloudflare Worker 프록시(환경변수)로 은닉, 코
 - 모든 항목에 원문 줄 번호 → 누르면 OFP 탭 원문 뷰어로 이동
 - AI 요약은 Phase 6
 
-### 5.9 매뉴얼·MEL ⏳ Phase 5 (원본 명세 §12)
+### 5.9 매뉴얼·MEL 🔄 Phase 5 (원본 명세 §12) — 1단계(넣기) ✅ D-044 · 2단계(매칭·보기·검색) ✅ D-045
 - 보유 매뉴얼(200~300MB)을 Markdown으로 변환, 문서명·챕터·섹션·페이지 메타데이터 보존. 변환 파이프라인 별도 스크립트(`tools/manual-convert/`), 원본·결과물은 `private/`에만. **GitHub 금지, 구글드라이브에서 내려받음**(D-029)
-- 앱 내부 전문 검색(예: MiniSearch), 오프라인 동작. 모든 얼러트·MEL 항목에서 매뉴얼 위치로 바로 이동하는 링크
+- ✅ 넣기: `npm run manuals`(inbox에 PDF·MD → 변환·묶음, 최신 개정만) → 구글드라이브 → Settings 매뉴얼 가져오기, 같은 매뉴얼 자동 교체. 현재 A380 MEL·CDL·FCOM·FCTM + FOM·FCRM(절 단위, D-047)
+- ✅ (D-045) MEL 탭: OFP MEL/CDL 번호 자동 매칭(원문 값·표시만, 해석 없음) / Manual 탭: 쪽 보기·Refer to 이동·오프라인 검색(단순 전문 검색, MiniSearch 대신)
+- (원래 요구) 앱 내부 전문 검색(예: MiniSearch), 오프라인 동작. 모든 얼러트·MEL 항목에서 매뉴얼 위치로 바로 이동하는 링크
 - MEL을 구조화 JSON: 항목 번호, 명칭, 수리 기한 카테고리, (O)·(M) 절차, 운항 제한(고도·EDTO·결빙·접근 등급 등), 매뉴얼 위치. OFP MEL/CDL란에서 항목 번호 자동 매칭(추출은 ✅), 수동 추가 가능. 운항 제한 → 얼러트 규칙 자동 변환(예: 결빙 제한 MEL + 루트상 결빙 SIGMET → 경고)
 
-### 5.10 얼러트 엔진 ⏳ Phase 5 (원본 명세 §13)
+### 5.10 얼러트 엔진 🔄 Phase 5 (원본 명세 §13) — 엔진·규칙 9개 ✅ D-046
 ```ts
 interface AlertRule {
   id: string; name: string;
@@ -166,7 +168,9 @@ interface AlertRule {
 ```
 - 규칙은 파일 하나에 하나씩, 점진 추가. 같은 얼러트 중복 금지, 확인(Acknowledge)·이력 저장
 - 초기 규칙 후보(임계값은 회사 매뉴얼로 확정): 도착지 기상 minima 근접(TAF 시정·운고, ETA±1h) / 대체공항 기상 부적합(planning minima) / 루트 SIGMET 교차 / 강한 측풍·배풍(기종 제한 근접) / 연료 편차 / MEL 제한 위반 가능 / 기상 데이터 노후(신선도 빨강)
-- 현재 임시 경고(연료 D-025, SR D-023, 중량·연료 여유 `margins.ts`)는 Phase 5에서 이 엔진으로 이관
+- ✅ (D-046) 구현: 연료 편차·착륙 예상, OFP 계획 여유, 결빙 MEL × 결빙 SIGMET, CDL 성능 제한, 루트 SIGMET, HIGH SR, MEL/CDL 매뉴얼 미확인, 기상 오래됨, MEL (o) 절차. 근거 필수(매뉴얼·OFP 줄·임시 기준·앱 기준·자료), 확인·이력(IndexedDB `alerts`), 대시보드 카드. 기존 임시 경고는 같은 함수·기준값을 엔진이 사용(화면별 표시는 유지)
+- ✅ (D-048) 연료 기준 FOM 근거: 착륙 예상 < FINAL·< FINAL×130%·< ALTN+FINAL, 근거 링크(FOM 절). 편차 %·여유 t·SR은 FOM에 수치가 없어 임시
+- ⏳ 도착지 minima 근접·교체공항 planning minima·측풍/배풍 — 근거 FOM 4.1.3·4.1.3.9, 공항·접근별 minima 자료 필요(K-28)
 
 ### 5.11 AI 보조 ⏳ Phase 6 (선택)
 - NOTAM 요약, 브리핑 요약, 매뉴얼 질의. **온라인 시에만**, 결과에 "AI 요약" 표시, 근거 출처 필수(D-029, D-030). Gemini API 또는 Claude API(키는 프록시)

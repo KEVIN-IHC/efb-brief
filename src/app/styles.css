@@ -718,3 +718,68 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .g-airspace.ntm-item, .ntm-f.g-airspace, .ntm-gs.g-airspace { border-left-color: var(--ntm-airspace); }
 .g-company.ntm-item, .ntm-f.g-company { border-left-color: var(--ntm-company); }
 .ntm-g.g-runway { color: var(--ntm-runway); } .ntm-g.g-navaid { color: var(--ntm-navaid); } .ntm-g.g-airspace { color: var(--ntm-airspace); } .ntm-g.g-company { color: var(--ntm-company); }
+
+/* ---------- 매뉴얼 (D-044) ---------- */
+.manual-list { list-style: none; margin: 0 0 var(--sp-3); padding: 0; }
+.manual-list li {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) 0; border-bottom: 1px solid var(--line);
+}
+.manual-list li > .muted { grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
+.manual-list li > .btn { grid-column: 2; grid-row: 1 / span 2; }
+.manual-main { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: baseline; min-width: 0; }
+.man { display: grid; gap: var(--sp-4); }
+.man-search { display: flex; gap: var(--sp-2); }
+.man-search .input { flex: 1 1 auto; min-width: 0; }
+.man-search .btn { white-space: nowrap; flex: none; }
+.man-scope { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.man-f { min-height: var(--touch); padding: 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--text-dim); font: 600 var(--fs-sm) var(--font); cursor: pointer; }
+.man-f.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.man-hits ul { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.man-hits li { border-bottom: 1px solid var(--line); }
+.man-hit { display: grid; gap: 2px; width: 100%; min-height: var(--touch); padding: var(--sp-2) 0; background: none; border: 0; color: var(--text); text-align: left; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.man-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; justify-content: space-between; }
+.man-bar select { flex: 1 1 200px; min-width: 0; width: auto; }
+.man-nav { display: flex; align-items: center; gap: var(--sp-2); }
+.man-ref { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); align-items: baseline; margin: var(--sp-3) 0; padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line); }
+.man-foot { margin-top: var(--sp-4); }
+.man-link { min-height: var(--touch); }
+.mtext { font-size: var(--fs-sm); line-height: 1.55; overflow-wrap: anywhere; }
+.mtext p { margin: 0 0 var(--sp-2); }
+.mtext .mh { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-md, 1rem); }
+.mtext .mli-1 { padding-left: 1em; } .mtext .mli-2 { padding-left: 2em; } .mtext .mli-3 { padding-left: 3em; }
+.mtext mark { background: var(--warn-soft); color: inherit; border-radius: 2px; }
+.mtable-wrap { overflow-x: auto; margin: 0 0 var(--sp-2); }
+.mtable { border-collapse: collapse; font-size: var(--fs-sm); }
+.mtable td { border: 1px solid var(--line); padding: 4px 6px; vertical-align: top; }
+.mref { display: inline; min-height: 0; padding: 4px 0; border: 0; background: none; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; text-align: left; }
+.mel { display: grid; gap: var(--sp-4); }
+.mel-card { border-left: 3px solid var(--warn); }
+.mel-card.is-cdl { border-left-color: var(--cdl); }
+.mel-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.mel-flags { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-2) 0; }
+.mel-body { margin: var(--sp-2) 0; }
+.mel-body summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; color: var(--accent); font-size: var(--fs-sm); }
+.mel-links { flex-wrap: wrap; }
+
+/* ---------- 얼러트 (D-046) ---------- */
+.al-list { list-style: none; margin: 0 0 var(--sp-2); padding: 0; }
+.al-row { padding: var(--sp-2) 0 var(--sp-2) var(--sp-3); border-left: 3px solid var(--line-strong); border-bottom: 1px solid var(--line); display: grid; gap: var(--sp-1); }
+.al-row.al-warning { border-left-color: var(--bad); }
+.al-row.al-caution { border-left-color: var(--warn); }
+.al-row.al-info { border-left-color: var(--accent); }
+.al-top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.al-title { flex: 1 1 200px; min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
+.btn.al-ack { flex: none; min-height: var(--touch); }
+.al-sev { font: 800 0.65rem/1 var(--font); letter-spacing: 0.06em; padding: 3px 6px; border-radius: 4px; white-space: nowrap; }
+.al-sev-warning { background: var(--bad-soft); color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.al-sev-caution { background: var(--warn-soft); color: var(--warn); }
+.al-sev-info { background: var(--accent-soft); color: var(--accent); }
+.al-bases { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.al-basis { font-size: var(--fs-sm); color: var(--text-dim); overflow-wrap: anywhere; text-align: left; }
+button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); cursor: pointer; text-decoration: underline; }
+.al-temp { color: var(--warn); }
+.al-data { font-size: 0.72rem; }
+.al-more { margin-top: var(--sp-2); }
+.al-more summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-sm); color: var(--text-dim); }
+.al-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }

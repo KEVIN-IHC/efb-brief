@@ -2,14 +2,14 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-10 (Phase 4 NOTAM 세션 종료 시점)
+> 마지막 갱신: 2026-11-10 (연료 경고 FOM 근거 연결 — 로컬 검증)
 
 ## 1. 한눈에
 
 | 항목 | 상태 |
 |---|---|
-| 현재 Phase | **Phase 4 NOTAM 구현·배포 완료 (e236b29, 2026-11-10)** — 아이패드 실사용 확인 대기. Phase 3까지 사용자 확인 완료 |
-| 테스트 | ✅ `npm test` 111개 통과 (실제 OFP 샘플 10개 + NOTAM 원문 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 Phase 4) |
+| 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 1~3단계 로컬 완료 (D-044·D-045·D-046, 미커밋)** — 남은 것: 아이패드 확인, FOM 근거로 임계값·minima 규칙. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기 |
+| 테스트 | ✅ `npm test` 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
 | 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
@@ -27,7 +27,7 @@
 | 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ (Mac 검증 + 아이패드 사용자 확인) | 배포판은 Cloudflare Worker 중계 자동 사용(D-041) |
 | 3.5 4D | 시간 슬라이더·SIGMET 교차 | ⏳ | |
 | 4 NOTAM | OFP NOTAM 파싱·분류 | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-043. 샘플 10개 패키지별 건수 일치, NOTAM 탭(공항·FIR·분류·강조·근거·원문 이동). e236b29 배포 |
-| 5 매뉴얼·MEL·얼러트 | | ⏳ | MEL/CDL 목록은 OFP에서 추출됨(매뉴얼 매칭 없음) |
+| 5 매뉴얼·MEL·얼러트 | 1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 엔진 → (6 AI 질의) | 🔄 1·2·3단계 ✅ 로컬 | D-044·D-045·D-046. MEL·Manual 탭, 대시보드 Alerts. A380 MEL·CDL·FCOM·FCTM 수령(`private/manuals/inbox`), FOM 대기. 묶음 4개 2.2MB |
 | 6 AI 보조 | | ⏳ | |
 
 ## 3. 완료된 기능 (코드로 확인됨)
@@ -65,8 +65,8 @@
 | 2 | OFP 시스템명 | ✅ Jeppesen Aviator |
 | 3 | 사용 기기 (회사/개인 아이패드) | ❓ 미확인 |
 | 4 | 주 운항 기종 | ❓ 미확인 (샘플은 A388 위주 + B78X 1개) |
-| 5 | 얼러트 임계값의 매뉴얼 근거 | ⏳ 임시값 사용 중 (D-023, D-025) |
-| 6 | 변환할 매뉴얼 목록 | ❓ 미확인 |
+| 5 | 얼러트 임계값의 매뉴얼 근거 | 🔄 착륙 예상 연료 = FOM 8.2.1·8.2.1.1·8.2.1.2 (D-048). 편차 %·여유 t·SR은 FOM에 수치 없음 → 임시 유지 |
+| 6 | 변환할 매뉴얼 목록 | 🔄 A380 MEL·CDL·FCOM·FCTM + FOM·FCRM 수령 (2026-11-10). B78X 매뉴얼 여부 미확인 |
 | 7 | 호스팅 | ✅ GitHub Pages (D-005) |
 
 ## 7. 다음에 할 작업 (우선순위)
@@ -77,10 +77,46 @@
 4. 실제 Apps Script 설치·연동 확인
 5. ~~Worker `ALLOWED_ORIGINS`~~ ✅ 설정됨 (2026-11-05: github.io·localhost 5173/4173 허용, 그 외 403 확인)
 6. ~~Phase 4(NOTAM)~~ 배포 완료 (2026-11-10, e236b29) → **아이패드에서 실제 OFP로 확인**(`LOCAL_TEST.md` §10)
-7. Phase 3.5(4D 슬라이더·SIGMET 교차) 또는 Phase 5 — 사용자 선택
+7. **Phase 5 마무리**: 커밋·배포(사용자 요청 시) → 아이패드에서 매뉴얼 가져오기·MEL·Manual·Alerts 확인(`LOCAL_TEST.md` §11·§12). FOM 근거 연결됨(D-048). 남은 것: minima·측풍 규칙(K-28, FOM 4.1.3·4.1.3.9 + 공항별 자료)
 8. NOTAM 후속(선택): 근거 문서 원문 대조(K-23), D) 시간표(K-22)
 
 ## 8. 세션 인계 (가장 최근 작업)
+
+### 2026-11-10 — 연료 경고 기준 FOM 근거 연결 (D-048, 사용자 승인)
+- **완료**: 착륙 예상 연료 단계 < FINAL 경고 · < FINAL×130% 경고 · < ALTN+FINAL 주의(FOM 8.2.1.2·8.2.1.1·8.2.1), ½FINAL 임시 주의 삭제, 편차 −2%는 임시 유지. Inflight 라벨·FINAL×130% 칸. 얼러트 근거에 FOM 절 링크(연료·블록·ETP·SR), FOM 없으면 글자만
+- **변경 파일**: `src/features/inflight/{deviation.ts,InflightPage.tsx,deviation.test.ts}`, `src/features/alerts/{fomRefs.ts(신규),types.ts,useAlerts.ts,AlertsCard.tsx,alerts.test.ts,rules/{fuelProjection,planMargins,turbulence}.ts}`, `src/features/manual/lookup.ts`, 문서(DECISIONS D-025 표시·D-048, KNOWN_ISSUES K-03, PROJECT_SPEC §5.10, ARCHITECTURE §3.7d)
+- **테스트**: `npm test` 139/139, `tsc -b`, `npm run build` 통과. 개발 브라우저에서 시험 기록(예상 착륙 FINAL×120%) → Alerts "FINAL×130% (MINIMUM FUEL)" 경고 + FOM 8.2.1.1·8.2.1·6.5.3.1 링크 → 누르면 FOM 8.2.1.1 p.471, Inflight 라벨 MIN FUEL PREP·FINAL×130% 칸 확인. 시험 기록·대기 전송·얼러트 기록은 확인 후 지움. 375·768 가로 스크롤 0, 콘솔 오류 없음
+- **다음**: 사용자 요청 시 커밋·배포 → 아이패드 확인. minima·측풍 규칙(K-28)
+
+### 2026-11-10 — FOM(+FCRM) 매뉴얼 추가 (D-047)
+- **완료**: 사용자 FOM 변환본(marker, MD + _meta.json)을 `private/manuals/inbox/`에 보관(그림 jpeg는 안 옮김). 절 단위 나누기(번호 제목·제 N 장, FOM/FCRM 구분, span·목차 json으로 PDF 쪽), 파일 이름 종류·개정·날짜 판정, 절 번호 바로가기·`[FOM x.y]` 참조 링크. 묶음 GEN-FOM 1,997절(PDF 쪽 표시 1,996), 0.5MB. 파서 `manual-1.4`(나머지 4개 묶음도 다시 만듦)
+- **찾은 것**: 연료·minima 관련 FOM 절 위치 확인(요약은 `private/manuals/NOTES-fom-basis.md`) → D-048에서 반영
+- **테스트**: `npm test` 138/138, `tsc -b`, `npm run build` 통과. 개발 브라우저에 묶음 5개 넣어 `FOM 6.5.3.1` 바로가기(p.360), 한글 검색 "Final Reserve Fuel 착륙" 확인
+- **다음**: 사용자 확인 후 임계값 근거를 FOM 위치로 연결(값 변경은 새 D-번호), minima 규칙 검토
+
+### 2026-11-10 — Phase 5 3단계: 얼러트 엔진 (D-046)
+- **완료**: 규칙 파일 구조·엔진(중복 제거·심각도순·실패 규칙 안내)·근거 필수(매뉴얼 위치·OFP 줄·임시 기준·앱 기준·자료 원문)·확인/이력(DB v3 `alerts`)·대시보드 Alerts 카드(자리 표시 카드 교체). 규칙 9개(D-046 참고). 기존 임시 경고는 같은 함수·기준값 사용, 화면별 표시 유지
+- **변경 파일**: `src/features/alerts/{types,engine,store,useAlerts}.ts·AlertsCard.tsx·alerts.test.ts·rules/*.ts`(신규), `src/db/schema.ts`(v3), `src/features/dashboard/DashboardPage.tsx`, `src/features/manual/{lookup.ts,MelPage.tsx,ManualPage.tsx}`, `src/app/styles.css`, 문서(DECISIONS D-046, KNOWN_ISSUES K-03·K-28, PROJECT_SPEC §5.10, ARCHITECTURE §3.2·3.7d, LOCAL_TEST §12)
+- **테스트**: `npm test` 135/135, `tsc -b`, `npm run build` 통과. 개발 브라우저(샘플 OFP 1개 + A380 매뉴얼): Alerts 안내 4건(MEL Return To Gate·Crew Defer·(o) 절차, 근거 매뉴얼 쪽 링크), 확인 → "확인한 얼러트"로 이동, 375·768·1180·1440 가로 스크롤 0, 주간·야간, 버튼 44px, 콘솔 오류 없음. 연료 편차·SIGMET·결빙 조합은 자동 테스트로만 확인(브라우저에서 실제 기상으로는 미확인)
+- **해결 못 한 것**: minima·측풍 규칙(K-28), 임계값 회사 근거(미결 #5). 커밋 안 함
+- **다음**: 사용자 요청 시 커밋·배포 → 아이패드 확인. FOM 수령 후 근거 연결
+
+### 2026-11-10 — Phase 5 2단계: MEL·CDL 매칭 + 매뉴얼 보기·검색 (D-045)
+- **완료**: MEL 탭(OFP MEL/CDL → 매뉴얼 항목 카드: 제목·CAT·수량·플래카드·(o)(m)·Crew Defer 등 원문 표시, 원문 펼치기, 쪽·(o) 절차 쪽 열기, 못 찾음·상위 항목·다른 기종 경고). Manual 탭(매뉴얼·쪽 이동·되돌아가기, Refer to 링크로 다른 쪽·다른 매뉴얼 이동, 기기 안 검색·번호 바로가기). OFP MEL 블록 → MEL 탭 링크. 변환 규칙 manual-1.2(원문 줄바꿈 보존, (o) 절차 쪽에서 목차 제외)
+- **변경 파일**: `src/features/manual/{lookup.ts,ManualText.tsx,ManualPage.tsx,MelPage.tsx}`(신규), `src/features/manual/{parse.ts,ManualCard.tsx,manual.test.ts}`, `src/app/{App.tsx,tabs.tsx,styles.css}`, `src/features/ofp/doc/OfpDocument.tsx`, 문서(DECISIONS D-045, KNOWN_ISSUES K-25 갱신·K-27, PROJECT_SPEC §5.9, ARCHITECTURE §3.7c, LOCAL_TEST §11)
+- **테스트**: `npm test` 126/126, `tsc -b`, `npm run build` 통과. 개발 브라우저에 샘플 OFP 1개 텍스트와 묶음 4개를 넣어(임시 127.0.0.1 서버, 확인 후 종료·삭제) MEL 탭 4건 전부 매칭(제목·CAT·수량·(o) 절차 쪽 이동 확인), 검색 `crosswind landing` 43쪽(전체 약 0.15초), FCOM → FCTM 참조 이동 확인. MEL·Manual 탭 375·768·1180·1440 가로 스크롤 0, 주간·야간 표시, 콘솔 오류 없음. **아이패드·파일 선택창은 미확인**
+- **해결 못 한 것**: K-25(일부 제목·등급), K-27(본문 링크 터치 영역 작음). 커밋 안 함
+- **주의**: 개발 브라우저 IndexedDB에 샘플 OFP 1개(현재 비행)와 A380 매뉴얼 4개가 있음(Mac 안). 묶음은 manual-1.2로 다시 만들어 둠(`private/manuals/out`)
+- **다음**: 3단계 얼러트 엔진 — 사용자에게 임계값 근거(매뉴얼 위치) 받기, MEL 제한 × 경로·기상 규칙
+
+### 2026-11-10 — Phase 5 조사·계획 + 1단계 매뉴얼 넣기 (D-044)
+- **완료**: Phase 5 계획 승인(1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 → Phase 6 AI 질의). 사용자 매뉴얼(A380 MEL·CDL·FCOM·FCTM PDF+MD)을 `private/manuals/inbox/`에 보관. 변환 MD 형식 조사(쪽 표시·발행일·MEL 표). Mac 도구 `npm run manuals`(PDF는 필요할 때만 MD 변환, 최신 개정만, 묶음 .efbman.json.gz). 앱 Settings → 매뉴얼 카드(가져오기·교체·삭제), DB v2. OFP MEL 번호 끝 A/B = 하위 항목으로 확인
+- **결과**: 묶음 MEL 2,088쪽·하위 항목 1,242 / CDL 488쪽·209항목 / FCOM 6,938쪽 / FCTM 478쪽, 합계 2.2MB(gz), 만드는 데 3초. OFP 샘플 MEL 19종·CDL 3종 전부 매뉴얼에서 찾음
+- **변경 파일**: `src/features/manual/{types.ts,parse.ts,store.ts,ManualCard.tsx,manual.test.ts}`(신규), `src/db/schema.ts`(v2), `src/features/settings/SettingsPage.tsx`, `src/app/styles.css`, `tools/manual-convert/{build.ts,pdf2md.py}`(신규), `package.json`(`manuals`), 문서(DECISIONS D-044, KNOWN_ISSUES K-25·K-26, PROJECT_SPEC §5.9, ARCHITECTURE §3.2·3.7c·5, LOCAL_TEST §11)
+- **테스트**: `npm test` 121/121, `tsc -b`, `npm run build` 통과. 개발 브라우저에 묶음 4개를 넣어(임시 127.0.0.1 서버로 전달, 확인 후 종료·삭제 — 파일 선택창 대신 같은 읽기·저장 함수 호출) 목록 표시, 항목 번호 찾기, 사용량 13.5MB, 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 삭제 버튼 44px, 콘솔 오류 없음. **파일 선택창으로 가져오기·아이패드는 미확인**
+- **해결 못 한 것**: K-25(MEL 제목 71·등급 21 못 찾음, FCOM 일부 쪽 합침), PDF→MD 변환 경로는 probe만 확인(실제 변환 실행은 안 함 — 이미 MD 있음). 커밋 안 함
+- **주의**: 개발 브라우저 IndexedDB에 A380 매뉴얼 4개가 들어 있음(Mac 안). `private/manuals/.venv`는 바탕화면 `PDF변환/.venv` 링크(K-26)
+- **다음**: 2단계 — OFP MEL/CDL 카드에 매뉴얼 항목(제목·등급·수량·(o)(m) 조건·OpsProc·쪽 표시) 붙이기, 매뉴얼 보기 화면(쪽 이동·"Refer to" 연결), 오프라인 검색. 사용자 확인: 아이패드에서 묶음 가져오기
 
 ### 2026-11-10 — Phase 4 NOTAM (조사 → 계획 승인 → 구현 → 로컬 검증)
 - **완료**: 샘플 10개 NOTAM 구조 조사(패키지 1 공항 / 2 경로 공항 / 3 FIR, Q) 줄 없음). 기존 구간 탐지 버그 수정(시작 줄 공백 여러 칸·끝 줄을 시작으로 잡던 문제). NOTAM 추출기(패키지·공항/FIR·분류 제목·번호·유효기간·D/E/F/G/COMMENT·원문 줄, 버리는 줄 없음), 교차검증 `notamCount`. 분류·강조·근거(D-043), 비행 시간대·FIR 통과 시간대 겹침, NOTAM 탭, 다른 탭 → 원문 줄 이동. K-16 해결(구간 표시 전부 verified). 파서 `aviator-1.3`
