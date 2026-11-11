@@ -6,6 +6,7 @@ import type { Projection, WptCheck } from '../inflight/deviation';
 import type { OfpData } from '../ofp/types';
 import type { Metar, Sigmet, Taf } from '../weather/types';
 import type { Snap } from '../weather/store';
+import type { BriefResult } from '../brief/assess';
 
 export type Severity = 'info' | 'caution' | 'warning';
 
@@ -48,6 +49,8 @@ export interface FlightContext {
     tafs: Record<string, Snap<Taf>>;
     sigmets: Snap<Sigmet[]> | null;
   };
+  /** 브리핑 판정 (회사 기준·활주로·NOTAM, D-049~) */
+  brief?: BriefResult | null;
 }
 
 export interface AlertRule {

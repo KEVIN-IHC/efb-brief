@@ -9,7 +9,7 @@ import { RULES } from './rules';
 
 const SEV: Record<Severity, string> = { warning: '경고', caution: '주의', info: '안내' };
 
-function BasisRow({ b }: { b: Basis }) {
+export function BasisRow({ b }: { b: Basis }) {
   if (b.kind === 'manual' && b.manual)
     return (
       <button className="al-basis al-manual" onClick={() => openManualPage(b.manual!)}>

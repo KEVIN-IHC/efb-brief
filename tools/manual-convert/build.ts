@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { buildManualBundle, detectMeta, MANUAL_PARSER_VERSION, type TocEntry } from '../../src/features/manual/parse';
+import { validateRules } from '../../src/features/brief/rules';
 
 const ROOT = resolve(import.meta.dirname ?? __dirname, '../..');
 const BASE = join(ROOT, 'private/manuals');
@@ -115,6 +116,17 @@ function main() {
     );
   }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  // 회사 기준 파일 (D-049): private/manuals/company-rules.json → 점검 후 out/ 에 같이 둔다
+  const rulesSrc = join(BASE, 'company-rules.json');
+  if (existsSync(rulesSrc)) {
+    const txt = readFileSync(rulesSrc, 'utf8');
+    const err = validateRules(JSON.parse(txt));
+    if (err) console.log(`\n회사 기준 파일 오류: ${err} — out/ 에 복사하지 않음`);
+    else {
+      writeFileSync(join(OUT, 'company-rules.json'), txt);
+      console.log('\n회사 기준 파일 점검 통과 → out/company-rules.json');
+    }
+  }
   console.log(`\n묶음 폴더: ${OUT}\n→ 바뀐 .efbman.json.gz 파일만 구글드라이브에 올리고, 아이패드 앱 Settings → 매뉴얼 → 가져오기`);
   if (!py && pdfs.length)
     console.log(

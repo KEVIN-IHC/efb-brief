@@ -2,11 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { MANUAL_PARSER_VERSION } from './parse';
 import { deleteManual, listManuals, manualEvents, OlderRevisionError, readManualFile, saveManual, type StoredManual } from './store';
+import { deleteRules, isRulesJson, loadRules, rulesEvents, saveRules, type StoredRules } from '../brief/rules';
 
 const fmtDate = (iso: string) => iso.slice(0, 10);
 
 export function ManualCard() {
   const [docs, setDocs] = useState<StoredManual[]>([]);
+  const [rules, setRules] = useState<StoredRules | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const ref = useRef<HTMLInputElement>(null);
@@ -18,12 +20,33 @@ export function ManualCard() {
     return () => manualEvents.removeEventListener('change', load);
   }, []);
 
+  useEffect(() => {
+    const load = () => void loadRules().then(setRules).catch(() => setRules(null));
+    load();
+    rulesEvents.addEventListener('change', load);
+    return () => rulesEvents.removeEventListener('change', load);
+  }, []);
+
   const importFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const out: string[] = [];
     for (const f of Array.from(files)) {
       setBusy(`${f.name} 읽는 중…`);
       try {
+        // 회사 기준 파일 (D-049) — 매뉴얼과 같은 곳에서 가져온다
+        if (/\.json$/i.test(f.name)) {
+          let j: unknown = null;
+          try {
+            j = JSON.parse(await f.text());
+          } catch {
+            /* 매뉴얼 JSON 쪽에서 오류 안내 */
+          }
+          if (isRulesJson(j)) {
+            await saveRules(j as never, f.name);
+            out.push(`✓ 회사 기준 파일 — ${(j as { source?: string }).source ?? f.name}`);
+            continue;
+          }
+        }
         const b = await readManualFile(f);
         setBusy(`${b.meta.docId} 저장 중… (${b.meta.pageCount}쪽)`);
         let r;
@@ -79,6 +102,24 @@ export function ManualCard() {
           </li>
         ))}
       </ul>
+      <div className="manual-rules small">
+        <b>회사 기준 파일</b>{' '}
+        {rules ? (
+          <>
+            <span className="mono">{rules.rules.source}</span> · 가져옴 {fmtDate(rules.importedAt)}{' '}
+            <button
+              className="btn"
+              onClick={() => {
+                if (confirm('회사 기준 파일을 이 기기에서 지울까요? (최저치·바람 제한 판정이 꺼집니다)')) void deleteRules();
+              }}
+            >
+              삭제
+            </button>
+          </>
+        ) : (
+          <span className="muted">없음 — Mac의 company-rules.json을 가져오면 Briefing 탭·얼러트가 회사 최저치·바람 제한으로 판정합니다</span>
+        )}
+      </div>
       <input
         ref={ref}
         type="file"

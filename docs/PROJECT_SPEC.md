@@ -170,7 +170,7 @@ interface AlertRule {
 - 초기 규칙 후보(임계값은 회사 매뉴얼로 확정): 도착지 기상 minima 근접(TAF 시정·운고, ETA±1h) / 대체공항 기상 부적합(planning minima) / 루트 SIGMET 교차 / 강한 측풍·배풍(기종 제한 근접) / 연료 편차 / MEL 제한 위반 가능 / 기상 데이터 노후(신선도 빨강)
 - ✅ (D-046) 구현: 연료 편차·착륙 예상, OFP 계획 여유, 결빙 MEL × 결빙 SIGMET, CDL 성능 제한, 루트 SIGMET, HIGH SR, MEL/CDL 매뉴얼 미확인, 기상 오래됨, MEL (o) 절차. 근거 필수(매뉴얼·OFP 줄·임시 기준·앱 기준·자료), 확인·이력(IndexedDB `alerts`), 대시보드 카드. 기존 임시 경고는 같은 함수·기준값을 엔진이 사용(화면별 표시는 유지)
 - ✅ (D-048) 연료 기준 FOM 근거: 착륙 예상 < FINAL·< FINAL×130%·< ALTN+FINAL, 근거 링크(FOM 절). 편차 %·여유 t·SR은 FOM에 수치가 없어 임시
-- ⏳ 도착지 minima 근접·교체공항 planning minima·측풍/배풍 — 근거 FOM 4.1.3·4.1.3.9, 공항·접근별 minima 자료 필요(K-28)
+- ✅ (D-049~D-054) 운항관리사식 브리핑: 회사 최저치(이륙·접근·교체·비행시간별 요건), 바람 성분 × RWYCC별 제한, NOTAM 시설 영향·소방등급, 특수공항·공항 제한, 위험 기상·저온 보정(CTAC), 3% Contingency 통보, MEL × 항로 요건, Low Time·수습 조건 — Briefing 탭 + Alerts. 회사 수치는 회사 기준 파일(비공개)에서. 차트 최저치는 앱이 몰라 회사 하한 미달만 경고(K-33)
 
 ### 5.11 AI 보조 ⏳ Phase 6 (선택)
 - NOTAM 요약, 브리핑 요약, 매뉴얼 질의. **온라인 시에만**, 결과에 "AI 요약" 표시, 근거 출처 필수(D-029, D-030). Gemini API 또는 Claude API(키는 프록시)

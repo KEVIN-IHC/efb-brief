@@ -9,6 +9,7 @@ import { loadCodeRefs, loadMelMatches, manualAircraft, type MelMatch } from '../
 import { FOM_CODES } from './fomRefs';
 import { manualEvents, type StoredManual } from '../manual/store';
 import { useWx } from '../weather/store';
+import { useBrief } from '../brief/useBrief';
 import { evaluateAlerts } from './engine';
 import { RULES } from './rules';
 import { ackAlerts, alertEvents, alertHistory, recordAlerts } from './store';
@@ -26,6 +27,7 @@ export function useAlerts() {
   const [mel, setMel] = useState<{ docs: StoredManual[]; matches: MelMatch[] }>({ docs: [], matches: [] });
   const [history, setHistory] = useState<AlertRecord[]>([]);
   const [refs, setRefs] = useState<FlightContext['refs']>({});
+  const { brief } = useBrief();
 
   useEffect(() => {
     const load = () => void loadCodeRefs(FOM_CODES).then(setRefs).catch(() => {});
@@ -46,10 +48,10 @@ export function useAlerts() {
     if (!o) return [];
     const checks = buildChecks(o, latestActuals(logs));
     return evaluateAlerts(
-      { now, flightId, o, checks, proj: project(o, checks), mel: mel.matches, manualDocs: mel.docs, refs, wx: { metars, tafs, sigmets } },
+      { now, flightId, o, checks, proj: project(o, checks), mel: mel.matches, manualDocs: mel.docs, refs, wx: { metars, tafs, sigmets }, brief },
       RULES,
     );
-  }, [o, logs, now, flightId, mel, refs, metars, tafs, sigmets]);
+  }, [o, logs, now, flightId, mel, refs, metars, tafs, sigmets, brief]);
 
   const idsKey = alerts.map((a) => a.id).join('|');
   useEffect(() => {

@@ -4,6 +4,7 @@ import { Disclaimer } from './Disclaimer';
 import { InstallBanner } from './InstallBanner';
 import { MORE_ICON, TABS, isTabId, type TabId } from './tabs';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { BriefPage } from '../features/brief/BriefPage';
 import { InflightPage } from '../features/inflight/InflightPage';
 import { OfpPage } from '../features/ofp/OfpPage';
 import { OfpOpenButton } from '../features/ofp/OfpOpenButton';
@@ -82,6 +83,7 @@ export function App() {
             <h1>{current.label}</h1>
           </header>
           {tab === 'dashboard' && <DashboardPage />}
+          {tab === 'brief' && <BriefPage />}
           {tab === 'ofp' && <OfpPage />}
           {tab === 'inflight' && <InflightPage />}
           {tab === 'settings' && <SettingsPage />}

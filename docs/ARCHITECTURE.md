@@ -163,6 +163,21 @@ IPBS/
 | `useAlerts.ts` | 현재 비행 맥락 만들기(OFP·기록·MEL 매칭·기상) → 실행 → 새 얼러트 기록 |
 | `AlertsCard.tsx` | 대시보드 카드 |
 
+### 3.7e 브리핑 `src/features/brief/` (D-049~D-054)
+| 파일 | 역할 |
+|---|---|
+| `rules.ts` | 회사 기준 파일 형식(`CompanyRules`)·점검·저장(IndexedDB `settings.companyRules`) — 수치는 코드에 없음 |
+| `wx.ts` | METAR 원문(RVR·시정 m·현상·VV), TAF 시간 창(기본/TEMPO 분리), 가장 나쁜 값 |
+| `runways.ts` | OFP 활주로 줄 + `public/geo/runways.json` 진방위, 바람 성분 |
+| `notamImpact.ts` | NOTAM → 시설 고장·폐쇄·소방등급·GNSS·RWYCC |
+| `fomTables.ts` | 가져온 FOM에서 특수공항 표·공항 제한 절, 매뉴얼 쪽 코드 → 위치 |
+| `assess.ts` | 공항 역할·시간 창, 공항별·비행 전체 판정(`Finding` + 근거) |
+| `cards.ts` | 브리핑 카드 초안, 현재 위치, 회항 후보 |
+| `profile.ts` · `ProfileCard.tsx` | 개인 운항 조건 (Settings) |
+| `useBrief.ts` | 기기 자료 불러오기 → `buildBrief` (Briefing 탭·얼러트 공용) |
+| `BriefPage.tsx` | Briefing 탭 |
+- 얼러트 연결: `alerts/rules/briefRules.ts` (판정 묶음 7개), `FlightContext.brief`
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

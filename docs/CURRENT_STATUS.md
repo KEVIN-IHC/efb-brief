@@ -2,14 +2,14 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-10 (Phase 5 배포 7ef2954)
+> 마지막 갱신: 2026-11-11 (운항관리사식 Briefing D-049~D-054, 로컬 — 커밋 전)
 
 ## 1. 한눈에
 
 | 항목 | 상태 |
 |---|---|
-| 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** — 남은 것: 아이패드 확인, minima·측풍 규칙(K-28). Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기 |
-| 테스트 | ✅ `npm test` 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
+| 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** + **운항관리사식 Briefing(D-049~D-054) 로컬 완료·커밋 전** — 남은 것: 아이패드 확인, 회사 기준 파일 가져오기 확인. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기 |
+| 테스트 | ✅ `npm test` 167개 통과 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
 | 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
@@ -27,7 +27,7 @@
 | 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ (Mac 검증 + 아이패드 사용자 확인) | 배포판은 Cloudflare Worker 중계 자동 사용(D-041) |
 | 3.5 4D | 시간 슬라이더·SIGMET 교차 | ⏳ | |
 | 4 NOTAM | OFP NOTAM 파싱·분류 | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-043. 샘플 10개 패키지별 건수 일치, NOTAM 탭(공항·FIR·분류·강조·근거·원문 이동). e236b29 배포 |
-| 5 매뉴얼·MEL·얼러트 | 1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 엔진 → (6 AI 질의) | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-044·D-045·D-046. MEL·Manual 탭, 대시보드 Alerts. A380 MEL·CDL·FCOM·FCTM 수령(`private/manuals/inbox`), FOM 대기. 묶음 4개 2.2MB |
+| 5 매뉴얼·MEL·얼러트 | 1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 엔진 → (6 AI 질의) | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-044·D-045·D-046. MEL·Manual 탭, 대시보드 Alerts. A380 MEL·CDL·FCOM·FCTM 수령(`private/manuals/inbox`), FOM 대기 |
 | 6 AI 보조 | | ⏳ | |
 
 ## 3. 완료된 기능 (코드로 확인됨)
@@ -65,7 +65,7 @@
 | 2 | OFP 시스템명 | ✅ Jeppesen Aviator |
 | 3 | 사용 기기 (회사/개인 아이패드) | ❓ 미확인 |
 | 4 | 주 운항 기종 | ❓ 미확인 (샘플은 A388 위주 + B78X 1개) |
-| 5 | 얼러트 임계값의 매뉴얼 근거 | 🔄 착륙 예상 연료 = FOM 8.2.1·8.2.1.1·8.2.1.2 (D-048). 편차 %·여유 t·SR은 FOM에 수치 없음 → 임시 유지 |
+| 5 | 얼러트 임계값의 매뉴얼 근거 | 🔄 착륙 예상 연료 = FOM 근거 (D-048). 편차 %·여유 t·SR은 FOM에 수치 없음 → 임시 유지 |
 | 6 | 변환할 매뉴얼 목록 | 🔄 A380 MEL·CDL·FCOM·FCTM + FOM·FCRM 수령 (2026-11-10). B78X 매뉴얼 여부 미확인 |
 | 7 | 호스팅 | ✅ GitHub Pages (D-005) |
 
@@ -77,16 +77,30 @@
 4. 실제 Apps Script 설치·연동 확인
 5. ~~Worker `ALLOWED_ORIGINS`~~ ✅ 설정됨 (2026-11-05: github.io·localhost 5173/4173 허용, 그 외 403 확인)
 6. ~~Phase 4(NOTAM)~~ 배포 완료 (2026-11-10, e236b29) → **아이패드에서 실제 OFP로 확인**(`LOCAL_TEST.md` §10)
-7. **Phase 5 아이패드 확인**: 배포됨(7ef2954). 구글드라이브에 묶음 5개(`private/manuals/out/*.efbman.json.gz`) 올리기 → 매뉴얼 가져오기·MEL·Manual·Alerts 확인(`LOCAL_TEST.md` §11·§12). FOM 근거 연결됨(D-048). 남은 것: minima·측풍 규칙(K-28, FOM 4.1.3·4.1.3.9 + 공항별 자료)
+7. **Phase 5 아이패드 확인**: 배포됨(7ef2954). 구글드라이브에 묶음 5개(`private/manuals/out/*.efbman.json.gz`) 올리기 → 매뉴얼 가져오기·MEL·Manual·Alerts 확인(`LOCAL_TEST.md` §11·§12). FOM 근거 연결됨(D-048). 남은 것: minima·측풍 규칙(K-28, FOM 근거 + 공항별 자료)
 8. NOTAM 후속(선택): 근거 문서 원문 대조(K-23), D) 시간표(K-22)
 
 ## 8. 세션 인계 (가장 최근 작업)
 
+### 2026-11-11 — 운항관리사식 Briefing (D-049~D-054, 사용자: "12345 다 진행")
+- **완료**: 1) 회사 기상 최저치(이륙 단계·이륙 교체·접근 등급·목적지 미달/Marginal·교체공항 하한·착륙 거리 Dry/Wet) 2) 공항(특수공항 표·공항 제한 = 가져온 FOM에서 읽기, 소방등급 NOTAM, 폐쇄, 활주로 폭, EDTO·3% ERA 기상) 3) 활주로 자료(OFP 활주로 줄 + OurAirports 진방위 `public/geo/runways.json`), 바람 성분 × RWYCC별 회사 바람 제한, 자동착륙 측풍, 오염 시 CAT III 4) Settings "내 운항 조건"(Low Time·수습·부기장 Low Time·엔진 부작동 CAT III 확인) 5) Briefing 탭(공항별 판정·근거, 카드 초안 4개 글 복사, 회항 후보 거리순) + 얼러트 묶음 7개. 추가: 저온 고도 보정(CTAC, 사용자 확인 2026-11-11), NOTAM 시설 영향(진입등·등화·중심선등·RVR·ILS·GNSS), 3% Contingency 지연 통보, MEL × 항로 요건
+- **보안**: 회사 수치는 `private/manuals/company-rules.json`에만(D-049). `npm run manuals`가 점검 후 `out/`에 복사 → 아이패드 매뉴얼 가져오기. 빌드 결과에 회사 값 없음 확인(grep)
+- **변경 파일**: `src/features/brief/*`(신규 11개), `alerts/rules/briefRules.ts`(신규), `alerts/{types.ts,useAlerts.ts,AlertsCard.tsx,rules/index.ts}`, `manual/ManualCard.tsx`, `settings/SettingsPage.tsx`, `app/{App.tsx,tabs.tsx,styles.css}`, `tools/build-runways.ts`(신규), `tools/manual-convert/build.ts`, `public/geo/runways.json`(신규), 문서. private: `company-rules.json`, `BRIEFING-ITEMS.md`
+- **테스트**: `npm test` 167/167(브리핑 25개: 가짜 수치 + private 실제 회사 기준·OFP 샘플 10개·실제 FOM 특수공항/공항 제한/근거 코드 41개 전부 찾음), `tsc -b`, `npm run build` 통과. 개발 브라우저: 회사 기준 넣고 데모 비행을 지금 시각으로 옮긴 시험 비행(로컬, 확인 후 삭제)으로 실시간 METAR/TAF 판정·활주로 성분 확인, 교체공항 안개 TAF를 메모리에만 넣어 대시보드 경고+근거 확인. 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 콘솔 오류 없음. 화면 캡처는 패널이 숨겨져 일부만
+- **미해결**: K-30 엔진 부작동 CAT III 회사 확인, K-31 겨울 OFP(SNOWTAM) 형식, K-33 차트 최저치 모름, K-34 3% ERA 시간 창 대략. 아이패드 확인 전
+- **다음**: 사용자 확인 → 커밋·배포(요청 시) → 아이패드에서 company-rules.json 가져오기 확인
+
+### 2026-11-11 — 공개 문서의 매뉴얼 세부 최소화 + 브리핑 항목 목록 (초안)
+- **완료**: 공개 문서(CURRENT_STATUS·DECISIONS·KNOWN_ISSUES·PROJECT_SPEC·LOCAL_TEST)에서 매뉴얼 쪽 표시 예시·FOM 절 번호·항목/쪽 개수·발행일을 일반 표현으로 바꿈. 원래 문장은 `private/manuals/NOTES-public-docs-detail.md`에 보존. 코드(`alerts/fomRefs.ts`, `inflight/deviation.ts` 화면 문구)의 FOM 절 번호는 링크·근거 표시에 필요해서 그대로 둠. 지난 커밋 기록에는 예전 문장이 남아 있음(기록을 지우려면 강제 push가 필요해서 하지 않음)
+- **새 메모**: `private/manuals/BRIEFING-ITEMS.md` = 운항관리사식 브리핑 항목 초안(출발·목적지/교체·특수공항·항로·브리핑 카드·회항, 항목별 ALERT/REF·필요 자료·FOM/FCOM 위치). **구현 계획 아님** — 사용자와 우선순위를 정한 뒤 D-번호로 확정
+- **테스트**: 문서만 바꿈(코드 변경 없음) → 테스트·빌드는 실행하지 않음
+- **다음**: 브리핑 항목 우선순위 정하기. 활주로 자료(OurAirports) 추가 여부는 새 결정 필요
+
 ### 2026-11-11 — MEL 항목 보기 화면 정리
 - **문제(사용자 제보)**: 얼러트·MEL에서 MEL 항목을 누르면 쪽 전체가 나오고, 쪽 머리 그림 글(MEL ITEMS…)이 본문처럼 보이며, 그림 글로 바뀐 "Repair interval / Nbr installed …" 표가 글 두 줄로 깨져 보임
-- **완료**: 항목 번호로 열면 **그 항목만** 보여 줌(상위 항목 제목·Ident부터 다음 항목 전까지, 쪽을 넘기면 다음 쪽 이어 붙임 — 쪽 표시 "P 1/4 ~ 2/4"), "쪽 전체 보기" 버튼으로 전환(전체 보기에서는 해당 항목으로 스크롤·강조). 그림 글 표 → 진짜 표(머리 줄 구분), 쪽 머리 → 작은 회색 한 줄, 번호만 있는 제목+다음 제목 합침, Ident 줄 작게, 하위 목록 들여쓰기. 표시만 바꿈 — 묶음 다시 만들 필요 없음(파서 버전 그대로)
+- **완료**: 항목 번호로 열면 **그 항목만** 보여 줌(상위 항목 제목·Ident부터 다음 항목 전까지, 쪽을 넘기면 다음 쪽 이어 붙임 — 쪽 표시 범위), "쪽 전체 보기" 버튼으로 전환(전체 보기에서는 해당 항목으로 스크롤·강조). 그림 글 표 → 진짜 표(머리 줄 구분), 쪽 머리 → 작은 회색 한 줄, 번호만 있는 제목+다음 제목 합침, Ident 줄 작게, 하위 목록 들여쓰기. 표시만 바꿈 — 묶음 다시 만들 필요 없음(파서 버전 그대로)
 - **변경 파일**: `src/features/manual/{lookup.ts,ManualText.tsx,ManualPage.tsx,manual.test.ts}`, `src/app/styles.css`, `docs/ARCHITECTURE.md` §3.7c
-- **테스트**: `npm test` 142/142, `tsc -b`, `npm run build` 통과. 개발 브라우저에 A380-MEL 묶음을 넣어(임시 127.0.0.1 서버, 확인 후 종료) MEL 하위 항목 열기 확인(1180 주간·375 야간), 375·768·1440 가로 스크롤 0. 전체 MEL 하위 항목 1,242개 모두 항목만 보기 성공(342개는 두 쪽 이상), 다른 항목 섞임 0
+- **테스트**: `npm test` 142/142, `tsc -b`, `npm run build` 통과. 개발 브라우저에 A380-MEL 묶음을 넣어(임시 127.0.0.1 서버, 확인 후 종료) MEL 하위 항목 열기 확인(1180 주간·375 야간), 375·768·1440 가로 스크롤 0. 전체 MEL 하위 항목 모두 항목만 보기 성공, 다른 항목 섞임 0
 - **주의**: 개발 브라우저 IndexedDB에 A380-MEL 묶음이 들어 있음(Mac 안)
 - **배포**: 사용자 요청으로 커밋 4924018 push → GitHub Actions 성공, 배포 사이트에 새 코드 확인, `/private/` 404. 커밋 전 공개 코드 주석·테스트에서 실제 매뉴얼 제목을 가상 예시로 바꿈
 - **다음**: 아이패드에서 얼러트·MEL 탭의 매뉴얼 쪽 열기 확인(새 버전은 새로고침 1~2회 — K-09)
@@ -96,15 +110,15 @@
 - **다음**: 아이패드에서 매뉴얼 가져오기·MEL·Manual·Alerts 확인(`LOCAL_TEST.md` §11·§12, 새 버전은 새로고침 1~2회 — K-09)
 
 ### 2026-11-10 — 연료 경고 기준 FOM 근거 연결 (D-048, 사용자 승인)
-- **완료**: 착륙 예상 연료 단계 < FINAL 경고 · < FINAL×130% 경고 · < ALTN+FINAL 주의(FOM 8.2.1.2·8.2.1.1·8.2.1), ½FINAL 임시 주의 삭제, 편차 −2%는 임시 유지. Inflight 라벨·FINAL×130% 칸. 얼러트 근거에 FOM 절 링크(연료·블록·ETP·SR), FOM 없으면 글자만
+- **완료**: 착륙 예상 연료 단계 < FINAL 경고 · < FINAL×130% 경고 · < ALTN+FINAL 주의(FOM 근거), ½FINAL 임시 주의 삭제, 편차 −2%는 임시 유지. Inflight 라벨·FINAL×130% 칸. 얼러트 근거에 FOM 절 링크(연료·블록·ETP·SR), FOM 없으면 글자만
 - **변경 파일**: `src/features/inflight/{deviation.ts,InflightPage.tsx,deviation.test.ts}`, `src/features/alerts/{fomRefs.ts(신규),types.ts,useAlerts.ts,AlertsCard.tsx,alerts.test.ts,rules/{fuelProjection,planMargins,turbulence}.ts}`, `src/features/manual/lookup.ts`, 문서(DECISIONS D-025 표시·D-048, KNOWN_ISSUES K-03, PROJECT_SPEC §5.10, ARCHITECTURE §3.7d)
-- **테스트**: `npm test` 139/139, `tsc -b`, `npm run build` 통과. 개발 브라우저에서 시험 기록(예상 착륙 FINAL×120%) → Alerts "FINAL×130% (MINIMUM FUEL)" 경고 + FOM 8.2.1.1·8.2.1·6.5.3.1 링크 → 누르면 FOM 8.2.1.1 p.471, Inflight 라벨 MIN FUEL PREP·FINAL×130% 칸 확인. 시험 기록·대기 전송·얼러트 기록은 확인 후 지움. 375·768 가로 스크롤 0, 콘솔 오류 없음
+- **테스트**: `npm test` 139/139, `tsc -b`, `npm run build` 통과. 개발 브라우저에서 시험 기록(예상 착륙 FINAL×120%) → Alerts "FINAL×130% (MINIMUM FUEL)" 경고 + FOM 근거 링크 → 누르면 해당 FOM 절로 이동, Inflight 라벨 MIN FUEL PREP·FINAL×130% 칸 확인. 시험 기록·대기 전송·얼러트 기록은 확인 후 지움. 375·768 가로 스크롤 0, 콘솔 오류 없음
 - **다음**: 사용자 요청 시 커밋·배포 → 아이패드 확인. minima·측풍 규칙(K-28)
 
 ### 2026-11-10 — FOM(+FCRM) 매뉴얼 추가 (D-047)
-- **완료**: 사용자 FOM 변환본(marker, MD + _meta.json)을 `private/manuals/inbox/`에 보관(그림 jpeg는 안 옮김). 절 단위 나누기(번호 제목·제 N 장, FOM/FCRM 구분, span·목차 json으로 PDF 쪽), 파일 이름 종류·개정·날짜 판정, 절 번호 바로가기·`[FOM x.y]` 참조 링크. 묶음 GEN-FOM 1,997절(PDF 쪽 표시 1,996), 0.5MB. 파서 `manual-1.4`(나머지 4개 묶음도 다시 만듦)
+- **완료**: 사용자 FOM 변환본(marker, MD + _meta.json)을 `private/manuals/inbox/`에 보관(그림 jpeg는 안 옮김). 절 단위 나누기(번호 제목·제 N 장, FOM/FCRM 구분, span·목차 json으로 PDF 쪽), 파일 이름 종류·개정·날짜 판정, 절 번호 바로가기·`[FOM x.y]` 참조 링크. 묶음 GEN-FOM 생성. 파서 `manual-1.4`(나머지 4개 묶음도 다시 만듦)
 - **찾은 것**: 연료·minima 관련 FOM 절 위치 확인(요약은 `private/manuals/NOTES-fom-basis.md`) → D-048에서 반영
-- **테스트**: `npm test` 138/138, `tsc -b`, `npm run build` 통과. 개발 브라우저에 묶음 5개 넣어 `FOM 6.5.3.1` 바로가기(p.360), 한글 검색 "Final Reserve Fuel 착륙" 확인
+- **테스트**: `npm test` 138/138, `tsc -b`, `npm run build` 통과. 개발 브라우저에 묶음 5개 넣어 FOM 절 번호 바로가기, 한글 검색 "Final Reserve Fuel 착륙" 확인
 - **다음**: 사용자 확인 후 임계값 근거를 FOM 위치로 연결(값 변경은 새 D-번호), minima 규칙 검토
 
 ### 2026-11-10 — Phase 5 3단계: 얼러트 엔진 (D-046)
@@ -124,7 +138,7 @@
 
 ### 2026-11-10 — Phase 5 조사·계획 + 1단계 매뉴얼 넣기 (D-044)
 - **완료**: Phase 5 계획 승인(1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 → Phase 6 AI 질의). 사용자 매뉴얼(A380 MEL·CDL·FCOM·FCTM PDF+MD)을 `private/manuals/inbox/`에 보관. 변환 MD 형식 조사(쪽 표시·발행일·MEL 표). Mac 도구 `npm run manuals`(PDF는 필요할 때만 MD 변환, 최신 개정만, 묶음 .efbman.json.gz). 앱 Settings → 매뉴얼 카드(가져오기·교체·삭제), DB v2. OFP MEL 번호 끝 A/B = 하위 항목으로 확인
-- **결과**: 묶음 MEL 2,088쪽·하위 항목 1,242 / CDL 488쪽·209항목 / FCOM 6,938쪽 / FCTM 478쪽, 합계 2.2MB(gz), 만드는 데 3초. OFP 샘플 MEL 19종·CDL 3종 전부 매뉴얼에서 찾음
+- **결과**: 묶음 MEL·CDL·FCOM·FCTM 생성(수 초). OFP 샘플의 MEL·CDL 번호 전부 매뉴얼에서 찾음 (세부 수치는 비공개 메모)
 - **변경 파일**: `src/features/manual/{types.ts,parse.ts,store.ts,ManualCard.tsx,manual.test.ts}`(신규), `src/db/schema.ts`(v2), `src/features/settings/SettingsPage.tsx`, `src/app/styles.css`, `tools/manual-convert/{build.ts,pdf2md.py}`(신규), `package.json`(`manuals`), 문서(DECISIONS D-044, KNOWN_ISSUES K-25·K-26, PROJECT_SPEC §5.9, ARCHITECTURE §3.2·3.7c·5, LOCAL_TEST §11)
 - **테스트**: `npm test` 121/121, `tsc -b`, `npm run build` 통과. 개발 브라우저에 묶음 4개를 넣어(임시 127.0.0.1 서버로 전달, 확인 후 종료·삭제 — 파일 선택창 대신 같은 읽기·저장 함수 호출) 목록 표시, 항목 번호 찾기, 사용량 13.5MB, 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 삭제 버튼 44px, 콘솔 오류 없음. **파일 선택창으로 가져오기·아이패드는 미확인**
 - **해결 못 한 것**: K-25(MEL 제목 71·등급 21 못 찾음, FCOM 일부 쪽 합침), PDF→MD 변환 경로는 probe만 확인(실제 변환 실행은 안 함 — 이미 MD 있음). 커밋 안 함

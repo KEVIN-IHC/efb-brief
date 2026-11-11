@@ -4,6 +4,7 @@ import { isStandalone } from '../../app/InstallBanner';
 import type { OutboxItem } from '../../db/schema';
 import { getGasConfig, getSetting, setSetting } from '../../db/settings';
 import { ManualCard } from '../manual/ManualCard';
+import { ProfileCard } from '../brief/ProfileCard';
 import { DEFAULT_WX_PROXY, fetchJson, getWxProxyBase } from '../weather/api';
 import { formatDayZ } from '../../lib/time';
 import { pingGas } from '../../sync/gasClient';
@@ -242,6 +243,7 @@ export function SettingsPage() {
       </section>
 
       <ManualCard />
+      <ProfileCard />
 
       <section className="card">
         <div className="card-title">

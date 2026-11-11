@@ -280,7 +280,7 @@
 
 ### D-044 매뉴얼 넣기 = Mac 도구로 쪽 단위 묶음 → 기기 안 저장, 같은 매뉴얼은 개정 교체
 - **날짜** 2026-11-10 (사용자: "매뉴얼은 개정되면 언제든 갈아 끼우고, 새 걸 던져주면 변환해서 알아서 업데이트" · 계획 1단계 승인)
-- **확인 사실** 사용자가 pymupdf4llm(레이아웃 모드)로 변환한 A380 MEL·CDL·FCOM·FCTM MD 4개 수령(`private/manuals/inbox/`, PDF 원본 함께). 모든 쪽 끝에 쪽 표시(`MI-36-11 P 2/8`, `DSC-34-20-30-10 P 5/20`, CDL은 `27-22 P 1/2` = 항목 번호)와 운영사·기종 줄, 발행일(`at issue date 19 OCT 26`, `replacing last issue dated …`)이 있음. MEL 하위 항목(`36-11-01B`)마다 수리 등급·장착·필요 수량·플래카드 표, `(o)`/`(m)` 조건, OpsProc 참조. **OFP MEL 번호 끝 글자(A/B)는 하위 항목**(수리 등급 아님)
+- **확인 사실** 사용자가 pymupdf4llm(레이아웃 모드)로 변환한 A380 MEL·CDL·FCOM·FCTM MD 4개 수령(`private/manuals/inbox/`, PDF 원본 함께). 모든 쪽 끝에 쪽 표시(문서 코드 + `P n/m`, CDL은 항목 번호)와 운영사·기종 줄, 발행일·이전 발행일 문구가 있음. MEL 하위 항목마다 수리 등급·장착·필요 수량·플래카드 표, `(o)`/`(m)` 조건, OpsProc 참조. **OFP MEL 번호 끝 글자(A/B)는 하위 항목**(수리 등급 아님)
 - **결정**
   1. "AI 학습"이 아니라 **색인 방식**: 매뉴얼을 쪽 단위로 나눠 기기에 저장 → 오프라인 검색·MEL 매칭은 규칙, AI 질의(Phase 6)는 관련 쪽만 보내고 출처 표시
   2. Mac 도구 `npm run manuals`: `private/manuals/inbox`에 PDF나 MD를 넣으면 ① 같은 매뉴얼·같은(이후) 발행일 MD가 없는 PDF만 MD 변환(pymupdf4llm, `private/manuals/md/`) ② 매뉴얼(docId = 기종-종류, 예 `A380-MEL`)마다 가장 최근 발행일만 사용 ③ 묶음 `private/manuals/out/<docId>.efbman.json.gz` (변경 없으면 건너뜀). 전부 `private/`
@@ -318,22 +318,64 @@
 
 ### D-047 FOM(+FCRM) = 절 단위로 나눔, marker 목차 json으로 PDF 쪽 번호
 - **날짜** 2026-11-10 (사용자: FOM 변환본과 _meta.json 제공, "얘도 추가해")
-- **확인 사실** FOM은 다른 변환 도구(marker)로 만들어져 쪽 표시(`… P n/m`)가 없음. 대신 번호 제목(`#### 5.13.5.3 Fuel Monitoring (연료 점검)`, `S6.8.1`, `제 6 장`)과 제목 속 `<span id="page-N-…">`(0부터 PDF 쪽). 한 파일에 FOM 뒤로 FCRM이 이어짐(`# Flight Crew Reference Manual`). `_meta.json` = 목차(제목·쪽 번호)·쪽 통계, 그림 jpeg 96개 별도
+- **확인 사실** FOM은 다른 변환 도구(marker)로 만들어져 쪽 표시(`… P n/m`)가 없음. 대신 번호 제목(`#### x.y.z 제목`, `Sx.y.z`, `제 N 장`)과 제목 속 `<span id="page-N-…">`(0부터 PDF 쪽). 한 파일에 FOM 뒤로 FCRM이 이어짐(`# Flight Crew Reference Manual`). `_meta.json` = 목차(제목·쪽 번호)·쪽 통계, 그림 jpeg 96개 별도
 - **결정**
-  1. 쪽 표시가 거의 없고 번호 제목이 많으면 **절 단위**로 나눔: 번호 제목·"제 N 장"마다 한 덩어리(번호 없는 소제목은 안에). 근거 표시 = `FOM 5.13.5.3 · p.247`(절 번호 + PDF 쪽). FCRM 부분은 `FCRM 1.8.2`로 구분
+  1. 쪽 표시가 거의 없고 번호 제목이 많으면 **절 단위**로 나눔: 번호 제목·"제 N 장"마다 한 덩어리(번호 없는 소제목은 안에). 근거 표시 = `FOM x.y.z · p.N`(절 번호 + PDF 쪽). FCRM 부분은 `FCRM x.y.z`로 구분
   2. PDF 쪽 번호: 제목의 span → 없으면 `_meta.json` 목차(같은 제목을 순서대로 맞춤). **json은 있으면 쓰고 없어도 됨** — MD 옆에 `<이름>_meta.json`으로 두면 도구가 자동 사용. 앱으로 옮기는 묶음에는 쪽 번호만 들어감(json 자체는 안 옮김)
   3. 그림(jpeg)은 지금 넣지 않음 — 본문에 "[그림]" 표시
   4. 종류 판정 순서: REFERENCE 줄 → 파일 이름(MEL·CDL·FCOM·FCTM·FOM·QRH) → 본문에서 가장 먼저 나오는 제목. 기종은 REFERENCE·파일 이름·머리 `_A380_` 표기만(본문 언급 무시) → FOM은 `GEN-FOM`. 개정·발행일은 파일 이름의 `R<번호>_<YYYYMMDD>`도 사용(`revision` 칸)
-  5. 검색에서 `FOM 6.5.3.1`·`5.13.5.3` 바로가기, 본문 `[FOM 1.4.4]`·`FCRM 1.8.2` 참조 링크
+  5. 검색에서 `FOM x.y.z`·`x.y.z` 바로가기, 본문 `[FOM x.y.z]`·`FCRM x.y.z` 참조 링크
 - **영향** `src/features/manual/{parse.ts(manual-1.4, splitSections),types.ts(revision·splitMode·pdfPage),lookup.ts,ManualPage.tsx}`, `tools/manual-convert/build.ts`
 
 ### D-048 연료 경고 기준을 FOM 근거로 교체 (D-025 대체) + 얼러트 FOM 근거 링크
 - **날짜** 2026-11-10 (사용자 승인 "안대로 진행")
-- **근거 위치** FOM 6.5.3.1 · 8.2.1 · 8.2.1.1 · 8.2.1.2 · 6.3.2.1 · 5.13.2.2 · 5.13.5.3 · S5.3.2.2 (내용 요약은 공개 저장소에 두지 않음 — `private/manuals/NOTES-fom-basis.md`). 편차 %·여유 t·SR 기준 수치는 FOM에 없음
+- **근거 위치** FOM 연료 관리·연료 점검·이륙 필요 연료·EDTO 연료·난류 정의 절 (절 번호는 코드 `alerts/fomRefs.ts`, 내용 요약은 `private/manuals/NOTES-fom-basis.md`). 편차 %·여유 t·SR 기준 수치는 FOM에 없음
 - **결정**
-  1. 착륙 예상(목적지, OFP 계획 FINAL RES 기준): < FINAL **경고**(FOM 8.2.1.2, 앱은 목적지 기준만) · < FINAL×130% **경고**(FOM 8.2.1.1) · < ALTN+FINAL **주의**(FOM 8.2.1). D-025의 "ALTN+FINAL+½FINAL 주의"는 삭제
+  1. 착륙 예상(목적지, OFP 계획 FINAL RES 기준): < FINAL **경고**(FUEL EMERGENCY, 앱은 목적지 기준만) · < FINAL×130% **경고**(MINIMUM FUEL) · < ALTN+FINAL **주의**(연료 관리). D-025의 "ALTN+FINAL+½FINAL 주의"는 삭제
   2. 편차 TRIP −2% 주의는 **임시 기준 유지**(FOM 수치 없음)
   3. Inflight 화면 표시도 같은 단계(`landingStage`, 라벨 BELOW FINAL RES / MIN FUEL PREP / BELOW ALTN+FINAL / FUEL DEV), FINAL×130% 칸 추가
-  4. 값은 그대로, 근거만 FOM: 블록 < 최소 요구 → FOM 6.3.2.1(1t 여유 주의는 임시), ETP → 5.13.2.2·5.13.5.3(1.5t 여유 주의는 임시), SR → S5.3.2.2(5·7 기준은 임시), 중량 2t → 임시 그대로
+  4. 값은 그대로, 근거만 FOM: 블록 < 최소 요구 → FOM 이륙 필요 연료(1t 여유 주의는 임시), ETP → FOM EDTO 연료(1.5t 여유 주의는 임시), SR → FOM 난류 정의(5·7 기준은 임시), 중량 2t → 임시 그대로
   5. 얼러트 근거 줄은 FOM 절 코드로 가져온 FOM에서 위치를 찾아 링크(`fomRefs.ts`). FOM이 없으면 "FOM 미보유" 글자만
 - **영향** `src/features/inflight/{deviation.ts,InflightPage.tsx,deviation.test.ts}`, `src/features/alerts/{fomRefs.ts(신규),types.ts,useAlerts.ts,AlertsCard.tsx,rules/fuelProjection.ts,rules/planMargins.ts,rules/turbulence.ts,alerts.test.ts}`, `manual/lookup.ts`(`loadCodeRefs`)
+
+### D-049 회사 기준 파일 — 회사 매뉴얼 "수치"는 공개 코드에 넣지 않는다
+- **날짜** 2026-11-11 (사용자: 운항관리사식 브리핑 항목 1~5 "다 진행")
+- **결정**
+  1. 최저치·바람 제한·소방등급·Low Time 조건·저온 보정표 등 회사 기준 수치와 근거 위치(매뉴얼 쪽 코드)는 `private/manuals/company-rules.json`(형식 `efb-company-rules` v1)에만 둔다. 앱은 GitHub Pages에 공개되므로 코드·빌드에 넣지 않는다
+  2. `npm run manuals`가 형식을 점검해 `private/manuals/out/company-rules.json`으로 복사 → 구글드라이브 → **Settings → 매뉴얼 → 가져오기**(매뉴얼과 같은 버튼). 기기 IndexedDB `settings`(키 `companyRules`)에 저장, 같은 버튼으로 교체·삭제
+  3. 파일이 없으면 판정하지 않고 "회사 기준 파일 없음" 안내 + 기상·활주로·NOTAM 자료만 정리
+  4. 근거 코드는 가져온 매뉴얼(FOM·FCOM)의 쪽 코드로 찾아 📖 링크 (예 FOM 절, FCOM LIM 쪽). 테스트는 가짜 수치로, 실제 값 대조는 private 파일이 있을 때만
+- **대안** 수치를 코드 상수로 → 공개 저장소·배포판에 회사 매뉴얼 내용이 실림, 기각. 매뉴얼 본문에서 표를 실시간으로 읽기 → 표 변환이 깨져 있어(FOM 이륙·접근 표) 오판 위험, 기각(특수공항 표·공항 제한처럼 깨끗한 것만 D-052)
+- **영향** `src/features/brief/rules.ts`, `manual/ManualCard.tsx`, `tools/manual-convert/build.ts`, `private/manuals/company-rules.json`
+
+### D-050 활주로 자료 — OFP 활주로 줄 + OurAirports 진방위
+- **날짜** 2026-11-11
+- **결정** OFP NOTAM 공항 머리의 "1. RUNWAY : 07L/25R : 12923FT X 150FT"에서 활주로·길이·폭, 공개 자료 `public/geo/runways.json`(OurAirports runways.csv, 퍼블릭 도메인, `tools/build-runways.ts`)에서 진방위. 바람(METAR·TAF 진방위)과 성분 계산. 진방위가 없으면 번호×10(자방위, "≈M 대략") 표시. 폐쇄 NOTAM 활주로는 제외
+- **영향** `brief/runways.ts`, `tools/build-runways.ts`, `public/geo/runways.json`(약 250KB, 오프라인 저장)
+
+### D-051 NOTAM 운항 영향 읽기 — 고장 낱말이 같이 있을 때만
+- **날짜** 2026-11-11
+- **결정** OFP NOTAM 본문에서 공항 폐쇄·활주로 폐쇄·진입등·활주로 등화·중심선등·RVR·ILS 고장(U/S·OTS·CLSD 등 낱말 필수), GNSS 제한, 소방등급 숫자, 활주로 상태(RWYCC 3구간·Braking Action·오염 물질)를 찾는다. IAP 개정 알림은 제외, 비행 시간대 밖 NOTAM은 제외. 항상 OFP 원문 줄을 함께(오판 대비). SNOWTAM 실제 형식은 겨울 OFP로 확인 필요(K-31)
+- **영향** `brief/notamImpact.ts`
+
+### D-052 FOM 표는 기기에 가져온 FOM에서 그때그때 읽는다
+- **날짜** 2026-11-11
+- **결정** 특수공항 목록(ICAO/IATA 표)과 공항별 회사 제한 절은 가져온 FOM 묶음에서 읽는다(회사 기준 파일에는 절 코드만). 개정되면 FOM만 바꿔 넣으면 반영. 공항 제한 절은 제목의 "(IATA/ICAO)" 또는 국내 공항 한글 이름으로 공항을 찾고, 기종 전용 하위 절은 OFP 기종과 같을 때만 보인다
+- **영향** `brief/fomTables.ts`
+
+### D-053 개인 운항 조건 설정 (Low Time·수습·부기장 Low Time·엔진 부작동 CAT III)
+- **날짜** 2026-11-11 (사용자: "Settings에서 본인이 해당되는지 켜는 방식")
+- **결정** Settings → 내 운항 조건 체크 5개, 기기 안에만 저장(키 `crewProfile`). 켜면 해당 FOM 조건을 기상·바람·활주로 상태·특수공항과 비교해 알림. "엔진 부작동 CAT III 가능"은 FCOM에 자동 접근·착륙 승인만 있고 CAT III 문구가 없어 **회사 확인 전에는 꺼 둠** — 꺼져 있으면 교체공항 CAT III 구성 최저치 적용 구간을 "확인 필요" 주의로
+- **영향** `brief/profile.ts`, `brief/ProfileCard.tsx`, `settings/SettingsPage.tsx`
+
+### D-054 Briefing 탭 — 운항관리사식 공항별 브리핑·카드 초안·회항 후보, 얼러트 연결
+- **날짜** 2026-11-11 (사용자: 목록 1~5 진행)
+- **결정**
+  1. 공항 역할(출발·목적지·목적지 교체·이륙 교체·3% ERA·EDTO·ETP·ERA 후보)별 시간 창(출발 ETD±1h, 목적지 ETA±1h, 교체 ETA±1h, 3% ERA는 비행 후반 대략)으로 TAF를 자르고(TEMPO·PROB 분리), 창 안 METAR와 함께 판정
+  2. 판정: 회사 이륙 최저치 단계, 이륙 교체 필요, 접근 등급, 목적지 미달·Marginal(교체공항 추가), 교체공항 하한, 착륙 거리 계획 기준, 바람 성분 × RWYCC별 바람 제한, 자동착륙 측풍, 오염 시 CAT III 제한, NOTAM 시설 영향(진입등·등화·야간 IMC·ILS·RVR·GNSS·소방등급·폐쇄), 활주로 폭, 특수공항·공항 제한, 뇌우·우박·Windshear·화산재·어는 강수, 저온 보정(CTAC), 3% Contingency 지연 통보, MEL × 항로 요건(ATA 22·23·34), Low Time·수습 조건
+  3. 차트 최저치가 회사 하한보다 높을 수 있으므로 회사 **하한 미달만 경고**, 그 위는 참고. 판정마다 근거(📖 매뉴얼·OFP 원문·기상 원문·앱 기준)
+  4. 브리핑 카드 초안(합동·Takeoff·Landing·승무원 교대) — 글 복사. 회항 후보 = 지금 위치(계획 + 기록 편차)에서 거리순, 기상·최장 활주로·경고 수·특수공항
+  5. 얼러트: 판정 묶음 7개 규칙(`brief-*`)으로 대시보드 Alerts에 같이. 참고(briefOnly)는 Briefing 탭에만
+  6. 제빙 예상(기온 5°C 이하 + 강수·안개)은 매뉴얼 수치가 아니라 **앱 기준 참고**로만
+- **영향** `src/features/brief/*`(신규), `alerts/rules/briefRules.ts`, `alerts/{types,useAlerts,AlertsCard}.ts(x)`, `app/{App,tabs}.tsx`, `styles.css`
+
