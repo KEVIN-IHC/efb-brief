@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { _resetDBForTests } from '../../db/schema';
 import { buildManualBundle, cleanLine, detectMeta, issueToIso, splitPages, validateBundle } from './parse';
+import { itemSlice } from './lookup';
 import { deleteManual, findManualItems, listManuals, OlderRevisionError, readManualFile, saveManual } from './store';
 
 const MEL_MD = (issue: string) => `###### _A999_
@@ -359,5 +360,48 @@ describe('매뉴얼 찾기 (2단계)', () => {
     expect(searchPages(pages, '"remaining lamp"').map((x) => x.ref)).toEqual(['MO-99-10 P 1/1']);
     expect(searchPages(pages, 'lamp zebra')).toHaveLength(0);
     expect(searchPages(pages, 'x')).toHaveLength(0); // 한 글자는 무시
+  });
+});
+
+describe('itemSlice (항목만 보기)', () => {
+  const p0 = [
+    'MEL ITEMS ¦ 25 - SAMPLE ¦ 25-20 - Sample ¦ MINIMUM EQUIPMENT LIST ¦',
+    '###### **25-20-08**',
+    '###### **Sample Bar**',
+    '###### **25-20-08A**',
+    'body 08A',
+    '###### **25-20-09 Sample Table**',
+    'Ident.: MI-00-00-1 / 01 JAN 26 **Applicable to: ALL**',
+    '###### **25-20-09A Sample secured**',
+    'Repair interval Nbr installed Nbr required Placard ¦ D – 0 Yes ¦',
+    '- **(m)** body 09A',
+  ].join('\n');
+  const p1 = ['MEL ITEMS ¦ 25 - EQUIPMENT ¦ MINIMUM EQUIPMENT LIST ¦', 'continued 09A', '**25-20-10 Sample Other**', 'body 10'].join('\n');
+  const pages = [
+    { seq: 0, code: 'MI-25-20', text: p0 },
+    { seq: 1, code: 'MI-25-20', text: p1 },
+  ];
+
+  it('하위 항목: 상위 제목부터 다음 하위 항목 전까지, 다음 쪽 이어 붙임', () => {
+    const s = itemSlice(pages, 0, '25-20-09A')!;
+    expect(s.seqs).toEqual([0, 1]);
+    expect(s.text.split('\n')[0]).toContain('25-20-09 Sample');
+    expect(s.text).toContain('body 09A');
+    expect(s.text).toContain('continued 09A');
+    expect(s.text).not.toContain('25-20-08A');
+    expect(s.text).not.toContain('25-20-10');
+    expect(s.text).not.toContain('MEL ITEMS');
+  });
+
+  it('다음 하위 항목이 같은 쪽에 있으면 그 쪽에서 끝', () => {
+    const s = itemSlice(pages, 0, '25-20-08A')!;
+    expect(s.seqs).toEqual([0]);
+    expect(s.text).toBe('###### **25-20-08**\n###### **Sample Bar**\n###### **25-20-08A**\nbody 08A');
+  });
+
+  it('번호가 없거나 제목을 못 찾으면 null', () => {
+    expect(itemSlice(pages, 0, undefined)).toBeNull();
+    expect(itemSlice(pages, 0, 'Crosswind')).toBeNull();
+    expect(itemSlice(pages, 0, '36-11-01B')).toBeNull();
   });
 });

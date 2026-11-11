@@ -1,6 +1,6 @@
 // Manual 탭 (Phase 5 2단계, D-045): 가져온 매뉴얼을 쪽 단위로 보기 + 오프라인 검색 + "Refer to" 이동
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { directKey, docPages, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
+import { directKey, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
 import { ManualText } from './ManualText';
 import { listManuals, manualEvents, type StoredManual } from './store';
 
@@ -18,6 +18,8 @@ export function ManualPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<{ docId: string; seq: number }[]>([]);
   const viewRef = useRef<HTMLElement>(null);
+  /** 항목 번호로 열었을 때 그 항목만 보기(기본) ↔ 쪽 전체 */
+  const [whole, setWhole] = useState(false);
 
   useEffect(() => {
     const load = () => void listManuals().then(setDocs);
@@ -32,6 +34,7 @@ export function ManualPage() {
       setDocId(nav.target.docId);
       setSeq(nav.target.seq);
       setMark(nav.target.mark);
+      setWhole(false);
     }
     if (nav.query) {
       setQ(nav.query);
@@ -55,6 +58,14 @@ export function ManualPage() {
 
   const page = pages[seq];
   const doc = docs?.find((d) => d.docId === docId);
+  const slice = useMemo(() => itemSlice(pages, seq, mark), [pages, seq, mark]);
+  const focus = slice && !whole ? slice : null;
+  const refLabel = focus && focus.seqs.length > 1 ? `${page?.ref} ~ ${pages[focus.seqs.at(-1)!]?.ref?.split(' P ')[1] ?? ''}` : page?.ref;
+  // 쪽 전체 보기에서는 해당 항목 제목으로 스크롤
+  useEffect(() => {
+    if (!whole) return;
+    viewRef.current?.querySelector('.mh-target')?.scrollIntoView({ block: 'start' });
+  }, [whole]);
   const marks = useMemo(() => [mark, ...(hits ? q.split(/\s+/) : [])].filter((x): x is string => !!x && x.length >= 2), [mark, hits, q]);
 
   const go = (d: string, s: number, m?: string, keepHistory = true) => {
@@ -62,6 +73,7 @@ export function ManualPage() {
     setDocId(d);
     setSeq(s);
     setMark(m);
+    setWhole(false);
     viewRef.current?.scrollIntoView({ block: 'start' });
   };
 
@@ -192,12 +204,17 @@ export function ManualPage() {
         {page ? (
           <>
             <div className="man-ref">
-              <span className="mono strong">{page.ref ?? '쪽 표시 없음'}</span>
+              <span className="mono strong">{refLabel ?? '쪽 표시 없음'}</span>
               {page.header && <span className="small muted">{page.header}</span>}
+              {slice && (
+                <button className="btn man-whole" onClick={() => setWhole((w) => !w)}>
+                  {whole ? `${mark} 항목만 보기` : '쪽 전체 보기'}
+                </button>
+              )}
             </div>
-            <ManualText text={page.text} marks={marks} onRef={(k) => void onRef(k)} />
+            <ManualText text={focus ? focus.text : page.text} marks={focus ? [] : marks} target={mark} onRef={(k) => void onRef(k)} />
             <p className="muted small man-foot">
-              근거: {doc?.title} {doc?.revision ?? ''} {doc?.issueDate ?? ''} · {page.ref ?? '쪽 표시 없음'} · 변환 MD L{page.line}. 변환본이라 표·그림이 깨질 수 있음 — 운항 판단은 승인된 원본 매뉴얼로.
+              근거: {doc?.title} {doc?.revision ?? ''} {doc?.issueDate ?? ''} · {refLabel ?? '쪽 표시 없음'} · 변환 MD L{page.line}. 변환본이라 표·그림이 깨질 수 있음 — 운항 판단은 승인된 원본 매뉴얼로.
             </p>
           </>
         ) : (

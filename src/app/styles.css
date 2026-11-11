@@ -783,3 +783,11 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .al-more { margin-top: var(--sp-2); }
 .al-more summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-sm); color: var(--text-dim); }
 .al-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
+.man-whole { margin-left: auto; }
+.mtable th { border: 1px solid var(--line); padding: 4px 6px; overflow-wrap: normal; vertical-align: bottom; text-align: left; font-weight: 600; font-size: var(--fs-xs); color: var(--text-dim); background: var(--raised); }
+.mtable td { text-align: left; }
+.mtext .mrun { font-size: var(--fs-xs); color: var(--text-faint); margin-bottom: var(--sp-3); }
+.mtext .mident { font-size: var(--fs-xs); color: var(--text-dim); }
+.mtext .mh-item { padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.mtext > .mh-item:first-child { padding-top: 0; border-top: 0; }
+.mtext .mh-target { padding: var(--sp-2); border-top: 0; border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; scroll-margin-top: var(--sp-6); }

@@ -146,9 +146,9 @@ IPBS/
 | `parse.ts` | 변환 MD → 묶음: 종류·기종·발행일·개정(`detectMeta`), 쪽 나누기(`splitPages`, 쪽 표시 경계) 또는 절 나누기(`splitSections`, marker 변환·FOM, D-047), MEL 하위 항목·CDL 항목 추출. `MANUAL_PARSER_VERSION` |
 | `store.ts` | 파일 읽기(gzip/JSON/MD), 저장(같은 docId 통째 교체·오래된 개정 확인), 목록·삭제, 번호로 항목 찾기(`findManualItems`) |
 | `ManualCard.tsx` | Settings → 매뉴얼 카드 |
-| `lookup.ts` | (D-045) 쪽 캐시, 탭 이동(`openManualPage`), OFP MEL/CDL 매칭(`matchMelItem`, 기종 변환), 표시 문구(`itemFlags`), 참조 찾기·이동(`findRefs`·`resolveRef`), 검색(`searchPages`·`directKey`) |
-| `ManualText.tsx` | 쪽 본문 표시(제목·굵게·표·목록·원문 줄바꿈 ¦, 참조 링크, 강조) |
-| `ManualPage.tsx` | Manual 탭: 검색·범위·결과, 매뉴얼·쪽 이동·되돌아가기 |
+| `lookup.ts` | (D-045) 쪽 캐시, 탭 이동(`openManualPage`), OFP MEL/CDL 매칭(`matchMelItem`, 기종 변환), 표시 문구(`itemFlags`), 참조 찾기·이동(`findRefs`·`resolveRef`), 검색(`searchPages`·`directKey`), MEL 항목만 잘라 보기(`itemSlice`: 상위 제목부터 다음 항목 전까지, 다음 쪽 이어 붙임) |
+| `ManualText.tsx` | 쪽 본문 표시(제목·굵게·표·목록·원문 줄바꿈 ¦, 참조 링크, 강조). 그림 글로 바뀐 MEL 표(Repair interval…)→표, 쪽 머리 그림 글→작은 회색 한 줄, 번호만 있는 제목+다음 제목 합치기, 대상 항목 제목 강조 |
+| `ManualPage.tsx` | Manual 탭: 검색·범위·결과, 매뉴얼·쪽 이동·되돌아가기. MEL 항목 번호로 열면 그 항목만(기본) ↔ 쪽 전체 보기 |
 | `MelPage.tsx` | MEL 탭: OFP MEL/CDL ↔ 매뉴얼 항목 카드 |
 - Mac 도구 `tools/manual-convert/build.ts`(`npm run manuals`) + `pdf2md.py`(pymupdf4llm). 입력 `private/manuals/inbox` → MD `private/manuals/md` → 묶음 `private/manuals/out/<docId>.efbman.json.gz` + `manifest.json`
 

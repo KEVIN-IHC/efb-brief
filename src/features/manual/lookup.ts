@@ -236,3 +236,56 @@ export function directKey(q: string): string | null {
   if (/^S?\d+(\.\d+)+$/.test(s)) return `sec:${s}`;
   return null;
 }
+
+// ---------- 항목만 보기 (MEL 항목 번호로 쪽을 열었을 때) ----------
+const ITEM_HEAD = /^#{0,6}\s*\*\*(\d{2}-\d{2}-\d{2}[A-Z]?)\b/;
+/** 쪽 머리 그림 글("MEL ITEMS ¦ 25 - … ¦ MINIMUM EQUIPMENT LIST ¦") */
+export const RUNNING_HEAD = /^(?:\*\*)?MEL ITEMS\b.*(?:MINIMUM EQUIPMENT LIST|¦)/;
+
+export interface ItemSlice {
+  text: string;
+  /** 이 항목이 걸친 쪽 seq (첫 쪽부터) */
+  seqs: number[];
+}
+
+/**
+ * 쪽 본문에서 MEL 항목(예: 00-00-00A) 부분만 잘라 낸다. 다음 항목 제목 전까지,
+ * 쪽 끝까지 이어지면 같은 장의 다음 쪽(최대 2쪽)에서 이어 붙인다. 하위 항목 바로 위의 상위 항목 제목·Ident 줄은 함께 보여 준다.
+ * 제목을 못 찾으면 null (쪽 전체를 보여 줌).
+ */
+export function itemSlice(pages: { seq: number; code?: string; text: string }[], seq: number, mark: string | undefined): ItemSlice | null {
+  const no = mark?.trim().toUpperCase();
+  if (!no || !/^\d{2}-\d{2}-\d{2}[A-Z]?$/.test(no)) return null;
+  const page = pages[seq];
+  if (!page) return null;
+  const ls = page.text.split('\n');
+  const idx = ls.findIndex((l) => ITEM_HEAD.exec(l)?.[1] === no);
+  if (idx < 0) return null;
+  const other = (l: string) => {
+    const n = ITEM_HEAD.exec(l)?.[1];
+    return !!n && !n.startsWith(no);
+  };
+  let start = idx;
+  if (no.length === 9) {
+    let j = idx - 1;
+    while (j >= 0 && !ITEM_HEAD.test(ls[j])) j--;
+    if (j >= 0 && ITEM_HEAD.exec(ls[j])![1] === no.slice(0, 8)) start = j;
+  }
+  let end = idx + 1;
+  while (end < ls.length && !other(ls[end])) end++;
+  const out = ls.slice(start, end);
+  const seqs = [seq];
+  // 쪽 끝까지 이어진 항목 → 다음 쪽에서 계속
+  for (let s = seq + 1; end === ls.length && s < pages.length && s <= seq + 2; s++) {
+    const np = pages[s];
+    if (!np.code || np.code !== page.code) break;
+    const nl = np.text.split('\n').filter((l) => !RUNNING_HEAD.test(l));
+    let k = 0;
+    while (k < nl.length && !other(nl[k])) k++;
+    if (k === 0) break;
+    out.push(...nl.slice(0, k));
+    seqs.push(s);
+    if (k < nl.length) break;
+  }
+  return { text: out.join('\n').trim(), seqs };
+}
