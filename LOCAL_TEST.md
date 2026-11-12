@@ -117,6 +117,23 @@ Safari 또는 Chrome 주소창에 `http://localhost:4173` 입력.
 5. **Settings → 내 운항 조건**에서 "부기장 Low Time"을 켜면 해당 조건일 때 Briefing·Alerts에 "기장이 이착륙"이 뜨는지 (테스트 후 끄기)
 6. 비행기 모드에서도 Briefing이 그대로 보이는지 (받아 둔 기상 기준)
 
+## 14. FIR · 통신 (D-055)
+
+1. 실제 OFP를 연 뒤 **More → Briefing → FIR · 통신**: FIR 순서가 OFP 원문(NAV LOG "/ XXXX FIR" 줄, NOTAM PACKAGE 3 "FIR:")과 같은지, 진입 지점·시각이 맞는지 (`OFP L…`을 누르면 원문 줄)
+2. FIR 하나 **편집** → CPDLC·HF 등 입력 → 저장 → 카드에 보이는지, 앱을 껐다 켜도 남아 있는지
+3. **통신표 내보내기** → 파일 저장 → (다른 기기나 삭제 후) **통신표 가져오기**로 되돌아오는지
+4. **Inflight**: "FIR · 통신"에 지금·다음 FIR만 보이고 "전체 보기"가 되는지. 다음 FIR 진입 10분 전에 Checks due에 "주파수·CPDLC 로그온 확인"이 뜨는지 (비행 중에만)
+
+## 15. Ops · 버티컬 뷰 · FIR 경계 · 기상 추가 (D-056~D-060)
+
+1. Mac에서 `npm run manuals` → `out/company-rules.json`(상황 카드 포함)을 구글드라이브에 올리고 아이패드 **Settings → 매뉴얼 → 가져오기** (FOM 묶음도 들어 있어야 원문이 열림)
+2. **More → Ops**: 상황 카드(비정상·보안·정상운항) 버튼 → 카드가 열리고 📖 링크·**원문** 버튼으로 FOM 절이 보이는지. 사건 버튼(⏱)을 누르면 위 "사건 기록"에 시각과 함께 남는지
+3. Tarmac Delay 카드 → **지금 시작** → 경과 시간·다음 PA 시점, Inflight 탭에도 "진행 중 타이머"가 보이는지 → 종료
+4. PA 문안 추가 → 글에 `{FLT}` `{ETA_Z}` 넣고 값이 채워지는지. 연락처 추가·편집. 보고서 초안 → 미리보기·글 복사
+5. **Weather**: "버티컬 뷰" — 처음엔 "예전 형식 바람 자료" 안내가 나오면 지금 갱신 후 고도별 색 칸·0°C 선이 나오는지. "기상 추가" — 우주기상 등급, 열대저기압
+6. **Map**: FIR 경계(점선, 항로 FIR 굵게)·PIREP·열대저기압·G-AIRMET 단추
+7. **Cloudflare Worker 다시 배포** (`docs/CLOUDFLARE_WORKER.md` "코드를 바꾸면") 후 아이패드에서 PIREP 오류 문구가 사라지는지
+
 ## 알아둘 점
 
 - **기상(METAR·TAF·SIGMET)은 지금 Mac 서버를 통해서만 받습니다.** 아이패드·GitHub에서는 Cloudflare 중계를 설치한 뒤 동작합니다 (그때 안내).

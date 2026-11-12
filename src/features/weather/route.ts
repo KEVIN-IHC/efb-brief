@@ -45,7 +45,7 @@ export function sigmetNearRoute(s: Sigmet, route: LatLon[], nm = 200): boolean {
   return false;
 }
 
-function densify(route: LatLon[], stepNm: number): LatLon[] {
+export function densify(route: LatLon[], stepNm: number): LatLon[] {
   const out: LatLon[] = [route[0]];
   for (let i = 1; i < route.length; i++) {
     const a = route[i - 1];
@@ -55,4 +55,12 @@ function densify(route: LatLon[], stepNm: number): LatLon[] {
     for (let k = 1; k <= n; k++) out.push({ lat: a.lat + ((b.lat - a.lat) * k) / n, lon: a.lon + ((bl - a.lon) * k) / n });
   }
   return out;
+}
+
+/** 점에서 루트까지 가장 가까운 거리 (NM, 50NM 간격 근사) */
+export function distToRouteNm(p: LatLon, route: LatLon[]): number {
+  if (!route.length) return Infinity;
+  let best = Infinity;
+  for (const q of densify(route, 50)) best = Math.min(best, gcDistanceNm(p, q));
+  return Math.round(best);
 }

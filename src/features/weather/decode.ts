@@ -147,8 +147,8 @@ export function isaPressure(ft: number): number {
   return 226.32 * Math.exp(-(ft - 36089) / 20806);
 }
 
-/** Open-Meteo에서 받는 기압면 (PROJECT_SPEC §5.6: FL180=500 … FL450=150) */
-export const LEVELS_HPA = [500, 400, 300, 250, 200, 150] as const;
+/** Open-Meteo에서 받는 기압면 (PROJECT_SPEC §5.6: FL180=500 … FL450=150). 850~600은 버티컬 뷰 상승·강하 구간용 (D-058) */
+export const LEVELS_HPA = [850, 700, 600, 500, 400, 300, 250, 200, 150] as const;
 
 export interface LevelValue {
   hpa: number;

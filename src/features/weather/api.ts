@@ -121,14 +121,14 @@ export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = D
   const q = new URLSearchParams({
     latitude: pts.map((p) => p.lat.toFixed(2)).join(','),
     longitude: pts.map((p) => p.lon.toFixed(2)).join(','),
-    hourly: vars.join(','),
+    hourly: [...vars, 'freezing_level_height'].join(','),
     wind_speed_unit: 'kn',
     timezone: 'GMT',
     start_hour: hourStr(start - 3_600_000),
     end_hour: hourStr(end + 3_600_000),
   });
   type OmLoc = { hourly: Record<string, (number | null)[]> & { time: string[] } };
-  const res = await fetchJson<OmLoc | OmLoc[]>(`${OM_URL}?${q}`, 40_000); // 60개 지점 × 18개 값이라 여유 있게
+  const res = await fetchJson<OmLoc | OmLoc[]>(`${OM_URL}?${q}`, 40_000); // 60개 지점 × 28개 값이라 여유 있게
   const locs = Array.isArray(res) ? res : [res];
   const points: WindPoint[] = pts.map((p, i) => {
     const h = locs[i]?.hourly;
@@ -145,7 +145,8 @@ export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = D
       dir: h[`wind_direction_${hpa}hPa`]?.[best] ?? null,
       temp: h[`temperature_${hpa}hPa`]?.[best] ?? null,
     }));
-    return { seq: p.seq, name: p.name, lat: p.lat, lon: p.lon, fl, time: `${h.time[best]}Z`, ...interpolateAtFl(fl, levels) };
+    const fz = h.freezing_level_height?.[best];
+    return { seq: p.seq, name: p.name, lat: p.lat, lon: p.lon, fl, time: `${h.time[best]}Z`, ...interpolateAtFl(fl, levels), levels, freezingFt: fz != null ? Math.round(fz * 3.28084) : null };
   });
   return { model: 'Open-Meteo (best match)', basis, points };
 }

@@ -76,6 +76,10 @@ export interface WindPoint {
   dir: number | null;
   spd: number | null; // kt
   temp: number | null; // °C
+  /** 기압면별 값 (버티컬 뷰, D-058). 예전 캐시에는 없음 */
+  levels?: { hpa: number; dir: number | null; spd: number | null; temp: number | null }[];
+  /** 0°C 고도 ft (Open-Meteo freezing_level_height) */
+  freezingFt?: number | null;
 }
 
 export interface WindsData {

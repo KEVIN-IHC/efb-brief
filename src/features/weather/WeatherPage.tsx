@@ -8,6 +8,8 @@ import { ceilingFt, visibSm } from './decode';
 import { sigmetNearRoute } from './route';
 import { flightStations, useWx, type Station } from './store';
 import type { Cloud, Metar, Sigmet, Taf, TafPeriod } from './types';
+import { VerticalView } from '../vertical/VerticalView';
+import { ExtraCard } from './ExtraCard';
 import { CatBadge, FreshTag, PrepareCard, WxStatusCard } from './ui';
 
 const windText = (dir: number | 'VRB' | null, spd: number | null, gst: number | null) =>
@@ -287,6 +289,8 @@ export function WeatherPage() {
       </div>
       <SigmetCard now={now} />
       <WindsCard now={now} />
+      <VerticalView />
+      <ExtraCard />
     </div>
   );
 }

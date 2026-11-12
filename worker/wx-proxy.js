@@ -1,7 +1,7 @@
 // EFB Brief 기상 중계 — Cloudflare Worker (D-034)
 // aviationweather.gov는 브라우저 CORS를 허용하지 않아, 이 Worker가 대신 받아서 앱에 돌려준다.
 //
-// 규격: GET <worker 주소>/awc/<metar|taf|isigmet|airsigmet>?<원래 쿼리>
+// 규격: GET <worker 주소>/awc/<metar|taf|isigmet|airsigmet|pirep|gairmet>?<원래 쿼리>
 //       → https://aviationweather.gov/api/data/<종류>?<원래 쿼리>
 //  - 허용 목록 경로·GET만. 키·토큰 없음 (공개 기상 자료 전달만)
 //  - 같은 요청은 Cloudflare에 60초 보관 (aviationweather.gov 부담·속도)
@@ -11,7 +11,7 @@
 // 설치: Cloudflare 대시보드 → Workers & Pages → Create → Worker → 이 파일 내용 붙여넣기 → Deploy
 // (자세한 순서: docs/CLOUDFLARE_WORKER.md)
 
-const ALLOWED = new Set(['metar', 'taf', 'isigmet', 'airsigmet']);
+const ALLOWED = new Set(['metar', 'taf', 'isigmet', 'airsigmet', 'pirep', 'gairmet']); // pirep·gairmet = D-060
 const UPSTREAM = 'https://aviationweather.gov/api/data/';
 const CACHE_SECONDS = 60;
 const TIMEOUT_MS = 15000;

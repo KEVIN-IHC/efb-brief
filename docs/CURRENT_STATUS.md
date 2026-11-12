@@ -2,14 +2,14 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-12 (운항관리사식 Briefing D-049~D-054 배포 1e432fe)
+> 마지막 갱신: 2026-11-12 (추가 기능 목록 2~8 D-056~D-060 로컬 구현, 커밋 전)
 
 ## 1. 한눈에
 
 | 항목 | 상태 |
 |---|---|
-| 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** + **운항관리사식 Briefing(D-049~D-054) 배포 (1e432fe, 2026-11-12)** — 남은 것: 아이패드 확인, 회사 기준 파일 가져오기 확인. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기 |
-| 테스트 | ✅ `npm test` 167개 통과 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
+| 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** + **운항관리사식 Briefing(D-049~D-054) 배포 (1e432fe, 2026-11-12)** — 남은 것: 아이패드 확인, 회사 기준 파일 가져오기 확인. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기. **추가 기능 목록 1~8 (D-055~D-060: FIR 통신·Ops 탭·버티컬 뷰·FIR 경계·기상 추가) 로컬 구현·검증, 커밋 전** — Worker 재배포 필요(K-35). 목록: `private/manuals/NEXT-ITEMS.md` |
+| 테스트 | ✅ `npm test` 198개 통과 (2026-11-12 Ops·버티컬·기상 추가 포함) · 이전: 167개 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
 | 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
@@ -81,6 +81,20 @@
 8. NOTAM 후속(선택): 근거 문서 원문 대조(K-23), D) 시간표(K-22)
 
 ## 8. 세션 인계 (가장 최근 작업)
+
+### 2026-11-12 — 추가 기능 목록 2~8 (D-056~D-060, 사용자: "다 진행")
+- **완료**: Ops 탭(상황 카드 35개 = 회사 파일 `ops` → FOM 원문 보기, 사건 버튼, 의료 지원 정보 양식(메모리만), Tarmac 타이머, PA 문안·빈칸 채우기, 연락처, 보고서 초안), 진행 중 타이머(Inflight), 버티컬 뷰(Weather), FIR 경계 지도(VATSpy CC BY-SA, 비공식 표시), 기상 추가(우주기상 SWPC·열대저기압 GDACS·PIREP·G-AIRMET + 지도 레이어), 통신표 AIRAC 경과 경고, 자료 출처·공식 여부 표시(D-057)
+- **변경 파일**: `src/features/ops/*`·`vertical/*`·`weather/{extra.ts,ExtraCard.tsx}`·`lib/airac.ts`(신규), `brief/rules.ts`, `weather/{api,decode,types,route,WeatherPage}`, `map/MapPage.tsx`, `fir/FirCommSection.tsx`, `inflight/InflightPage.tsx`, `app/{tabs,App,styles}`, `worker/wx-proxy.{js,test.ts}`, `tools/build-firs.ts`·`public/geo/firs.json`(신규), 문서(DECISIONS D-056~060, ARCHITECTURE §3.7g~i, LOCAL_TEST §15, KNOWN_ISSUES K-35~38, CLOUDFLARE_WORKER). private: `company-rules.json`(`ops` 추가, 백업은 세션 임시 폴더), `build-ops.py`(신규), `out/company-rules.json`
+- **테스트**: `npm test` 198/198, `tsc -b`, `npm run build` 통과. 개발 브라우저: 회사 파일·FOM 넣고(임시 127.0.0.1 서버, 5분 뒤 자동 종료) Ops 카드 35개·FOM 원문 펼치기·사건 기록·타이머 확인, 버티컬 뷰 108칸·0°C선, 지도 FIR·새 단추, 우주기상·GDACS 받기 성공, 375·768·1180 × 주간/야간 가로 스크롤 0. 시험 사건 기록 2개·타이머는 확인 후 삭제(동기화 주소 없음 — 외부 전송 없음). **PIREP는 Worker 재배포 전이라 404(예상), 1440·아이패드·실제 OFP로 Ops·버티컬 확인 안 함**
+- **미해결**: K-35 Worker 재배포, K-36~38. PA 기본 문안 없음(회사 예문집 필요). 커밋 안 함
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §14·§15) → Worker 재배포 → 커밋·배포(요청 시)
+
+### 2026-11-12 — 추가 기능 목록 정리 + FIR 통신 카드 (D-055)
+- **완료**: 1) 추가 기능 후보 목록(정상운항·비정상 상황 카드·FIR 통신·버티컬 뷰·FIR 경계 지도·기상 확장·보고) 정리 → 비공개 `private/manuals/NEXT-ITEMS.md`(FOM 절 번호 포함), 공개 요약 `PROJECT_SPEC.md` §8. 무료 자료 조사: FIR 경계 = VATSpy(비공식, CC BY-SA 추정)·ICAO GIS(조회만), 통신 주파수 무료 API 없음, 기상 = Open-Meteo 기압면·AWC PIREP·NOAA SWPC 등, WAFS 격자는 WIFS 승인 필요 2) **FIR 통신 카드**: OFP FIR 순서·진입 시각(실제/수정) + 개인 통신표(기기 안, 내보내기/가져오기) — Briefing 전체, Inflight 지금·다음, 진입 10분 전 점검 알림. 데모 OFP에 FIR 진입 표시 추가
+- **변경 파일**: `src/features/fir/{sequence.ts,commTable.ts,FirCommSection.tsx,fir.test.ts}`(신규), `src/features/inflight/{InflightPage.tsx,reminders.ts}`, `src/features/brief/BriefPage.tsx`, `src/mock/demoOfp.ts`, `src/app/styles.css`, 문서(DECISIONS D-055, PROJECT_SPEC §8, ARCHITECTURE §3.7f, LOCAL_TEST §14). private: `NEXT-ITEMS.md`
+- **테스트**: `npm test` 182/182 (FIR 15개: 가짜 OFP + 실제 샘플 10개 FIR 순서가 PACKAGE 3 목록과 일치, 재진입 KZAK→PGZU→KZAK 확인), `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 비행): Briefing FIR 4개 표시, 편집 → 저장 → 카드 표시(시험 값, 확인 후 삭제), Inflight 지금 FIR + 전체 보기, 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 콘솔 오류 없음. **실제 OFP로 화면 확인·파일 선택창 가져오기·아이패드는 미확인**
+- **미해결**: 통신표 내용은 사용자가 eAIP 등에서 채워야 함(앱에 기본값 없음). 진입 알림 10분은 앱 기준 임시값. 커밋 안 함
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §14) → 목록 2번 버티컬 뷰(Open-Meteo 기압면)
 
 ### 2026-11-12 — Briefing 커밋·배포
 - **배포**: 사용자 요청("커밋·배포"). 커밋 전 검사: private·PDF 없음, 항공사명·편명·등록번호 없음, 회사 기준 수치 없음(주석의 개정 번호 예시도 일반 표현으로 바꿈). 1e432fe push → GitHub Actions 성공. 배포 사이트: 새 코드 있음, 회사 기준 값 없음(grep), `runways.json` 200, `/private/` 404

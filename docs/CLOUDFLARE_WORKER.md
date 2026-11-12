@@ -2,7 +2,7 @@
 
 > 왜 필요한가: METAR·TAF·SIGMET(aviationweather.gov)은 웹앱이 직접 받을 수 없게 막혀 있어서(D-034) 중간에서 대신 받아 주는 작은 서버가 필요합니다. Mac 테스트 서버에는 이미 들어 있지만, 아이패드·GitHub Pages에서는 이 Worker가 그 역할을 합니다.
 > 비용: Cloudflare 무료 플랜(하루 10만 요청). 이 앱은 하루 수백 회 정도라 충분합니다. 카드 등록 불필요.
-> 코드: `worker/wx-proxy.js` (공개 기상만 전달, 키·토큰 없음, 허용된 4개 경로만)
+> 코드: `worker/wx-proxy.js` (공개 기상만 전달, 키·토큰 없음, 허용된 6개 경로만 — 2026-11-12 PIREP·G-AIRMET 추가, **다시 붙여넣기·Deploy 필요**)
 
 ## 1. 계정 만들기 (처음 한 번)
 1. https://dash.cloudflare.com/sign-up 에서 이메일·비밀번호로 가입

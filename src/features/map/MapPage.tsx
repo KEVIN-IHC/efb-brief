@@ -7,19 +7,21 @@ import { useTheme } from '../../app/theme';
 import { fmtFl, fmtTemp, fmtWind } from '../../lib/format';
 import { formatDayZ, formatZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
+import { firSequence } from '../fir/sequence';
 import { useActiveFlight } from '../flight/activeFlight';
+import { loadExtraCache, refreshExtra, useWxExtra } from '../weather/extra';
 import { loadAirports } from '../weather/airports';
 import { nearLon, unwrapLons } from '../weather/route';
 import { flightStations, useWx } from '../weather/store';
 import { FreshTag } from '../weather/ui';
 import { getSatTile, SAT_LAYERS, SAT_MAX_ZOOM, tileInCoverage, useSat } from './satellite';
 
-type LayerKey = 'sat' | 'sigmet' | 'wind' | 'airports';
-const LAYER_LABEL: Record<LayerKey, string> = { sat: '위성', sigmet: 'SIGMET', wind: '바람', airports: '공항' };
+type LayerKey = 'sat' | 'sigmet' | 'wind' | 'airports' | 'fir' | 'pirep' | 'tc' | 'gairmet';
+const LAYER_LABEL: Record<LayerKey, string> = { sat: '위성', sigmet: 'SIGMET', wind: '바람', airports: '공항', fir: 'FIR 경계', pirep: 'PIREP', tc: '열대저기압', gairmet: 'G-AIRMET' };
 const LS_KEY = 'efb.mapLayers';
 
 function readLayers(): Record<LayerKey, boolean> {
-  const def = { sat: false, sigmet: true, wind: true, airports: true };
+  const def = { sat: false, sigmet: true, wind: true, airports: true, fir: true, pirep: true, tc: true, gairmet: true };
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') as Partial<Record<LayerKey, boolean>>) };
   } catch {
@@ -32,6 +34,22 @@ const cssVar = (name: string) => getComputedStyle(document.documentElement).getP
 
 type Geo = GeoJSON.FeatureCollection;
 let geoCache: Promise<{ land: Geo; borders: Geo }> | null = null;
+
+/** FIR 경계 공개 자료 (D-059, VATSpy CC BY-SA 4.0 — 비공식) */
+interface FirFile {
+  source: string;
+  license: string;
+  commitDate: string | null;
+  firs: { id: string; name: string; oceanic?: 1; polys: [number, number][][] }[];
+}
+let firCache: Promise<FirFile> | null = null;
+const loadFirs = () =>
+  (firCache ??= fetch(new URL('./geo/firs.json', location.href).href)
+    .then((r) => r.json() as Promise<FirFile>)
+    .catch((e) => {
+      firCache = null;
+      throw e;
+    }));
 const loadGeo = () =>
   (geoCache ??= Promise.all(['land', 'borders'].map((n) => fetch(new URL(`./geo/${n}.json`, location.href).href).then((r) => r.json() as Promise<Geo>)))
     .then(([land, borders]) => ({ land, borders }))
@@ -254,6 +272,86 @@ export function MapPage() {
     }
   }, [layers.wind, wx.winds, flight.flightId, refLon]);
 
+  // FIR 경계 (비공식 공개 자료) — 루트 근처만, 루트가 지나는 FIR은 굵게 + OFP 이름
+  const [firMeta, setFirMeta] = useState<{ source: string; commitDate: string | null } | null>(null);
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = group('fir');
+    if (!layers.fir || !route.length) return;
+    let alive = true;
+    const onRoute = new Map((parsed ? firSequence(parsed).legs : []).map((l) => [l.icao, l.name]));
+    const lats = route.map((p) => p.lat);
+    const lons = route.map((p) => p.lon);
+    const box = { s: Math.min(...lats) - 15, n: Math.max(...lats) + 15, w: Math.min(...lons) - 25, e: Math.max(...lons) + 25 };
+    void loadFirs()
+      .then((f) => {
+        if (!alive) return;
+        setFirMeta({ source: f.source, commitDate: f.commitDate });
+        const line = cssVar('--text-dim');
+        const hot = cssVar('--accent');
+        for (const fir of f.firs) {
+          const on = onRoute.has(fir.id);
+          for (const poly of fir.polys) {
+            const off = nearLon(poly[0][1], refLon) - poly[0][1];
+            const pts = poly.map(([la, lo]) => [la, lo + off] as L.LatLngTuple);
+            if (!on && !pts.some(([la, lo]) => la >= box.s && la <= box.n && lo >= box.w && lo <= box.e)) continue;
+            L.polygon(pts, { pane: 'ne', color: on ? hot : line, weight: on ? 1.6 : 0.8, opacity: on ? 0.9 : 0.5, dashArray: '4 4', fill: false, interactive: on })
+              .bindTooltip(`${fir.id} ${onRoute.get(fir.id) || fir.name}${on ? ' · 항로 통과' : ''} · 경계 = 비공식 공개 자료(참고)`, { sticky: true })
+              .addTo(g);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [layers.fir, route, parsed, refLon, theme]);
+
+  // PIREP · 열대저기압 · G-AIRMET (D-060)
+  const extra = useWxExtra();
+  useEffect(() => {
+    void loadExtraCache().then(() => refreshExtra());
+  }, [route]);
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = group('pirep');
+    if (!layers.pirep) return;
+    for (const p of extra.pirep?.data ?? []) {
+      if (!p.turb && !p.icing) continue;
+      const sev = /SEV|EXTRM/.test(`${p.turb ?? ''}${p.icing ?? ''}`);
+      L.circleMarker([p.lat, nearLon(p.lon, refLon)], { radius: 5, color: cssVar(sev ? '--bad' : '--warn'), weight: 2, fillOpacity: 0.3 })
+        .bindTooltip(`${p.aireP ? 'AIREP' : 'PIREP'} ${formatDayZ(p.obsTime)} ${p.fl != null ? `FL${p.fl}` : ''} ${p.turb ? `TB ${p.turb}` : ''} ${p.icing ? `IC ${p.icing}` : ''}`, { direction: 'top' })
+        .bindPopup(`<pre>${p.raw.replace(/</g, '&lt;')}</pre>`)
+        .addTo(g);
+    }
+  }, [layers.pirep, extra.pirep, refLon, theme]);
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = group('tc');
+    if (!layers.tc) return;
+    for (const c of extra.tc?.data ?? []) {
+      L.marker([c.lat, nearLon(c.lon, refLon)], { icon: L.divIcon({ className: 'tc-icon', iconSize: [90, 22], iconAnchor: [9, 11], html: `<i>🌀</i><span>${c.name}</span>` }) })
+        .bindPopup(`<b>${c.name}</b> ${c.level}<br>${c.severity ?? ''}<br><small>GDACS 재난 경보 — 항공 공식 아님</small>`)
+        .addTo(g);
+    }
+  }, [layers.tc, extra.tc, refLon, theme]);
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = group('gairmet');
+    if (!layers.gairmet) return;
+    const color = cssVar('--warn');
+    for (const a of extra.gairmet?.data ?? []) {
+      if (a.expire && Date.parse(a.expire) <= now) continue;
+      const off = nearLon(a.poly[0][1], refLon) - a.poly[0][1];
+      L.polygon(
+        a.poly.map(([la, lo]) => [la, lo + off] as L.LatLngTuple),
+        { color, weight: 1, dashArray: '2 3', fillColor: color, fillOpacity: 0.06 },
+      )
+        .bindPopup(`<b>G-AIRMET ${a.hazard}</b> ${a.base ?? ''}${a.top ? `–${a.top}` : ''}<br>${formatDayZ(a.validTime)} · 만료 ${formatZ(a.expire)}`)
+        .addTo(g);
+    }
+  }, [layers.gairmet, extra.gairmet, refLon, now, theme]);
+
   const toggle = (k: LayerKey) =>
     setLayers((s) => {
       const n = { ...s, [k]: !s[k] };
@@ -287,6 +385,11 @@ export function MapPage() {
       </div>
       <div ref={el} className="map-box" role="region" aria-label="기상 지도" />
       <p className="muted small">
+        {layers.fir && firMeta && (
+          <>
+            FIR 경계 = VATSpy 공개 자료(CC BY-SA 4.0{firMeta.commitDate ? `, ${firMeta.commitDate.slice(0, 10)}` : ''}) — <b>비공식, 실제 경계와 다를 수 있음</b>. 진입 시각은 OFP 기준 ·{' '}
+          </>
+        )}
         루트 = OFP 웨이포인트 · 주황 원 = ETP · 공항 색 = METAR 비행 등급 · SIGMET 빨강 = 뇌우·화산재·열대저기압, 주황 = 난류·착빙 등 · 바람 화살표 = 불어가는 방향(웨이포인트 계획 고도) · 참고용, 공식 브리핑 대체 아님
       </p>
     </div>

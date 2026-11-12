@@ -4,7 +4,7 @@ import { bearingDeg, gcDistanceNm, gcInterpolate, type LatLon } from '../lib/geo
 import type { OfpData, OfpEtp, OfpRecord, OfpWaypoint } from '../features/ofp/types';
 import { DEMO_FLIGHT } from './demoFlight';
 
-export const DEMO_PARSER_VERSION = "demo-3";
+export const DEMO_PARSER_VERSION = "demo-4";
 
 const RKSI: LatLon = { lat: 37.4692, lon: 126.4505 };
 const KLAX: LatLon = { lat: 33.9425, lon: -118.4081 };
@@ -110,6 +110,9 @@ export function buildDemoOfp(): OfpData {
   const toFuel = block - FUEL.taxi;
   const landFuel = toFuel - FUEL.trip;
   const route = buildRoute(takeoffMs, toFuel, landFuel);
+  // FIR 진입 표시 (D-055 화면 확인용, 경계 위치는 가상)
+  const DEMO_FIR: Record<string, string> = { DM02: 'RJJJ FUKUOKA (DEMO)', DM04: 'KZAK OAKLAND OCEANIC (DEMO)', DM10: 'KZOA OAKLAND (DEMO)', DM12: 'KZLA LOS ANGELES (DEMO)' };
+  for (const w of route) if (DEMO_FIR[w.name]) w.fir = DEMO_FIR[w.name];
 
   const zfw = 225000;
   const etps: OfpEtp[] = [

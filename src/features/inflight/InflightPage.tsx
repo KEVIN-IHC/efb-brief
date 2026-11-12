@@ -6,6 +6,8 @@ import { formatDayZ, formatZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { FAIL_THRESHOLD, getLogSyncStatus, outboxEvents, saveLog } from '../../sync/outbox';
 import { syncNow, useSync } from '../../sync/syncManager';
+import { FirCommSection } from '../fir/FirCommSection';
+import { ActiveTimers } from '../ops/OpsPage';
 import { useActiveFlight } from '../flight/activeFlight';
 import { Cell, DocSection, LevelPill } from '../ofp/doc/ui';
 import { OfpOpenButton } from '../ofp/OfpOpenButton';
@@ -96,6 +98,8 @@ export function InflightPage() {
         </DocSection>
       )}
 
+      <ActiveTimers />
+
       {rem.length > 0 && (
         <DocSection title="Checks due" className="span-all">
           <ul className="remind">
@@ -107,6 +111,8 @@ export function InflightPage() {
           </ul>
         </DocSection>
       )}
+
+      {o && proj && <FirCommSection o={o} checks={checks} timeDevMin={proj.timeDevMin} now={now} compact />}
 
       {o && proj && (
         <DocSection title={`Fuel · plan vs actual · ${U}`} className="span-all">

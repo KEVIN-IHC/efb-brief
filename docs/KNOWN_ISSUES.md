@@ -119,6 +119,18 @@
 - **설명** 글 속 `Refer to …` 링크는 문장 안에 있어 44px 터치 기준보다 작음(위아래 여백만 4px). 쪽 이동 버튼·검색 결과·MEL 버튼은 44px
 - **향후** 아이패드 실사용에서 불편하면 참조 목록을 쪽 아래 버튼으로 따로 모아 보이기
 
+## K-35 PIREP·G-AIRMET은 Worker 재배포 전까지 배포판에서 안 됨 🟡
+- `worker/wx-proxy.js` 허용 경로에 pirep·gairmet 추가(D-060). Cloudflare에 새 코드를 붙여넣고 Deploy해야 함. 그 전에는 "Worker가 아직 허용하지 않음" 문구
+
+## K-36 FIR 경계는 비공식 자료 ⚪
+- VATSpy(시뮬레이터 커뮤니티) — 이름이 실제와 다름(예: RJJJ "Tokyo"), 호주 등 일부 FIR은 4글자 코드로 없어 빠짐. 진입 시각은 OFP 기준(D-059)
+
+## K-37 Tarmac Delay 국가별 시간 기준 없음 ⚪
+- FOM이 다른 회사 문서(미보유)를 참조. 받으면 회사 파일 `ops` 타이머 표시 시점에 추가
+
+## K-38 공식 WAFS 난류·착빙·CB 없음 ⚪
+- WIFS 승인 계정 필요. 버티컬 뷰는 OFP SR·SIGMET·PIREP + 모델 바람만
+
 ## K-26 변환용 Python 환경이 바탕화면 폴더에 연결됨 ⚪
 - **설명** `private/manuals/.venv` = 바탕화면 `PDF변환/.venv`(사용자가 만든 pymupdf4llm 환경)로 연결(심볼릭 링크). 바탕화면 폴더를 지우면 PDF 변환이 안 됨(이미 만든 MD·묶음은 영향 없음)
 - **향후** 필요 시 `python3 -m venv private/manuals/.venv && private/manuals/.venv/bin/pip install pymupdf4llm pymupdf-layout` (도구가 안내문 출력). 큰 FCOM PDF 변환은 수십 분~몇 시간

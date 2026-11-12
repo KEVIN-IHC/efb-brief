@@ -1,6 +1,7 @@
 // 순항 중 점검 알림: 매시간 연료 점검, ETP 접근, 통과 기록 지연 (비행 시간대에만)
 import { fmtHm } from '../../lib/format';
 import { formatZ } from '../../lib/time';
+import { FIR_LEAD_MIN, firSequence, firTimeline } from '../fir/sequence';
 import type { OfpData } from '../ofp/types';
 import { nextWaypoint, revisedEto, type Projection, type WptCheck } from './deviation';
 
@@ -40,6 +41,11 @@ export function reminders(o: OfpData, checks: WptCheck[], proj: Projection, now:
     const t = Date.parse(revisedEto(next.w, proj.timeDevMin));
     const late = Math.round((now - t) / 60000);
     if (late >= REMINDER_RULES.overdueMin) out.push({ id: 'overdue', level: 'info', text: `${next.w.name} 통과 기록 대기 (수정 ETO ${formatZ(new Date(t).toISOString())}, ${late}분 경과)` });
+  }
+  // 4) 다음 FIR 진입 전 통신 확인 (D-055, 앱 기준 시점)
+  const fir = firTimeline(firSequence(o).legs, checks, proj.timeDevMin, now).find((f) => f.state === 'next');
+  if (fir?.leg.entry && fir.minsTo !== undefined && fir.minsTo >= 0 && fir.minsTo <= FIR_LEAD_MIN) {
+    out.push({ id: `fir-${fir.leg.icao}`, level: 'info', text: `${fir.leg.icao} ${fir.leg.name} 진입 ${fir.minsTo}분 전 (${fir.leg.entry.wpt} ${formatZ(fir.at)}) — 주파수·CPDLC 로그온 확인` });
   }
   return out;
 }

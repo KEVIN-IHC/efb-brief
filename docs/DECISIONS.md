@@ -379,3 +379,49 @@
   6. 제빙 예상(기온 5°C 이하 + 강수·안개)은 매뉴얼 수치가 아니라 **앱 기준 참고**로만
 - **영향** `src/features/brief/*`(신규), `alerts/rules/briefRules.ts`, `alerts/{types,useAlerts,AlertsCard}.ts(x)`, `app/{App,tabs}.tsx`, `styles.css`
 
+
+## FIR·통신 (2026-11-12)
+
+### D-055 FIR 통신 카드 — OFP FIR 순서 + 기기 안 개인 통신표
+- **날짜** 2026-11-12 (사용자: 추가 기능 목록 1번 "저장하고 1번 시작")
+- **결정**
+  1. FIR 순서·진입 지점·진입 시각은 **OFP 기준**: NAV LOG "/ XXXX FIR … 이름" 줄(지점 ETO) + NOTAM PACKAGE 3 "FIR:" 목록(출발 FIR·이름 보충). ADIZ 제외, 같은 FIR 연속은 하나, 재진입(예: KZAK→PGZU→KZAK)은 따로. 목록에 있는데 NAV LOG 진입 지점이 없으면 숨기지 않고 "원문 확인" 표시
+  2. 진입 시각: 통과 기록이 있으면 실제 ATA, 없으면 시간 편차 반영 수정 ETO. 지금·다음 FIR = 진입 기록이 있거나 시각이 지났는가
+  3. 통신 정보(CPDLC 로그온·HF·VHF·위치보고·SATCOM·메모·출처)는 **무료 API가 없고** Jeppesen·회사 자료는 저작권이 있으므로 사용자가 직접 입력하는 **개인 표**, IndexedDB `settings.firComm`에만 저장(D-049와 같은 이유). JSON 내보내기·가져오기(형식 `efb-fir-comm` v1)로 백업. "출처" 칸을 둬 근거를 남긴다
+  4. 화면: Briefing 탭 = 전체 FIR + 편집 + 내보내기/가져오기, Inflight = 지금·다음 FIR(펼치기 가능). 점검 알림: 다음 FIR 진입 **10분 전**(앱 기준, 매뉴얼 수치 아님) "주파수·CPDLC 로그온 확인"
+- **대안** FIR 경계 공개 자료(VATSpy 등)로 진입 시각 계산 → 비공식·근사, OFP가 더 정확해 기각(경계 지도는 목록 5번에서 "참고용"으로). 통신표를 코드에 내장 → 저작권·공개 저장소, 기각
+- **영향** `src/features/fir/*`(신규), `inflight/{InflightPage.tsx,reminders.ts}`, `brief/BriefPage.tsx`, `mock/demoOfp.ts`(데모에 FIR 진입 표시, `demo-4`), `app/styles.css`
+
+## 운항 도구·자료 신뢰 (2026-11-12, 사용자: "합친 목록 다 진행")
+
+### D-056 Ops 탭 — 상황 카드 + 사건 기록·PA·연락처·타이머·보고서 초안
+- **날짜** 2026-11-12
+- **결정**
+  1. 상황 카드(비정상·보안·정상운항 참고)는 **회사 매뉴얼 원문을 그대로 연다**(앱이 절차를 요약·해석하지 않음). 카드 목록·제목·사건 버튼·양식 칸·타이머 표시 시점·FOM 절 코드는 회사 기준 파일의 선택 항목 `ops`에만(D-049 방식, Mac `private/manuals/build-ops.py`가 FOM 묶음 머리로 절 제목을 채움). 앱은 형식과 화면만
+  2. 사건 기록 = 순항 메모(`kind: memo`)에 "⏱ HHMMZ 이름 — 내용" → 기존 동기화·시트 칸 그대로. 수정·삭제 없음(정정 기록). 개인정보 입력 금지 안내
+  3. 정보 양식(예: 도착 의료 지원 요청)은 **메모리에만**(저장·동기화 안 함, 승객 개인정보) → 글 복사
+  4. 타이머(예: Tarmac Delay)는 기기 안 저장, 표시 시점은 회사 파일 값만(FOM에 있는 30분 PA). 국가별 Tarmac 시간 기준은 FOM에 없고 다른 회사 문서(미보유) → 앱에 넣지 않고 "앱에 없음" 표시
+  5. PA 문안·연락처는 사용자가 넣는 개인 자료(기기 안). 문안의 `{FLT}` 등 빈칸을 OFP·기상 값으로 채우고, 못 채우면 `[이름?]`로 남김. FOM에 기장 방송 예문이 없어 기본 문안은 넣지 않음
+  6. 보고서 초안 = 사건 기록 + 사건 시각 계획 위치 + 비행 정보 → 글 복사. **보고 종류·기한은 앱이 판정하지 않음**(매뉴얼 원문 링크만)
+- **영향** `src/features/ops/*`(신규), `brief/rules.ts`(`ops` 형식), `app/{tabs,App}.tsx`, `inflight/InflightPage.tsx`(진행 중 타이머)
+
+### D-057 자료 신뢰 표시 — 출처·공식 여부·시각·AIRAC
+- **날짜** 2026-11-12 (사용자 질문: "모든 자료가 최신이라 비행 때 믿을 만한가")
+- **결정** 새 화면의 모든 자료 옆에 출처와 성격을 붙인다: OFP·가져온 매뉴얼(개정판) = 공식 / AWC METAR·TAF·SIGMET·PIREP·NOAA SWPC = 공식 기상(발표·받은 시각) / Open-Meteo = 모델 예보(참고) / VATSpy FIR 경계·GDACS = 비공식(참고) / 통신표·PA·연락처 = 개인 입력(입력일·출처·AIRAC). 개인 통신표는 입력 후 AIRAC 주기가 바뀌면 "다시 확인" 경고 (`src/lib/airac.ts`, 기준 2401 = 2024-01-25)
+- **원칙** 앱 자료는 어떤 것도 비행 판단의 단독 근거가 아니다(승인된 EFB·OFP·NOTAM·ATC·회사 매뉴얼 원본이 기준)
+
+### D-058 버티컬 뷰 (항로 단면)
+- **날짜** 2026-11-12
+- **결정** Weather 탭. 가로 = 누적 거리, 세로 = FL. OFP 계획 고도(CLB/DSC 줄은 이어 그림)·MSA·SR·ETP·FIR 진입 + Open-Meteo 기압면 9개(850~150hPa)로 고도별 앞/뒷바람(진로 기준)·ISA 편차 + 0°C 고도(`freezing_level_height`) + 지점 ETO가 유효시간에 걸리는 SIGMET의 하한·상한(없으면 점선) + 지금 위치(계획+기록 편차). 기압면을 6개→9개로 늘려 받음(예전 캐시는 "다시 받기" 안내). WAFS 공식 난류·착빙·CB 격자는 WIFS 승인 계정이 필요해 넣지 않음
+- **영향** `src/features/vertical/*`(신규), `weather/{api,decode,types,WeatherPage}.ts(x)`
+
+### D-059 FIR 경계 지도 = VATSpy 공개 자료 내장 (비공식·참고)
+- **날짜** 2026-11-12
+- **결정** `tools/build-firs.ts`가 VATSpy Data Project(VATSIM, **CC BY-SA 4.0**, 저장소 라이선스 확인)에서 4글자 FIR만 단순화해 `public/geo/firs.json`(약 240KB, 오프라인 저장)으로. 가끔 다시 실행해 갱신. 지도에 점선, 항로 FIR은 굵게 + OFP 이름. **진입 시각은 OFP 기준**, 경계선은 "비공식, 실제 경계와 다를 수 있음" 표시와 출처·라이선스 표기
+- **대안** ICAO GIS 정식 파일 유료(약 $4,000), ICAO 지도 서버 대량 받기는 약관 불명 → 기각
+- **영향** `tools/build-firs.ts`, `public/geo/firs.json`, `map/MapPage.tsx`
+
+### D-060 기상 확장 — PIREP·G-AIRMET(AWC 중계)·우주기상(NOAA SWPC)·열대저기압(GDACS)
+- **날짜** 2026-11-12
+- **결정** Weather 탭 카드 + 지도 레이어. PIREP는 루트 bbox(날짜변경선이면 둘)·최근 3시간·난류/착빙만, 루트 150NM 안 목록. G-AIRMET은 미국 상공을 지날 때만(0시간 다각형). SWPC·GDACS는 CORS 허용이라 직접. NHC는 CORS 없음·지역 한정이라 제외, GDACS는 항공 공식 아님 표시. 실패하면 이전 자료 유지 + 10분 동안 재시도 안 함. **Worker 허용 경로에 pirep·gairmet 추가 → 사용자가 Cloudflare에 새 코드 배포해야 배포판에서 동작**
+- **영향** `weather/{extra.ts,ExtraCard.tsx,route.ts}`, `worker/wx-proxy.js`, `map/MapPage.tsx`

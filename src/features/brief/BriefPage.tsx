@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { formatAgo } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { BasisRow } from '../alerts/AlertsCard';
+import { FirCommSection } from '../fir/FirCommSection';
 import { useActiveFlight } from '../flight/activeFlight';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, project } from '../inflight/deviation';
@@ -165,7 +166,8 @@ export function BriefPage() {
   const [showEra, setShowEra] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const proj = useMemo(() => (o ? project(o, buildChecks(o, latestActuals(logs))) : null), [o, logs]);
+  const checks = useMemo(() => (o ? buildChecks(o, latestActuals(logs)) : []), [o, logs]);
+  const proj = useMemo(() => (o ? project(o, checks) : null), [o, checks]);
   const cards = useMemo(() => (o && brief ? buildCards(o, brief, data.rules, data.profile, proj) : []), [o, brief, data.rules, data.profile, proj]);
   const pos = useMemo(() => (o ? currentPosition(o, now, proj?.last ? proj.timeDevMin : 0) : null), [o, now, proj]);
   const div = useMemo(() => (brief ? diversionList(brief, pos) : []), [brief, pos]);
@@ -221,6 +223,8 @@ export function BriefPage() {
           </ul>
         </DocSection>
       )}
+
+      {o && <FirCommSection o={o} checks={checks} timeDevMin={proj?.timeDevMin ?? 0} now={now} />}
 
       {cards.map((c) => {
         const text = `[${c.title}]\n${c.lines.join('\n')}`;

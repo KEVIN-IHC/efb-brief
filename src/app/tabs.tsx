@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type TabId = 'dashboard' | 'brief' | 'ofp' | 'map' | 'weather' | 'notam' | 'inflight' | 'mel' | 'manual' | 'settings';
+export type TabId = 'dashboard' | 'brief' | 'ofp' | 'map' | 'weather' | 'notam' | 'inflight' | 'ops' | 'mel' | 'manual' | 'settings';
 
 export interface TabDef {
   id: TabId;
@@ -26,6 +26,7 @@ export const TABS: TabDef[] = [
   { id: 'map', label: 'Map', primary: false, icon: I(<><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" /></>) },
   { id: 'weather', label: 'Weather', primary: true, icon: I(<><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7Z" /></>) },
   { id: 'inflight', label: 'Inflight', primary: true, icon: I(<><path d="M12 3v18" /><path d="M3 13l9-4 9 4" /><path d="M8 20l4-1.5 4 1.5" /></>) },
+  { id: 'ops', label: 'Ops', primary: false, icon: I(<><path d="M12 3 3 20h18L12 3Z" /><path d="M12 10v4M12 17.5v.01" /></>) },
   { id: 'notam', label: 'NOTAM', primary: false, icon: I(<><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h5" /></>) },
   { id: 'mel', label: 'MEL', primary: false, icon: I(<><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z" /></>) },
   { id: 'manual', label: 'Manual', primary: false, icon: I(<><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" /><path d="M4 21V5M8 7h7" /></>) },

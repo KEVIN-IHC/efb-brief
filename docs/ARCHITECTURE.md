@@ -178,6 +178,30 @@ IPBS/
 | `BriefPage.tsx` | Briefing 탭 |
 - 얼러트 연결: `alerts/rules/briefRules.ts` (판정 묶음 7개), `FlightContext.brief`
 
+### 3.7f FIR·통신 `src/features/fir/` (D-055)
+| 파일 | 역할 |
+|---|---|
+| `sequence.ts` | OFP → FIR 순서(`firSequence`), 지금·다음 FIR·진입 시각(`firTimeline`), 알림 시점 `FIR_LEAD_MIN` |
+| `commTable.ts` | 개인 통신표 저장(IndexedDB `settings.firComm`)·내보내기/가져오기(`efb-fir-comm` v1) |
+| `FirCommSection.tsx` | FIR · 통신 카드 + 편집 창 (Briefing 전체 / Inflight `compact`) |
+- 점검 알림: `inflight/reminders.ts` 4번 (다음 FIR 진입 10분 전)
+
+### 3.7g Ops `src/features/ops/` (D-056)
+| 파일 | 역할 |
+|---|---|
+| `store.ts` | 사건 기록(메모 형식 "⏱ HHMMZ …")·연락처·PA 문안(빈칸 채우기)·타이머·보고서 초안 저장 |
+| `position.ts` | 사건 시각의 계획 위치 |
+| `OpsPage.tsx` | Ops 탭: 상황 카드(회사 파일 `ops` → FOM 원문 보기)·사건 기록·PA·연락처·보고서, `ActiveTimers`(Inflight 공용) |
+- 공통: `src/lib/airac.ts` (D-057)
+
+### 3.7h 버티컬 뷰 `src/features/vertical/` (D-058)
+| `profile.ts` | 계획 고도선·고도별 바람 칸·SIGMET 구간 계산 |
+| `VerticalView.tsx` | SVG 단면 (Weather 탭) |
+
+### 3.7i 기상 확장 (D-060) · FIR 경계 (D-059)
+- `weather/extra.ts` PIREP·G-AIRMET·SWPC·GDACS 받기·해석·저장(wxSnapshots type pirep/gairmet/swx/tc), `weather/ExtraCard.tsx`
+- `tools/build-firs.ts` → `public/geo/firs.json`, 지도 레이어 `map/MapPage.tsx`
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

@@ -19,6 +19,11 @@ describe('wx-proxy worker', () => {
     expect(f.mock.calls[0][0]).toBe('https://aviationweather.gov/api/data/metar?ids=RKSI&format=json');
   });
 
+  it('PIREP·G-AIRMET 경로 허용 (D-060)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { status: 200 })));
+    for (const k of ['pirep', 'gairmet']) expect((await call(`/awc/${k}?format=json`)).status).toBe(200);
+  });
+
   it('허용 목록 밖 경로·메서드는 거절 (열린 프록시 방지)', async () => {
     const f = vi.fn();
     vi.stubGlobal('fetch', f);

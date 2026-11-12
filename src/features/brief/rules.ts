@@ -123,6 +123,35 @@ export interface CompanyRules {
     windshear: RuleRef;
     volcanic: RuleRef;
   };
+  /** 상황 카드 (선택, D-056) */
+  ops?: OpsConfig;
+}
+
+/** 상황 카드 (D-056): 회사 매뉴얼 절 링크·사건 버튼·정보 양식·타이머. 목록과 절 코드는 회사 기준 파일에만 */
+export interface OpsTimerDef {
+  label: string;
+  startHint?: string;
+  /** every = n분마다, at = 시작 후 n분 */
+  marks: { every?: number; at?: number; text: string; ref?: RuleRef }[];
+  note?: string;
+}
+
+export interface OpsCard {
+  id: string;
+  group: 'abnormal' | 'security' | 'normal';
+  title: string;
+  refs: RuleRef[];
+  /** 누르면 사건 기록에 시각과 함께 남는 버튼 */
+  events?: string[];
+  /** 메모리에만 두는 정보 양식 (예: 도착 의료 지원 요청) — 개인정보라 저장·동기화 안 함 */
+  form?: { title: string; ref?: RuleRef; fields: string[] };
+  timer?: OpsTimerDef;
+}
+
+export interface OpsConfig {
+  source?: string;
+  cards: OpsCard[];
+  reports?: { refs: RuleRef[]; kinds: string[] };
 }
 
 export const rulesEvents = new EventTarget();
@@ -136,6 +165,7 @@ export function validateRules(json: unknown): string | null {
   if (typeof r.version !== 'number' || r.version > RULES_FORMAT_VERSION) return `지원하지 않는 버전 (${r.version}) — 앱을 새로 고침해 보세요`;
   for (const k of ['takeoff', 'approach', 'alternate', 'dispatch', 'windLimits', 'lowTime', 'rff', 'coldTemp'] as const) if (!r[k]) return `항목 없음: ${k}`;
   if (!Array.isArray(r.approach?.levels) || !r.approach.levels.length) return 'approach.levels 비어 있음';
+  if (r.ops && (!Array.isArray(r.ops.cards) || r.ops.cards.some((c) => !c.id || !c.title || !Array.isArray(c.refs)))) return 'ops.cards 형식 오류';
   return null;
 }
 

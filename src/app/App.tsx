@@ -5,6 +5,7 @@ import { InstallBanner } from './InstallBanner';
 import { MORE_ICON, TABS, isTabId, type TabId } from './tabs';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { BriefPage } from '../features/brief/BriefPage';
+import { OpsPage } from '../features/ops/OpsPage';
 import { InflightPage } from '../features/inflight/InflightPage';
 import { OfpPage } from '../features/ofp/OfpPage';
 import { OfpOpenButton } from '../features/ofp/OfpOpenButton';
@@ -84,6 +85,7 @@ export function App() {
           </header>
           {tab === 'dashboard' && <DashboardPage />}
           {tab === 'brief' && <BriefPage />}
+          {tab === 'ops' && <OpsPage />}
           {tab === 'ofp' && <OfpPage />}
           {tab === 'inflight' && <InflightPage />}
           {tab === 'settings' && <SettingsPage />}
