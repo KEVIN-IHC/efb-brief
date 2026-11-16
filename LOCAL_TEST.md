@@ -134,6 +134,48 @@ Safari 또는 Chrome 주소창에 `http://localhost:4173` 입력.
 6. **Map**: FIR 경계(점선, 항로 FIR 굵게)·PIREP·열대저기압·G-AIRMET 단추
 7. **Cloudflare Worker 다시 배포** (`docs/CLOUDFLARE_WORKER.md` "코드를 바꾸면") 후 아이패드에서 PIREP 오류 문구가 사라지는지
 
+## 16. OFP 버튼 한 곳 · 매뉴얼 그 자리에서 · 기상 시간대·플랜 뷰 (D-061~D-064)
+
+1. 어느 화면에서든 **맨 위 줄 "OFP 열기"** 하나로 OFP를 열 수 있는지 (아이폰 폭에선 "OFP"). 다른 화면에는 버튼 대신 안내 글
+2. **MEL**: 항목 버튼(예: "XX-XX P 1/2 보기 ▾") → 카드 안에서 매뉴얼이 펼쳐지고, 다시 누르거나 **닫기**로 접히는지. 탭이 바뀌지 않는지
+3. **Ops**: 상황 카드 → 📖 FOM 근거를 누르면 그 자리에서 원문 펼침/접기
+4. **Dashboard 얼러트·Briefing**의 📖 → 화면 위 창으로 열리고, 닫으면 보던 위치 그대로인지. "Manual 탭에서 크게 보기"
+5. **Weather → 지금 갱신**(바람을 새로 받아야 함) → 버티컬 뷰 위 **지점 통과 시각 / 시각 고정**. 시각 고정에서 슬라이더·▶ 재생 → "지금 +3h" 같은 표시와 색 칸이 바뀌는지. 바탕을 **난류 지수 / 기온 경도 / 기온 변화 3h**로 바꿔 보기
+6. 아래 **플랜 뷰**: 계획 FL·FL370 등, 표시(앞/뒷바람·ISA·난류·기온) 바꾸기, SIGMET·PIREP 표시
+
+## 17. Map 시간 재생 · Manual 돌아가기 (D-065·D-066)
+
+1. **Map**: 지도 위 "시각 고정 · 재생" → ▶. 시각이 지금 −3h부터 예보 끝까지 움직이며 위성(지난 시각은 그 시각 영상)·바람 화살표·SIGMET·✈ 예상 위치가 바뀌는지. "지금" 버튼. 위성 단추를 켜야 위성이 보임
+2. 지도 아래 버티컬 뷰·플랜 뷰가 같은 시각으로 움직이는지. SIGMET 목록·바람 표·우주기상도 Map 아래에 있는지. **Weather 탭에는 공항 METAR·TAF만**
+3. MEL 항목 펼침 → "Manual 탭에서 크게 보기" → Manual 맨 위 **← MEL(으)로 돌아가기** → 같은 위치, 펼친 그대로인지. Briefing 📖 창에서 크게 보기 → 돌아가기 → 창이 다시 열리는지
+
+## 18. 항로·OFP 번호 일치 · 난류 이륙 후 시간 (D-067)
+
+1. 실제 OFP를 열고 **OFP → FLIGHT**: ROUTE 아래 "✓ 이 OFP의 ROUTE n곳 모두 같음 · ✓ OFP NO. … n곳 같음" → 눌러 펼치면 CFP 요약 항로·OFP FPL·제출된 ATS FPL 사본·NAV LOG·CFP PLAN·PLAN #·REQUEST NO. 목록, `L…`을 누르면 원문 줄
+2. **Turbulence · SR**: 잘리지 않고 "T/O +1:57 ~ +2:38 (0:41)"처럼 이륙 후 시간이 나오는지. Dashboard OFP 요약 HIGH 구간, Briefing 카드 문구에도 이륙 후 시간
+
+## 19. AGTOW · SR 지도 · 우주기상 · 맨 위 버튼 · MSA (D-068~D-072)
+
+1. 실제 OFP → **OFP → WEIGHTS** 아래: MTOW·RWY·TCAP·MZFW+TOF·MLDW+TIF 중 가장 낮은 줄에 **AGTOW** 표시, 값이 OFP AGTOW와 같은지
+2. **Turbulence · SR** 구간을 누르면 Map으로 가서 그 구간 확대·설명. Map "난류 SR" 단추, 버티컬 뷰 SR 띠
+3. Mac에서 `python3 private/manuals/build-ops.py` → `npm run manuals` → 새 `out/company-rules.json`을 아이패드 Settings → 매뉴얼 → 가져오기 → Map 아래 우주기상 "회사 매뉴얼 근거" 📖 3개가 펼쳐지는지, 칸이 잘리지 않는지
+4. 맨 위 **⟳ 기상**(아래 줄 "기상 갱신 완료"), **⤓ 저장**(진행 %·"오프라인 저장 완료"), **OUTBOX** 모양이 같은지. 아이폰 폭에서도 한 줄에 다 들어가는지
+5. NAV LOG(넓은 화면)에서 MSA 100 이상이 주황으로
+
+## 20. 창·돌아가기 · WEIGHTS 정리 (D-073)
+
+1. OFP → WEIGHTS: 맨 위 FIRST/BUSINESS/ECONOMY와 **TOTAL PAX**, LDW 아래 PAX·CARGO = PAYLOAD, AGTOW 표 열 정렬
+2. OFP → Turbulence 구간 누르기 → 창(확대 지도·지점 목록) → **Map에서 크게 보기** → Map 맨 위 **← OFP(으)로 돌아가기** → 같은 위치·창 다시 열림
+3. OFP → MEL/CDL 줄 누르기 → 매뉴얼 창 → Manual 탭에서 크게 보기 → 돌아가기
+4. 아이패드 가로(3단)에서 EDTO·ALTERNATES 카드가 깨지지 않는지
+
+## 21. NAV LOG 숫자 색 · 매뉴얼 쪽 사진 (D-075·D-076)
+
+1. NAV LOG: 줄 색이 없고, SR 숫자만 주황/빨강 굵게(구간 지점은 이름 왼쪽 색 선), MSA 100 이상만 굵게·높을수록 진한 주황
+2. Mac: 원본 PDF가 `private/manuals/inbox/`에 있는지 확인 → `npm run manuals -- --images` → `private/manuals/out/`에 `A380-FCOM-img-1.efbimg` 등 생김
+3. 구글드라이브에 `.efbimg` 파일(필요한 매뉴얼만) 올리기 → 아이패드 Settings → 매뉴얼 → 가져오기 → 목록에 "쪽 사진 N쪽" 표시
+4. Manual 탭·MEL 펼치기에서 그림이 있는 쪽 → "🖼 원본 쪽 사진" → 사진이 나오고 누르면 새 창에서 크게
+
 ## 알아둘 점
 
 - **기상(METAR·TAF·SIGMET)은 지금 Mac 서버를 통해서만 받습니다.** 아이패드·GitHub에서는 Cloudflare 중계를 설치한 뒤 동작합니다 (그때 안내).

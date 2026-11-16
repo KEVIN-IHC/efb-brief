@@ -24,12 +24,22 @@ export const SAT_LAYERS: SatLayer[] = [
 ];
 export const SAT_MAX_ZOOM = 6; // GoogleMapsCompatible_Level6
 
-const tileUrl = (layer: string, z: number, x: number, y: number) =>
-  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/default/GoogleMapsCompatible_Level6/${z}/${y}/${x}.png`;
+/** time = 'latest'(최신) 또는 ISO 시각 — GIBS가 그 시각 이전 가장 가까운 영상으로 맞춤 (D-065) */
+const tileUrl = (layer: string, z: number, x: number, y: number, time = 'latest') =>
+  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time === 'latest' ? 'default' : time}/GoogleMapsCompatible_Level6/${z}/${y}/${x}.png`;
+
+/** 지난 위성 영상 시각 목록: 지금 30분 전부터 30분 간격으로 hours시간 (최신 영상이 보통 20~30분 늦음) */
+export function satPastTimes(now: number, hours = 3): string[] {
+  const step = 30 * 60_000;
+  const last = Math.floor((now - step) / step) * step;
+  const out: string[] = [];
+  for (let t = last - hours * 3_600_000 + step; t <= last; t += step) out.push(new Date(t).toISOString().slice(0, 19) + 'Z');
+  return out;
+}
 
 interface SatTileRow {
   layer: string;
-  validTime: 'latest';
+  validTime: string; // 'latest' 또는 요청 시각
   tile: string; // z/x/y
   blob: Blob;
   imageTime: string | null;
@@ -69,19 +79,19 @@ export function tileInCoverage(layerId: string, z: number, x: number): boolean {
   return inRange(c) || inRange(c + 360);
 }
 
-function download(layer: string, z: number, x: number, y: number): Promise<SatTileRow> {
-  return limited(() => downloadNow(layer, z, x, y));
+function download(layer: string, z: number, x: number, y: number, time = 'latest'): Promise<SatTileRow> {
+  return limited(() => downloadNow(layer, z, x, y, time));
 }
 
-async function downloadNow(layer: string, z: number, x: number, y: number): Promise<SatTileRow> {
+async function downloadNow(layer: string, z: number, x: number, y: number, time: string): Promise<SatTileRow> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const r = await fetch(tileUrl(layer, z, x, y), { signal: ctrl.signal, cache: 'no-store' });
+    const r = await fetch(tileUrl(layer, z, x, y, time), { signal: ctrl.signal, cache: 'no-store' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const row: SatTileRow = {
       layer,
-      validTime: 'latest',
+      validTime: time,
       tile: `${z}/${x}/${y}`,
       blob: await r.blob(),
       imageTime: r.headers.get('layer-time-actual'),
@@ -95,22 +105,23 @@ async function downloadNow(layer: string, z: number, x: number, y: number): Prom
 }
 
 /** 저장본이 30분 이내거나 오프라인이면 저장본, 아니면 새로 받음(실패 시 저장본) */
-export async function getSatTile(layer: string, z: number, x: number, y: number): Promise<SatTileRow | null> {
+export async function getSatTile(layer: string, z: number, x: number, y: number, time = 'latest'): Promise<SatTileRow | null> {
   const db = await getDB();
-  const cached = (await db.get('wxFrames', [layer, 'latest', `${z}/${x}/${y}`])) as SatTileRow | undefined;
-  const fresh = cached && Date.now() - Date.parse(cached.fetchedAt) < REFRESH_MS.sat;
+  const cached = (await db.get('wxFrames', [layer, time, `${z}/${x}/${y}`])) as SatTileRow | undefined;
+  // 지난 시각 영상은 바뀌지 않으므로 저장본을 그대로
+  const fresh = cached && (time !== 'latest' || Date.now() - Date.parse(cached.fetchedAt) < REFRESH_MS.sat);
   if (cached && (fresh || !isOnline())) {
-    noteTime(layer, cached.imageTime);
+    if (time === 'latest') noteTime(layer, cached.imageTime);
     return cached;
   }
   if (!isOnline()) return null;
   try {
-    const row = await download(layer, z, x, y);
-    noteTime(layer, row.imageTime);
+    const row = await download(layer, z, x, y, time);
+    if (time === 'latest') noteTime(layer, row.imageTime);
     return row;
   } catch (e) {
     useSat.setState({ error: e instanceof Error ? e.message : String(e) });
-    if (cached) noteTime(layer, cached.imageTime);
+    if (cached && time === 'latest') noteTime(layer, cached.imageTime);
     return cached ?? null;
   }
 }
@@ -182,4 +193,15 @@ export async function prefetchSatCorridor(route: LatLon[], onProgress: (done: nu
   };
   await Promise.all([worker(), worker(), worker(), worker()]); // download()가 동시 4개로 제한
   return { bytes, failed };
+}
+
+/** 지난 시각 위성 조각은 12시간 지나면 지움 (최신 'latest'는 그대로) */
+export async function pruneSatFrames(now = Date.now()): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('wxFrames', 'readwrite');
+  for (let c = await tx.store.openCursor(); c; c = await c.continue()) {
+    const v = (c.value as { validTime: string }).validTime;
+    if (v !== 'latest' && Date.parse(v) < now - 12 * 3_600_000) await c.delete();
+  }
+  await tx.done;
 }

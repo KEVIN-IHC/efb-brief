@@ -9,7 +9,14 @@ import { srLevel, turbulenceZones } from '../turbulence';
 import type { Actual } from '../../inflight/deviation';
 
 const dash = (v: number | null | undefined, f: (n: number) => string = String) => (v == null || Number.isNaN(v) ? '—' : f(v));
-const isMark = (w: OfpWaypoint) => /^(TOC|TOD|ETP\d+)$/.test(w.name);
+/** TOC·TOD·ETP는 줄 색 없이 이름 앞 표시만 (D-074) */
+const markOf = (w: OfpWaypoint) => (w.name === 'TOC' ? '▲' : w.name === 'TOD' ? '▼' : /^ETP\d+$/.test(w.name) ? '◆' : null);
+/** MSA (D-075): 100(=10,000 ft) 이상만 숫자 색·굵게, 높을수록 진한 색 (100 → 옅은 주황 … 200 이상 진한 주황) */
+const msaStyle = (msa: number | null | undefined) => {
+  if (msa == null || msa < 100) return undefined;
+  const pct = Math.round(Math.min(1, (msa - 100) / 100) * 50) + 50;
+  return { color: `color-mix(in srgb, var(--msa) ${pct}%, var(--text))` };
+};
 const comp = (c: number | null | undefined) => (c == null ? '—' : `${c >= 0 ? 'P' : 'M'}${String(Math.abs(c)).padStart(3, '0')}`);
 
 export function NavLog({ o, onLine, actuals }: { o: OfpData; onLine?: (n: number) => void; actuals?: Map<number, Actual> }) {
@@ -53,9 +60,12 @@ export function NavLog({ o, onLine, actuals }: { o: OfpData; onLine?: (n: number
                     <td colSpan={17}>▸ FIR {w.fir}</td>
                   </tr>
                 )}
-                <tr className={`${isMark(w) ? 'row-mark' : ''} ${inZone.has(w.seq) ? `zone-${inZone.get(w.seq)}` : ''}`} onClick={w.srcLine && onLine ? () => onLine(w.srcLine!) : undefined}>
+                <tr className={inZone.has(w.seq) ? `zone-${inZone.get(w.seq)}` : ''} onClick={w.srcLine && onLine ? () => onLine(w.srcLine!) : undefined}>
                   <td className="sticky">
-                    <div className="mono strong">{w.name}</div>
+                    <div className="mono strong">
+                      {markOf(w) && <span className="wpt-mark">{markOf(w)}</span>}
+                      {w.name}
+                    </div>
                     <div className="wpt-sub">{w.fullName && w.fullName !== w.name ? w.fullName : Number.isFinite(w.lat) ? formatLatLon(w.lat, w.lon) : ''}</div>
                   </td>
                   <td className="mono">{w.flText && !/^\d+$/.test(w.flText) ? w.flText : fmtFl(w.fl)}</td>
@@ -65,7 +75,9 @@ export function NavLog({ o, onLine, actuals }: { o: OfpData; onLine?: (n: number
                   <td className="r mono hide-xs">{w.tempText ?? dash(w.oat, fmtTemp)}</td>
                   <td className="r mono hide-md">{dash(w.tas)}</td>
                   <td className="r mono hide-xs">{dash(w.gs)}</td>
-                  <td className="r mono hide-md">{dash(w.msa)}</td>
+                  <td className={`r mono hide-md msa ${w.msa != null && w.msa >= 100 ? 'msa-hi' : ''}`} style={msaStyle(w.msa)} title={w.msa != null ? `MSA ${(w.msa * 100).toLocaleString()} ft` : undefined}>
+                    {dash(w.msa)}
+                  </td>
                   <td className={`r mono hide-xs sr-${srLevel(w.sr)}`}>{dash(w.sr)}</td>
                   <td className="r mono hide-xs">{w.legDist || '—'}</td>
                   <td className="r mono hide-xs">{w.legMin}</td>
@@ -90,7 +102,7 @@ export function NavLog({ o, onLine, actuals }: { o: OfpData; onLine?: (n: number
         </table>
       </div>
       <p className="doc-foot muted">
-        ETO = ETD + ACTM · R/F 계획 잔여연료 · ATO·실제 연료는 Inflight 탭에서 기록 · SR 5–6 주의·7+ HIGH (임시 기준){onLine ? ' · 행을 누르면 원문 위치' : ''}
+        ▲ TOC · ▼ TOD · ◆ ETP · 지점 앞 색 선 = 난류 SR 구간(주황 주의·빨강 HIGH) · SR 숫자 색 = 등급 · MSA 100 이상은 굵게, 높을수록 진한 색 · ETO = ETD + ACTM · R/F 계획 잔여연료 · ATO·실제 연료는 Inflight 탭에서 기록 · SR 5–6 주의·7+ HIGH (임시 기준){onLine ? ' · 행을 누르면 원문 위치' : ''}
       </p>
     </DocSection>
   );

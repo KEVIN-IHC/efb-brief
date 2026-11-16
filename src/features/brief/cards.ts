@@ -55,7 +55,7 @@ export function buildCards(o: OfpData, b: BriefResult, rules: CompanyRules | nul
     lines: [
       `${h.flightNo} ${h.dep}→${h.arr} · ${h.acType} ${h.reg} · ETD ${hhmm(h.takeoff)} ETA ${hhmm(h.sta)} · 비행 ${fmtHm(h.airMin)}`,
       `순항 FL${h.cruiseFl}${h.edtoRule ? ` · ${h.edtoRule}` : ''} · 블록 연료 ${fmtKg(o.fuel.block)} ${o.unit}`,
-      turb.length ? `난류 예상: ${turb.map((z) => `${z.from.name}–${z.to.name} ${hhmm(z.from.eto)}~${hhmm(z.to.eto)} (SR ${z.maxSr})`).join(' · ')}` : '난류: OFP SR 주의 구간 없음',
+      turb.length ? `난류 예상: ${turb.map((z) => `${z.from.name}–${z.to.name} ${hhmm(z.from.eto)}~${hhmm(z.to.eto)} (이륙 후 ${fmtHm(z.from.cumMin)}~${fmtHm(z.to.cumMin)}, SR ${z.maxSr})`).join(' · ')}` : '난류: OFP SR 주의 구간 없음',
       `목적지 ${h.arr}: ${cond(dest?.base)}`,
       alts.length ? `교체: ${alts.map((a) => `${a.icao}(${a.roles.map((r) => ROLE_KO[r]).join('·')})`).join(', ')}` : '교체공항 정보 없음',
       ...(b.airports.filter((a) => a.special).map((a) => `특수공항 ${a.icao}: ${a.special!.note}`)),

@@ -5,7 +5,7 @@ import type { ManualItem, ManualMeta, ManualPage } from '../features/manual/type
 import type { OfpRecord, OfpWaypoint } from '../features/ofp/types';
 
 export const DB_NAME = 'efb';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 export interface FlightRecord {
   flightId: string;
@@ -75,6 +75,21 @@ export interface EfbDB extends DBSchema {
   settings: { key: string; value: SettingRow };
   /** v3 (D-046): 얼러트 확인·이력 — 처음 뜬 시각, 확인 시각 */
   alerts: { key: [string, string]; value: AlertRecord; indexes: { byFlight: string } };
+  /** v4 (D-076): 매뉴얼 쪽 사진 — 사진(원본 PDF 쪽 번호) / 매뉴얼별 쪽 → PDF 쪽 연결 */
+  manualImages: { key: [string, number]; value: { docId: string; pdf: number; blob: Blob; w: number; h: number } };
+  manualImgIndex: { key: string; value: ManualImgIndex };
+}
+
+export interface ManualImgIndex {
+  docId: string;
+  issueDate?: string;
+  /** 글 묶음 쪽 seq → PDF 쪽 번호 */
+  map: Record<string, number>;
+  /** 받은 부분 파일 번호 / 전체 부분 수 */
+  parts: number[];
+  partsTotal: number;
+  count: number;
+  importedAt: string;
 }
 
 export interface AlertRecord {
@@ -124,7 +139,11 @@ export function getDB(): Promise<EfbDatabase> {
         if (oldVersion < 3) {
           db.createObjectStore('alerts', { keyPath: ['flightId', 'id'] }).createIndex('byFlight', 'flightId');
         }
-        // 이후 버전: if (oldVersion < 4) { ... }
+        if (oldVersion < 4) {
+          db.createObjectStore('manualImages', { keyPath: ['docId', 'pdf'] });
+          db.createObjectStore('manualImgIndex', { keyPath: 'docId' });
+        }
+        // 이후 버전: if (oldVersion < 5) { ... }
       },
       blocked() {
         console.warn('[db] 다른 탭이 이전 버전 DB를 열고 있음');

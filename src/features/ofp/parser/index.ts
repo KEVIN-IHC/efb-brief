@@ -2,12 +2,13 @@
 import type { OfpData } from '../types';
 import { AC_CODE } from './aviator';
 import { compareFpl } from './fpl';
+import { checkRouteConsistency } from './routeCheck';
 import { EXTRACTORS, type ExtractCtx } from './extractors';
 import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.3'; // 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.4'; // 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -28,6 +29,10 @@ export function parseAviatorOfp(rawText: string): ParseResult {
   });
 
   const ofp = assemble(ctx, lines.map((l) => l.text));
+  if (ofp) {
+    const nav = ofp.route.map((w) => (w.fullName && /^\d{2,4}[NS]\d{3,5}[EW]$/.test(w.fullName) ? w.fullName : w.name));
+    ofp.routeCheck = checkRouteConsistency(lines, nav, ofp.header.dep, ofp.header.arr);
+  }
   return {
     parserVersion: AVIATOR_PARSER_VERSION,
     lineCount: lines.length,

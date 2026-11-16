@@ -2,8 +2,8 @@
 // 원문 문구만 보여 준다(조건을 요약·해석하지 않음). 매칭 못 하면 숨기지 않고 "매뉴얼에서 못 찾음".
 import { useEffect, useState } from 'react';
 import { useActiveFlight } from '../flight/activeFlight';
-import { OfpOpenButton } from '../ofp/OfpOpenButton';
-import { itemFlags, loadMelMatches, manualAircraft, openManualPage, type MelMatch } from './lookup';
+import { itemFlags, loadMelMatches, manualAircraft, setInlineOpen, useInlineOpen, type ManualTarget, type MelMatch } from './lookup';
+import { ManualInline } from './ManualInline';
 import { ManualText } from './ManualText';
 import { manualEvents, type StoredManual } from './store';
 
@@ -26,7 +26,7 @@ export function MelPage() {
     return (
       <section className="card placeholder">
         <p>현재 비행의 OFP가 없습니다.</p>
-        <OfpOpenButton />
+        <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 여세요.</p>
       </section>
     );
   if (!data) return null;
@@ -75,6 +75,18 @@ function MelCard({ m, ofpTitle, docs }: { m: MelMatch; ofpTitle: string; docs: S
   const it = m.item;
   const doc = it && docs.find((d) => d.docId === it.docId);
   const flags = it ? itemFlags(it.text) : null;
+  // 매뉴얼은 이 카드 안에서 펼치기/접기 (D-062)
+  const key = `mel:${m.itemNo}`;
+  const open = useInlineOpen((s) => s[key] ?? null);
+  const setOpen = (v: string | null) => setInlineOpen(key, v);
+  const links: { key: string; label: string; t: ManualTarget }[] = it
+    ? [
+        { key: 'item', label: `${it.ref ?? '매뉴얼 쪽'} 보기`, t: { docId: it.docId, seq: it.pageSeq, mark: it.itemNo } },
+        ...(it.opsProcSeq !== undefined ? [{ key: 'ops', label: '(o) 절차 보기', t: { docId: it.docId, seq: it.opsProcSeq, mark: it.itemNo } }] : []),
+        ...(m.parent && m.parent !== it ? [{ key: 'parent', label: `상위 ${m.parent.itemNo}`, t: { docId: m.parent.docId, seq: m.parent.pageSeq, mark: m.parent.itemNo } }] : []),
+      ]
+    : [];
+  const cur = links.find((l) => l.key === open);
   return (
     <section className={`card mel-card ${m.kind === 'CDL' ? 'is-cdl' : ''}`}>
       <div className="mel-head">
@@ -116,19 +128,16 @@ function MelCard({ m, ofpTitle, docs }: { m: MelMatch; ofpTitle: string; docs: S
 
       {it && (
         <div className="row mel-links">
-          <button className="btn" onClick={() => openManualPage({ docId: it.docId, seq: it.pageSeq, mark: it.itemNo })}>
-            {it.ref ?? '매뉴얼 쪽'} 열기
-          </button>
-          {it.opsProcSeq !== undefined && (
-            <button className="btn" onClick={() => openManualPage({ docId: it.docId, seq: it.opsProcSeq!, mark: it.itemNo })}>
-              (o) 절차 쪽 열기
+          {links.map((l) => (
+            <button key={l.key} className={`btn ${open === l.key ? 'primary' : ''}`} aria-expanded={open === l.key} onClick={() => setOpen(open === l.key ? null : l.key)}>
+              {l.label} {open === l.key ? '▴' : '▾'}
             </button>
-          )}
-          {m.parent && m.parent !== it && (
-            <button className="btn" onClick={() => openManualPage({ docId: m.parent!.docId, seq: m.parent!.pageSeq, mark: m.parent!.itemNo })}>
-              상위 {m.parent.itemNo}
-            </button>
-          )}
+          ))}
+        </div>
+      )}
+      {cur && (
+        <div className="man-inline-wrap">
+          <ManualInline target={cur.t} onClose={() => setOpen(null)} compact />
         </div>
       )}
       {doc && (

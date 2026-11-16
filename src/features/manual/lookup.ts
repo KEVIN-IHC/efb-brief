@@ -1,5 +1,6 @@
 // 매뉴얼 찾기 (D-045): OFP MEL/CDL 번호 매칭, "Refer to …" 연결, 오프라인 검색. 모두 기기 안.
 import { create } from 'zustand';
+import { goWithReturn } from '../../app/returnTo';
 import { getDB } from '../../db/schema';
 import { listManuals, manualEvents, type StoredManual } from './store';
 import type { ManualItem, ManualPage } from './types';
@@ -29,13 +30,24 @@ export interface ManualTarget {
 }
 export const useManualNav = create<{ target: ManualTarget | null; query: string | null; t: number }>(() => ({ target: null, query: null, t: 0 }));
 
+/** 📖 링크로 연 매뉴얼 창 (D-062, App의 ManualPopup이 그림) */
+export const useManualPopup = create<{ target: ManualTarget | null }>(() => ({ target: null }));
+/** 다른 화면의 매뉴얼 링크 = 그 자리 위에 창으로 (화면 이동 없음, 닫으면 원래 자리) */
 export function openManualPage(target: ManualTarget) {
-  useManualNav.setState({ target, query: null, t: Date.now() });
-  location.hash = '#manual';
+  useManualPopup.setState({ target });
 }
-export function openManualSearch(query: string) {
-  useManualNav.setState({ query, t: Date.now() });
-  location.hash = '#manual';
+/**
+ * 그 자리에서 펼친 매뉴얼 상태 (D-062·D-066). 키 예: mel:12-34-56A, ops:card, ops:ref:<카드>
+ * Manual 탭에 다녀와도 펼친 그대로 보이도록 화면 밖(메모리)에 둔다
+ */
+export const useInlineOpen = create<Record<string, string | null>>(() => ({}));
+export const setInlineOpen = (key: string, v: string | null) => useInlineOpen.setState({ [key]: v });
+
+/** Manual 탭으로 옮겨 가서 보기 — 보던 화면·스크롤을 기억해 "돌아가기" (D-066, 앱 공통 D-073) */
+export function openManualTab(target: ManualTarget, opts: { popup?: ManualTarget } = {}) {
+  useManualNav.setState({ target, query: null, t: Date.now() });
+  const pop = opts.popup;
+  goWithReturn('#manual', pop ? () => useManualPopup.setState({ target: pop }) : undefined);
 }
 
 // ---------- 기종 ----------

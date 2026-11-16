@@ -8,8 +8,6 @@ import { ceilingFt, visibSm } from './decode';
 import { sigmetNearRoute } from './route';
 import { flightStations, useWx, type Station } from './store';
 import type { Cloud, Metar, Sigmet, Taf, TafPeriod } from './types';
-import { VerticalView } from '../vertical/VerticalView';
-import { ExtraCard } from './ExtraCard';
 import { CatBadge, FreshTag, PrepareCard, WxStatusCard } from './ui';
 
 const windText = (dir: number | 'VRB' | null, spd: number | null, gst: number | null) =>
@@ -150,7 +148,7 @@ function AirportCard({ st, now }: { st: Station; now: number }) {
   );
 }
 
-function SigmetCard({ now }: { now: number }) {
+export function SigmetCard({ now }: { now: number }) {
   const sig = useWx((s) => s.sigmets);
   const ofp = useActiveFlight((s) => s.ofp);
   const [showAll, setShowAll] = useState(false);
@@ -210,7 +208,7 @@ function SigmetItem({ s }: { s: Sigmet }) {
   );
 }
 
-function WindsCard({ now }: { now: number }) {
+export function WindsCard({ now }: { now: number }) {
   const { flight, ofp } = useActiveFlight();
   const w = useWx((s) => (s.winds?.flightId === flight.flightId ? s.winds : null));
   const route = ofp?.parsed?.route ?? [];
@@ -287,10 +285,11 @@ export function WeatherPage() {
           <AirportCard key={s.icao} st={s} now={now} />
         ))}
       </div>
-      <SigmetCard now={now} />
-      <WindsCard now={now} />
-      <VerticalView />
-      <ExtraCard />
+      <section className="card">
+        <p className="small">
+          SIGMET·항로 바람·버티컬 뷰·플랜 뷰·PIREP·우주기상은 <a href="#map">Map 탭</a>에서 지도와 함께 시간대별로 봅니다.
+        </p>
+      </section>
     </div>
   );
 }

@@ -102,6 +102,20 @@ export function pickWindPoints(route: OfpWaypoint[], max = MAX_POINTS): OfpWaypo
   return Array.from({ length: max }, (_, i) => src[Math.round(i * step)]);
 }
 
+const HOUR = 3_600_000;
+/**
+ * 받을 시간 범위 (D-063): 지금 앞뒤와 비행 전 구간을 함께 → 시간 슬라이더로 "지금 −h / +h" 비교.
+ *  - 지난 비행·범위 밖(now): 지금 −6h ~ +12h
+ *  - 비행(eto): (비행이 24시간 안이면 지금, 아니면 첫 ETO) −3h ~ max(마지막 ETO, 지금) +3h, 최대 48시간
+ */
+export function windsWindow(basis: WindsData['basis'], etoStart: number, etoEnd: number, now: number): { start: number; end: number } {
+  if (basis === 'now') return { start: now - 6 * HOUR, end: now + 12 * HOUR };
+  let start = (etoStart - now > 24 * HOUR ? etoStart : Math.min(etoStart, now)) - 3 * HOUR;
+  const end = Math.max(etoEnd, now) + 3 * HOUR;
+  if (end - start > 48 * HOUR) start = end - 48 * HOUR;
+  return { start, end };
+}
+
 const hourStr = (ms: number) => new Date(ms).toISOString().slice(0, 13) + ':00';
 
 export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = Date.now()): Promise<WindsData> {
@@ -113,10 +127,9 @@ export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = D
   // 이미 끝난 비행(오래된 샘플 OFP 등)이나 예보 범위(14일) 밖이면 현재 시각 기준으로 받는다
   // (과거 날짜 요청은 Open-Meteo 응답이 약 20초로 느리고, 운항 참고 가치도 없음)
   const basis: WindsData['basis'] = !etos.length || end < now - DAY || start > now + 14 * DAY ? 'now' : 'eto';
-  if (basis === 'now') {
-    start = now;
-    end = now + 3_600_000;
-  }
+  const win = windsWindow(basis, start, end, now);
+  start = win.start;
+  end = win.end;
   const vars = LEVELS_HPA.flatMap((l) => [`wind_speed_${l}hPa`, `wind_direction_${l}hPa`, `temperature_${l}hPa`]);
   const q = new URLSearchParams({
     latitude: pts.map((p) => p.lat.toFixed(2)).join(','),
@@ -124,8 +137,8 @@ export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = D
     hourly: [...vars, 'freezing_level_height'].join(','),
     wind_speed_unit: 'kn',
     timezone: 'GMT',
-    start_hour: hourStr(start - 3_600_000),
-    end_hour: hourStr(end + 3_600_000),
+    start_hour: hourStr(start),
+    end_hour: hourStr(end),
   });
   type OmLoc = { hourly: Record<string, (number | null)[]> & { time: string[] } };
   const res = await fetchJson<OmLoc | OmLoc[]>(`${OM_URL}?${q}`, 40_000); // 60개 지점 × 28개 값이라 여유 있게
@@ -134,19 +147,26 @@ export async function fetchWinds(route: OfpWaypoint[], cruiseFl: number, now = D
     const h = locs[i]?.hourly;
     const fl = p.fl > 0 ? p.fl : cruiseFl;
     if (!h) return { seq: p.seq, name: p.name, lat: p.lat, lon: p.lon, fl, time: '', dir: null, spd: null, temp: null };
+    const levelsAt = (k: number) =>
+      LEVELS_HPA.map((hpa) => ({
+        hpa,
+        spd: h[`wind_speed_${hpa}hPa`]?.[k] ?? null,
+        dir: h[`wind_direction_${hpa}hPa`]?.[k] ?? null,
+        temp: h[`temperature_${hpa}hPa`]?.[k] ?? null,
+      }));
+    const fzAt = (k: number) => {
+      const v = h.freezing_level_height?.[k];
+      return v != null ? Math.round(v * 3.28084) : null;
+    };
     const target = basis === 'eto' && Number.isFinite(Date.parse(p.eto)) ? Date.parse(p.eto) : now;
     let best = 0;
     h.time.forEach((t, k) => {
       if (Math.abs(Date.parse(`${t}Z`) - target) < Math.abs(Date.parse(`${h.time[best]}Z`) - target)) best = k;
     });
-    const levels = LEVELS_HPA.map((hpa) => ({
-      hpa,
-      spd: h[`wind_speed_${hpa}hPa`]?.[best] ?? null,
-      dir: h[`wind_direction_${hpa}hPa`]?.[best] ?? null,
-      temp: h[`temperature_${hpa}hPa`]?.[best] ?? null,
-    }));
-    const fz = h.freezing_level_height?.[best];
-    return { seq: p.seq, name: p.name, lat: p.lat, lon: p.lon, fl, time: `${h.time[best]}Z`, ...interpolateAtFl(fl, levels), levels, freezingFt: fz != null ? Math.round(fz * 3.28084) : null };
+    const levels = levelsAt(best);
+    const series = h.time.map((_, k) => ({ levels: levelsAt(k), freezingFt: fzAt(k) }));
+    return { seq: p.seq, name: p.name, lat: p.lat, lon: p.lon, fl, time: `${h.time[best]}Z`, ...interpolateAtFl(fl, levels), levels, freezingFt: fzAt(best), series };
   });
-  return { model: 'Open-Meteo (best match)', basis, points };
+  const times = (locs[0]?.hourly.time ?? []).map((t) => `${t}Z`);
+  return { model: 'Open-Meteo (best match)', basis, points, times };
 }

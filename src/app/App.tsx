@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from './StatusBar';
+import { goBack, onTabChange, useReturnTo } from './returnTo';
+import { OfpImportLine } from '../features/ofp/OfpOpenButton';
 import { Disclaimer } from './Disclaimer';
 import { InstallBanner } from './InstallBanner';
 import { MORE_ICON, TABS, isTabId, type TabId } from './tabs';
@@ -8,13 +10,14 @@ import { BriefPage } from '../features/brief/BriefPage';
 import { OpsPage } from '../features/ops/OpsPage';
 import { InflightPage } from '../features/inflight/InflightPage';
 import { OfpPage } from '../features/ofp/OfpPage';
-import { OfpOpenButton } from '../features/ofp/OfpOpenButton';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { WeatherPage } from '../features/weather/WeatherPage';
 import { MapPage } from '../features/map/MapPage';
 import { NotamPage } from '../features/notam/NotamPage';
 import { ManualPage } from '../features/manual/ManualPage';
 import { MelPage } from '../features/manual/MelPage';
+import { ManualPopup } from '../features/manual/ManualInline';
+import { TurbPopup } from '../features/ofp/doc/TurbPopup';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
 const readHash = (): TabId => {
@@ -40,6 +43,7 @@ export function App() {
 
   useEffect(() => {
     const onHash = () => {
+      onTabChange(location.hash);
       setTab(readHash());
       setMoreOpen(false);
       window.scrollTo(0, 0);
@@ -50,6 +54,7 @@ export function App() {
 
   const current = TABS.find((t) => t.id === tab)!;
   const f = useActiveFlight((s) => s.flight);
+  const back = useReturnTo((s) => s.from);
 
   return (
     <div className="shell">
@@ -63,7 +68,6 @@ export function App() {
           <div className="muted small">
             {f.dep} → {f.arr}
           </div>
-          <OfpOpenButton variant="plain" showStatus={false} />
         </div>
         <nav className="sidenav">
           {TABS.map((t) => (
@@ -78,11 +82,17 @@ export function App() {
 
       <div className="main-col">
         <StatusBar />
+        <OfpImportLine />
         <main className="content">
           <InstallBanner />
           <header className="page-header">
             <h1>{current.label}</h1>
           </header>
+          {back && back.to === `#${tab}` && (
+            <button className="btn primary man-return" onClick={goBack}>
+              ← {TABS.find((t) => `#${t.id}` === back.hash)?.label ?? '이전 화면'}(으)로 돌아가기
+            </button>
+          )}
           {tab === 'dashboard' && <DashboardPage />}
           {tab === 'brief' && <BriefPage />}
           {tab === 'ops' && <OpsPage />}
@@ -130,6 +140,8 @@ export function App() {
         </div>
       )}
 
+      <ManualPopup />
+      <TurbPopup />
       <Disclaimer />
     </div>
   );

@@ -9,11 +9,13 @@ import { RULES } from './rules';
 
 const SEV: Record<Severity, string> = { warning: '경고', caution: '주의', info: '안내' };
 
-export function BasisRow({ b }: { b: Basis }) {
+/** 📖 근거: 기본은 화면 위 창(D-062). onManual을 주면 부른 쪽이 그 자리에서 펼침 */
+export function BasisRow({ b, onManual, open }: { b: Basis; onManual?: () => void; open?: boolean }) {
   if (b.kind === 'manual' && b.manual)
     return (
-      <button className="al-basis al-manual" onClick={() => openManualPage(b.manual!)}>
+      <button className={`al-basis al-manual ${open ? 'on' : ''}`} aria-expanded={onManual ? !!open : undefined} onClick={() => (onManual ? onManual() : openManualPage(b.manual!))}>
         📖 {b.label}
+        {onManual && <span aria-hidden> {open ? '▴' : '▾'}</span>}
       </button>
     );
   if (b.kind === 'manual') return <span className="al-basis">📖 {b.label}</span>;

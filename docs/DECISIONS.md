@@ -425,3 +425,116 @@
 - **날짜** 2026-11-12
 - **결정** Weather 탭 카드 + 지도 레이어. PIREP는 루트 bbox(날짜변경선이면 둘)·최근 3시간·난류/착빙만, 루트 150NM 안 목록. G-AIRMET은 미국 상공을 지날 때만(0시간 다각형). SWPC·GDACS는 CORS 허용이라 직접. NHC는 CORS 없음·지역 한정이라 제외, GDACS는 항공 공식 아님 표시. 실패하면 이전 자료 유지 + 10분 동안 재시도 안 함. **Worker 허용 경로에 pirep·gairmet 추가 → 사용자가 Cloudflare에 새 코드 배포해야 배포판에서 동작**
 - **영향** `weather/{extra.ts,ExtraCard.tsx,route.ts}`, `worker/wx-proxy.js`, `map/MapPage.tsx`
+
+### D-061 OFP 열기 버튼은 맨 위 상태 줄에 하나만
+- **날짜** 2026-11-16 (사용자 요청: "OFP 버튼을 맨 윗줄에 하나만")
+- **결정** "OFP 열기"는 모든 화면 맨 위 상태 줄(ONLINE·SYNC 옆)에만 둔다. 사이드바·Dashboard·OFP·PDF·추출·NOTAM·MEL·Inflight의 버튼은 없애고 "맨 위 OFP 열기" 안내 글로 바꿈. 아이폰 폭(<480px)에서는 "OFP"로 줄여 표시. 여는 중·실패 문구는 상태 줄 아래 한 줄(성공은 OFP 화면으로 이동)
+- **영향** `app/{StatusBar,App}.tsx`, `ofp/OfpOpenButton.tsx`(`compact`, `OfpImportLine`), 위 화면들
+
+### D-062 매뉴얼 링크는 그 자리에서 보기 (탭 이동 없음)
+- **날짜** 2026-11-16 (사용자 요청: MEL 보고 돌아오기 불편, "누르면 그 자리에서", Ops 규정도 열고 닫기)
+- **결정**
+  1. MEL 카드의 항목·(o) 절차·상위 항목 버튼과 Ops 상황 카드의 📖 근거는 **카드 안에서 펼치기/접기**(`ManualInline`: 항목만/쪽 전체, 앞뒤 쪽, "Refer to" 이동·되돌리기, 닫기)
+  2. 그 밖의 📖 링크(얼러트·Briefing·Ops 양식/타이머)는 **화면 위 창**(`ManualPopup`). 바깥·닫기·Esc로 닫으면 보던 화면·스크롤 그대로
+  3. 큰 화면이 필요하면 "Manual 탭에서 크게 보기"(예전 동작 `openManualTab`)
+- **영향** `manual/{ManualInline.tsx(신규),lookup.ts,MelPage.tsx}`, `alerts/AlertsCard.tsx`(`BasisRow` `onManual`), `ops/OpsPage.tsx`, `app/App.tsx`
+
+### D-063 기상 시간대별 보기 + 플랜 뷰
+- **날짜** 2026-11-16 (사용자 요청: 시간대별 기상, 지금 기준 몇 시간 전/후, vertical·plan view)
+- **결정**
+  1. Open-Meteo 바람·기온·0°C 고도를 **시간대별로 저장**(`WindsData.times` + 지점별 `series`). 받는 범위: 비행이 24시간 안이면 지금 −3h ~ 마지막 ETO(또는 지금) +3h, 더 먼 비행은 첫 ETO −3h부터, 최대 48시간. 지난 비행·범위 밖은 지금 −6h ~ +12h. 예전 캐시는 "다시 받기" 안내
+  2. 시각 선택(버티컬·플랜 뷰 공통): **지점 통과 시각**(지점마다 ETO+기록 편차의 예보, 기본) ↔ **시각 고정**(슬라이더·▶ 재생·지금). 항상 "지금 ±Nh"와 UTC 표시, 지난 시각은 "관측 아닌 모델 값" 표시. 시각 고정이면 버티컬 뷰에 그 시각 예상 위치 선
+  3. **플랜 뷰**(Weather 탭): 위에서 본 항로(오프라인 Natural Earth 육지) — 계획 FL 또는 FL290·330·370·410에서 앞/뒷바람·ISA 편차·난류 지수·기온을 항로 색으로, 바람 화살표, 그 시각 유효 SIGMET, PIREP 난류
+- **대안** 항로 좌우 격자(면 전체)는 받는 양이 3배 → 이번엔 항로 선만
+- **영향** `weather/{api,types}.ts`(`windsWindow`), `vertical/{wxTime,useWxPick,TimeBar,PlanView}.ts(x)`(신규), `vertical/{profile.ts,VerticalView.tsx}`, `weather/WeatherPage.tsx`
+
+### D-064 난류 지수·기온 변화 (모델 계산, 참고) · EDR
+- **날짜** 2026-11-16 (사용자 요청: EDR·난류 자료·기온 변화)
+- **결정**
+  1. **공식 EDR(WAFS 난류) 격자는 무료로 못 씀**(WIFS 승인 필요, K-38). 대신 기압면 값으로 앱이 **난류 지수**를 계산: 이웃 기압면 사이 수직 풍속 차(VWS, kt/1000ft)와 리처드슨 수(Ri). **앱 임시 기준**(일반 기상 경험치, 회사 기준 아님): VWS ≥ 4/6/9 또는 Ri < 1/0.5/0.25 → 약/중/강. 기압면 간격이 넓어 실제 시어보다 작게 나옴 — 화면에 "공식 EDR 아님" 표시
+  2. **기온 경도**(거리 방향 °C/100NM)와 **기온 변화 3h**(선택 시각 − 3시간 전) 칸
+  3. **EDR 값**은 PIREP/AIREP 원문에 `EDR 0.xx`가 있을 때만 표시(지어내지 않음). 버티컬 뷰(항로 100NM 안)·플랜 뷰에 난류 PIREP 삼각형
+- **영향** `vertical/{wxTime.ts,profile.ts,VerticalView.tsx,PlanView.tsx}`
+
+### D-065 Map 탭 = 지도 + 시간 재생 + 항로 기상 모음 (공항 METAR·TAF만 Weather)
+- **날짜** 2026-11-16 (사용자 요청: 맵 기상 재생·움직이기, 버티컬 뷰 밑에, "ATIS·TAF 빼곤 기상은 다 여기 탭으로")
+- **결정**
+  1. Map 지도 위에 시각 막대 하나(D-063 시각 선택 공유): 목록 = **지난 위성 영상 −3h~−30분(30분 간격, 관측)** + 지금 + **Open-Meteo 예보 시각(모델)**. ▶ 재생(1.2초 간격, 끝나면 처음부터)
+  2. 시각에 따라: 위성 = 30분 넘게 지난 시각이면 NASA GIBS 그 시각 영상(GIBS가 직전 영상으로 맞춤), 지금·미래면 최신(위성은 미래가 없음 — 화면에 표시) / 바람 화살표 = 그 시각(또는 지점 통과 시각) 예보 / SIGMET·G-AIRMET = 그 시각에 유효한 것 / ✈ = 그 시각 예상 위치(계획+기록 편차)
+  3. 지난 시각 위성 조각은 IndexedDB wxFrames에 시각별 저장, 12시간 지나면 지움(최신은 기존대로 30분)
+  4. 지도 아래: 버티컬 뷰 → 플랜 뷰 → SIGMET 목록 → 항로 바람 표 → 기상 추가(우주기상·PIREP·열대저기압). **Weather 탭은 갱신·비행 준비·공항 METAR·TAF만** (ATIS는 앱에 없음)
+- **영향** `map/{MapPage.tsx,satellite.ts}`, `vertical/{TimeBar,useWxPick,VerticalView}.tsx`, `weather/WeatherPage.tsx`
+
+### D-066 Manual 탭 "돌아가기"
+- **날짜** 2026-11-16 (사용자 요청: 크게 보기로 Manual 탭에 간 뒤 원래 화면으로 돌아가는 버튼)
+- **결정** "Manual 탭에서 크게 보기"로 오면 Manual 탭 맨 위에 "← (원래 탭)(으)로 돌아가기" 버튼. 누르면 원래 탭·스크롤 위치로, 창(📖)에서 왔으면 그 창을 다시 열고, MEL·Ops에서 펼쳐 둔 매뉴얼은 펼친 그대로(펼침 상태를 메모리에 보관 — 앱을 다시 열면 초기화). 다른 탭으로 직접 옮겨 가면 돌아가기 정보는 버림
+- **영향** `manual/{lookup.ts,ManualPage.tsx,ManualInline.tsx,MelPage.tsx}`, `ops/OpsPage.tsx`
+
+### D-067 항로·OFP 번호 일치 확인 + 난류 구간 이륙 후 누적 시간
+- **날짜** 2026-11-16 (사용자 요청: "flight plan route가 여러 군데 있는데 다 같은지, OFP no.도 전부 같은지 확인 → FLIGHT에 표시", "흔들리는 구간을 이륙 후 누적 시간으로", 난류 표 잘림)
+- **결정**
+  1. 파서가 OFP 원문 전체(복사본 포함)에서 **항로**가 나오는 곳 = CFP 요약 항로(2ND-$ 다음) · OFP FPL · **제출된 ATS FPL 사본**(기준) · NAV LOG 지점 순서, **OFP 번호** = CFP PLAN · 디스패치 릴리스 PLAN # · DATAPLAN REQUEST NO.(앞 0 무시)를 모두 찾아 비교 → `OfpData.routeCheck`
+  2. 같은 것으로 보는 표기 차이: `..` ↔ DCT, `WPT/N0480F340` 속도·고도 변경점, 같은 항로 위 중간 지점(A123 WPTAA A123), N07E142 ↔ 07N142E, 출발·도착 SID·STAR(회사 안내: 제출 FPL과 다를 수 있음). 출발·도착이 다른 FPL(다른 구간)은 비교에서 뺌
+  3. 화면: OFP → FLIGHT 카드 ROUTE 아래 "✓ 이 OFP의 ROUTE n곳 모두 같음 · ✓ OFP NO. nnnn n곳 같음", 펼치면 곳마다 결과·원문 줄(L…) 이동. 다르면 빨간 ⚠와 처음 다른 지점. 앱 확인일 뿐 원본 OFP·ATC 허가가 기준
+  4. 난류(SR) 구간: 표 → 두 줄 목록(좁은 카드에서 안 잘림), **T/O +h:mm ~ +h:mm (구간 길이)** = NAV LOG 계획 누적 시간. Dashboard·Briefing 카드 문구에도 이륙 후 시간
+- **영향** `ofp/parser/{routeCheck.ts(신규),index.ts}`(AVIATOR_PARSER_VERSION 1.4 → 저장된 OFP 자동 재파싱), `ofp/types.ts`, `ofp/doc/{OfpDocument,Turbulence}.tsx`, `ofp/OfpPage.tsx`, `dashboard/DashboardPage.tsx`, `brief/cards.ts`
+
+### D-068 AGTOW 계산 표시
+- **날짜** 2026-11-16 (사용자: "agtow 구하는거 보여줘", 이어서 "설명은 필요 없고 뭐+뭐=얼마, 그중 가장 낮은 게 AGTOW만 표시")
+- **결정** OFP → WEIGHTS 아래에 MTOW · RWY · TCAP · MZFW + TOF · MLDW + TIF 값을 나열하고 가장 낮은 줄을 AGTOW로 강조. TOF = TOW − ZFW, TIF = TOW − LDW. 식은 샘플 10개 모두 OFP의 AGTOW·ACL(= AGTOW − SOW − TOF)과 일치함을 확인(자동 테스트). OFP에 AGTOW가 없으면(데모 등) 표시하지 않음, OFP 값과 다르면 ⚠
+- **영향** `ofp/agtow.ts`(신규)·`agtow.test.ts`, `ofp/doc/OfpDocument.tsx`
+
+### D-069 난류 SR 구간을 지도·버티컬 뷰에 + 누르면 지도에서 보기
+- **날짜** 2026-11-16 (사용자: "두 번째 것(난류 SR) 기상에 표시, 누르면 보이게")
+- **결정** Map 레이어 "난류 SR"(기본 켬): OFP NAV LOG SR 구간을 굵은 선(주의 주황·HIGH 빨강) + "SR8 +1:57" 꼬리표, 누르면 구간·시각·이륙 후 시간. 버티컬 뷰 "SR 구간 (OFP)": 계획 고도 ±1,000 ft 띠. OFP 카드와 Map 아래 Turbulence 목록에서 구간을 누르면 Map에서 그 구간으로 이동·확대. SR 기준은 기존 임시값 그대로
+- **영향** `ofp/turbulence.ts`(`useTurbFocus`), `ofp/doc/Turbulence.tsx`, `map/MapPage.tsx`, `vertical/VerticalView.tsx`
+
+### D-070 우주기상 카드 정리 · 설명 · FOM 근거 · 자동 갱신
+- **날짜** 2026-11-16 (사용자: 카드 잘림, 설명, "FOM·FCRM에 있으면 찾아서 MEL처럼", 위 기상 갱신에 묶고 카드 갱신 버튼 제거)
+- **결정**
+  1. 칸 6개(R·S·G·오늘 확률 R1–2 / R3+ / S1+)를 자동 줄바꿈 격자로 — 잘림 없음. 항로 최고 위도와 영향 안내(78° 이상 Polar, 60° 이상 고위도)
+  2. "등급 뜻" 펼치기: NOAA 등급표 요약(R = 낮 쪽 HF, S = 극지 HF·방사선, G = 고위도 HF·GNSS)
+  3. 회사 근거: FOM에서 찾은 절 3곳(Polar 운항 일반·참고사항, HF 통신 — 세부는 미보유 별도 매뉴얼로 넘김, 절 번호는 private 메모). FCRM에는 해당 내용 없음. 절 코드는 회사 기준 파일 `refs.spaceWeather`에만(build-ops.py), 카드에서 📖 펼치기/접기(MEL·Ops와 같은 `RefList`)
+  4. 카드의 "지금 갱신" 버튼 제거 → 맨 위 ⟳ 기상·Weather "지금 갱신"·1분 주기 자동 점검이 우주기상·PIREP·열대저기압까지 함께 받음
+- **영향** `weather/{ExtraCard.tsx,store.ts}`, `manual/RefList.tsx`(신규, Ops에서 옮김), `brief/rules.ts`(`refs.spaceWeather?`), private `build-ops.py`·`company-rules.json`
+
+### D-071 맨 위 줄: OFP 열기 · ⟳ 기상 · ⤓ 저장 · OUTBOX 같은 모양
+- **날짜** 2026-11-16 (사용자: "OFP 열기 옆에 기상 갱신·저장 버튼, OUTBOX도 균일하게")
+- **결정** ⟳ 기상 = 기상 전부 지금 받기(METAR·TAF·SIGMET·바람 + 우주기상·PIREP·열대저기압), ⤓ 저장 = Weather "비행 준비 완료"와 같은 오프라인 저장(기상 + 루트 위성), OUTBOX = 같은 버튼 모양(대기 건수, 실패 시 빨강, 누르면 Settings). 진행·결과는 상태 줄 아래 한 줄(6초). 1023px 이하는 아이콘만, 479px 이하는 ONLINE 글자·DEMO 표시 숨김
+- **영향** `app/StatusBar.tsx`, `weather/{actions.ts(신규),ui.tsx}`, `ofp/OfpOpenButton.tsx`(`OfpImportLine`)
+
+### D-072 NAV LOG MSA 100 이상 강조
+- **날짜** 2026-11-16 (사용자 요청)
+- **결정** MSA 값 100(=10,000 ft) 이상 칸을 주황 굵게(배경 옅은 주황). 기준 100은 사용자 지정. MSA 열은 기존대로 1280px 이상에서만 보임
+- **영향** `ofp/doc/NavLog.tsx`, `styles.css`
+
+### D-073 그 자리 창 + "크게 보기" + 돌아가기 (앱 공통) · OFP 카드 정리
+- **날짜** 2026-11-16 (사용자: EDTO 깨짐·전체 점검, AGTOW 열 맞춤, 총 승객 수, PAX·CARGO는 LDW 밑·좌석 등급은 맨 위, 난류는 누르면 MEL처럼 창 + 새 창에서 보기 + 뒤로가기, OFP MEL/CDL도 같게)
+- **결정**
+  1. 돌아가기 공통화: `app/returnTo.ts`(`goWithReturn`·`goBack`) — "크게 보기"로 다른 탭에 가면 그 탭 맨 위에 "← (원래 탭)(으)로 돌아가기", 누르면 같은 스크롤 + 창에서 왔으면 창 다시 열기. 다른 탭으로 직접 가면 기억 버림. Manual(D-066)도 이것으로 옮김
+  2. 난류 SR: OFP에서 구간을 누르면 **창**(확대 플랜 뷰 = 오프라인 육지 + 구간 강조 + 지점별 FL·ETO·이륙 후 시간·SR) → "Map에서 크게 보기" → Map 탭 그 구간 + 돌아가기. Map 아래 목록은 지도 바로 이동(기존)
+  3. OFP MEL/CDL 줄: 누르면 가져온 매뉴얼 항목을 **창**으로(MEL 탭과 같은 매칭), "Manual 탭에서 크게 보기" + 돌아가기. 매뉴얼에 없으면 누를 수 없음
+  4. WEIGHTS: 맨 위 좌석 등급(OFP 예약 표기 그대로 앞/뒤) + **TOTAL PAX**(앞 숫자 합 / 뒤 숫자 합), LDW 아래 "PAX · CARGO · 기타 = PAYLOAD"(무게), AGTOW는 항목·계산·값 3열 표
+  5. 좁은 카드 깨짐: OFP 카드 표 머리글 줄바꿈 허용·칸 여백 축소, ETP·ALTERNATES 표는 넘치면 표 안에서만 가로 스크롤. 전 탭 375·768·1180·1440 × 주간/야간 점검
+  6. 플랜 뷰 SIGMET 다각형을 통째로 옮기도록 수정(날짜변경선 근처 가로 띠 버그)
+- **영향** `app/{returnTo.ts(신규),App.tsx}`, `manual/{lookup.ts,ManualPage.tsx}`, `ofp/doc/{TurbPopup.tsx(신규),OfpDocument.tsx,Turbulence.tsx}`, `ofp/turbulence.ts`, `vertical/PlanView.tsx`, `styles.css`
+
+### D-074 NAV LOG 표시 정리 · AGTOW 모양
+- **날짜** 2026-11-16 (사용자: "TOC·TOD·ETP 색 빼고 앞에 표시만, 난기류를 줄 전체 색으로, MSA 고도별 진하기", AGTOW 더 깔끔하게)
+- **결정** TOC ▲ · TOD ▼ · ETP ◆ 를 이름 앞에만(줄 색 없음). 난류 SR 구간 지점은 줄 전체 옅은 색(주의 주황·HIGH 빨강) + 왼쪽 선. MSA 칸 배경을 고도에 비례해 진하게(2,000 ft 미만 없음 → 20,000 ft 이상 최대, D-072의 100 이상 주황 대신; 100 이상은 굵은 글씨 유지). AGTOW는 왼쪽 항목(아래 작은 계산식) · 오른쪽 값 두 줄 모양
+- **영향** `ofp/doc/{NavLog,OfpDocument}.tsx`, `styles.css`
+
+### D-075 NAV LOG: 줄 색 없이 숫자만
+- **날짜** 2026-11-16 (사용자: "MSA는 100부터만, SR은 표에 색 빼고 앞에만, 숫자는 색 변경·볼드")
+- **결정** 난류 SR 구간 줄 색 제거 → 지점 이름 칸 왼쪽 색 선만 + SR 숫자를 등급 색(주의 주황·HIGH 빨강)·굵게. MSA는 100(10,000 ft) 이상만 숫자를 굵게 + 높을수록 진한 주황 글자(100 → 반, 200 이상 최대), 칸 배경 없음 (D-074의 MSA 배경·SR 줄 색 대체)
+- **영향** `ofp/doc/NavLog.tsx`, `styles.css`
+
+### D-076 매뉴얼 쪽 사진 묶음 (그림·표 보완)
+- **날짜** 2026-11-16 (사용자: "매뉴얼 변환 다시 하자" — 그림·표를 보기 좋게, 토큰 아끼며, 아이패드에 두고 보기)
+- **결정**
+  1. 글은 지금처럼 MD 묶음. Mac `npm run manuals -- --images`가 inbox의 원본 PDF로 **그림·그려진 표가 있는 쪽만** JPEG(110dpi·품질 60)으로 만들어 매뉴얼별 사진 묶음 `<docId>-img.efbimg`(40 MB 넘으면 `-1`, `-2` … 부분 파일)을 `private/manuals/out/`에 낸다. 변환은 Mac 안에서만(토큰 0)
+  2. 쪽 연결: 글 묶음 쪽의 쪽 표시(ref) 글자를 PDF 쪽에서 차례로 찾음(FOM처럼 pdfPage가 있으면 그대로). 고르는 기준: 큰 그림(60×60pt 초과) 또는 선 80개 초과(그림·표), MEL은 그림만(표가 많아 전부 걸리므로)
+  3. 아이패드: Settings → 매뉴얼 → 가져오기에서 `.efbimg`도 받음(글 묶음 먼저). IndexedDB v4 `manualImages`·`manualImgIndex`. 글 개정과 사진 개정이 다르면 쓰지 않고 표시. 매뉴얼 삭제 시 사진도 삭제
+  4. 매뉴얼 화면(Manual 탭·창·MEL 펼치기): 그 쪽에 사진이 있으면 "🖼 원본 쪽 사진" 버튼 → 펼쳐 보기, 누르면 새 창에서 크게
+  5. FOM은 원본 PDF가 inbox에 없어 사진 없음(넣으면 만들어짐)
+- **영향** `tools/manual-convert/{pdf2img.py(신규),build.ts}`, `db/schema.ts`(v4), `manual/{store.ts,ManualCard.tsx,PageImages.tsx(신규),ManualInline.tsx,ManualPage.tsx}`

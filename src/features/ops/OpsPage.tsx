@@ -12,8 +12,8 @@ import { useActiveFlight } from '../flight/activeFlight';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, project } from '../inflight/deviation';
 import { positionAt } from './position';
-import { getManualPage } from '../manual/store';
-import { ManualText } from '../manual/ManualText';
+import { RefList } from '../manual/RefList';
+import { setInlineOpen, useInlineOpen } from '../manual/lookup';
 import { DocSection } from '../ofp/doc/ui';
 import type { OfpData } from '../ofp/types';
 import { useWx } from '../weather/store';
@@ -50,45 +50,6 @@ function copyText(t: string, done: () => void) {
   void navigator.clipboard?.writeText(t).then(done, () => alert('복사 실패 — 길게 눌러 직접 복사하세요'));
 }
 
-/** 가져온 매뉴얼의 해당 절 원문을 카드 안에서 바로 */
-function FomInline({ docId, seq }: { docId: string; seq: number }) {
-  const [text, setText] = useState<string | null>(null);
-  useEffect(() => {
-    void getManualPage(docId, seq).then((p) => setText(p?.text ?? ''));
-  }, [docId, seq]);
-  if (text === null) return <p className="small muted">불러오는 중…</p>;
-  if (!text.trim()) return <p className="small muted">이 절은 본문이 없습니다 (하위 절을 보세요)</p>;
-  return (
-    <div className="ops-fom">
-      <ManualText text={text} />
-    </div>
-  );
-}
-
-function RefList({ refs, all }: { refs: OpsCard['refs']; all: Refs }) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <ul className="ops-refs">
-      {refs.map((r) => {
-        const t = all[r.code];
-        return (
-          <li key={r.code}>
-            <div className="ops-ref-row">
-              <BasisRow b={manualBasis(all, r)} />
-              {t && (
-                <button className="btn small" onClick={() => setOpen(open === r.code ? null : r.code)}>
-                  {open === r.code ? '원문 접기' : '원문'}
-                </button>
-              )}
-            </div>
-            {open === r.code && t && <FomInline docId={t.docId} seq={t.seq} />}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 /** 지금 비행 정보로 PA·보고서 빈칸 채우기 */
 function useFlightVars(o: OfpData | null, timeDevMin: number, now: number, geo: Record<string, [number, number, string]>) {
   const { flight } = useActiveFlight();
@@ -123,7 +84,8 @@ export function OpsPage() {
   const events = useMemo(() => parseEvents(logs), [logs]);
   const vars = useFlightVars(o, dev, now, data.geo);
   const cards = data.rules?.ops?.cards ?? [];
-  const [openCard, setOpenCard] = useState<string | null>(null);
+  const openCard = useInlineOpen((s) => s['ops:card'] ?? null);
+  const setOpenCard = (v: string | null) => setInlineOpen('ops:card', v);
 
   return (
     <div className="page-grid doc">
@@ -280,7 +242,7 @@ function CardBody({ c, refs, flightId, now }: { c: OpsCard; refs: Refs; flightId
       )}
 
       <div className="label">회사 매뉴얼 ({c.refs.length})</div>
-      <RefList refs={c.refs} all={refs} />
+      <RefList refs={c.refs} all={refs} id={c.id} />
     </div>
   );
 }
@@ -564,7 +526,7 @@ function ReportSection({
       {reports?.refs?.length ? (
         <>
           <div className="label">보고 기준 (회사 매뉴얼)</div>
-          <RefList refs={reports.refs} all={refs} />
+          <RefList refs={reports.refs} all={refs} id="reports" />
         </>
       ) : null}
     </DocSection>

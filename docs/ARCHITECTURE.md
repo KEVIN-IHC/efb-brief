@@ -195,12 +195,38 @@ IPBS/
 - 공통: `src/lib/airac.ts` (D-057)
 
 ### 3.7h 버티컬 뷰 `src/features/vertical/` (D-058)
-| `profile.ts` | 계획 고도선·고도별 바람 칸·SIGMET 구간 계산 |
-| `VerticalView.tsx` | SVG 단면 (Weather 탭) |
+| `profile.ts` | 계획 고도선·고도별 바람 칸(기온 경도·3h 변화)·난류 지수 칸·SIGMET 구간 계산 |
+| `VerticalView.tsx` | SVG 단면 (Weather 탭) — 바탕(바람·ISA·난류·기온 경도·3h 변화) + SIGMET·SR·PIREP |
+| `PlanView.tsx` | 위에서 본 항로 SVG (D-063): 선택 FL·시각 값으로 항로 색, 바람 화살표, SIGMET, PIREP |
+| `wxTime.ts` | 시각 선택 저장소(`useWxTime`)·지점 값 고르기(`pointAt`)·VWS/Ri 난류 지수·기온 경도·EDR 읽기 (D-063·D-064) |
+| `useWxPick.ts` · `TimeBar.tsx` | 현재 비행+바람 자료+시각 → 지점 값 함수 / 시각 슬라이더·재생 (두 뷰 공통) |
 
 ### 3.7i 기상 확장 (D-060) · FIR 경계 (D-059)
 - `weather/extra.ts` PIREP·G-AIRMET·SWPC·GDACS 받기·해석·저장(wxSnapshots type pirep/gairmet/swx/tc), `weather/ExtraCard.tsx`
 - `tools/build-firs.ts` → `public/geo/firs.json`, 지도 레이어 `map/MapPage.tsx`
+
+### 3.7j 매뉴얼 그 자리에서 보기 (D-062) · OFP 열기 (D-061)
+- `manual/ManualInline.tsx`: `ManualInline`(카드 안 펼치기 — MEL·Ops 근거) · `ManualPopup`(App에 하나, `lookup.openManualPage` → 화면 위 창). `openManualTab` = Manual 탭으로 이동
+- OFP 열기 버튼은 `app/StatusBar.tsx` 하나(`OfpOpenButton compact`), 진행·실패 문구는 `OfpImportLine`
+
+### 3.7k Map 시간 재생·기상 모음 (D-065) · Manual 돌아가기 (D-066)
+- `map/MapPage.tsx`: 지도 위 `TimeBar`(지난 위성 시각 + 예보 시각, `mergeTimes`), 위성 `SatGrid satTime`, 바람(`useWxPick.pick`)·SIGMET·G-AIRMET 시각 필터, ✈ `posAt`. 지도 아래 VerticalView·PlanView·SigmetCard·WindsCard(`weather/WeatherPage`에서 export)·ExtraCard
+- `map/satellite.ts`: `getSatTile(…, time)`·`satPastTimes`·`pruneSatFrames` (wxFrames 키 [layer, validTime, tile])
+- `manual/lookup.ts`: `useInlineOpen`(펼침 상태)·`useManualReturn`·`openManualTab(target, {popup})`·`returnFromManual`
+
+### 3.7l 항로·OFP 번호 일치 (D-067)
+- `ofp/parser/routeCheck.ts`: `routeKey`(표기 차이 정규화)·`checkRouteConsistency(lines, navNames, dep, dest)` → `OfpData.routeCheck` (파서 `index.ts`에서 조립 뒤 계산). 화면 `doc/OfpDocument.tsx` `RouteCheckRow`
+
+### 3.7m AGTOW·SR 지도·우주기상·맨 위 버튼 (D-068~D-072)
+- `ofp/agtow.ts` → WEIGHTS `AgtowDetails`. `ofp/turbulence.ts` `useTurbFocus`·`focusTurbZone` → Map `srz` 레이어·버티컬 뷰 띠
+- `weather/actions.ts`: `refreshAllWx`·`prepareFlight`·`useWxActions` (맨 위 줄·Weather 카드 공용), `manual/RefList.tsx`(📖 펼치기 목록, Ops·우주기상)
+
+### 3.7n 창·돌아가기 공통 (D-073)
+- `app/returnTo.ts`: `goWithReturn(to, reopen?)`·`goBack()`·`onTabChange()` → App 맨 위 "돌아가기" 줄. 창: `manual/ManualInline.tsx` `ManualPopup`(📖·OFP MEL/CDL), `ofp/doc/TurbPopup.tsx`(난류 구간, `PlanView focus`)
+
+### 3.7o 매뉴얼 쪽 사진 (D-076)
+- Mac: `tools/manual-convert/pdf2img.py` (PyMuPDF) ← `build.ts --images`. 파일 `.efbimg` = "EFBIMG1\n" + 머리 길이(4바이트) + 머리 JSON(map: 쪽 seq → PDF 쪽, images: 위치·크기) + JPEG들
+- 앱: `manual/store.ts` `importImagePack`·`pageImages`·`deleteManualImages`, DB v4 `manualImages`([docId, pdf])·`manualImgIndex`(docId), 화면 `manual/PageImages.tsx`
 
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화

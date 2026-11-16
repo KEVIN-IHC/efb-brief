@@ -2,13 +2,14 @@
 //
 //   npm run manuals            # private/manuals/inbox 의 새 PDF·MD 처리
 //   npm run manuals -- --force # 묶음 전부 다시 만들기
+//   npm run manuals -- --images  # + 그림·표 쪽 사진 묶음 (<docId>-img.efbimg, D-076). 원본 PDF가 inbox에 있는 매뉴얼만
 //
 // 1) inbox 의 PDF 중 같은 매뉴얼·같은 발행일의 MD가 아직 없는 것만 MD로 변환 → private/manuals/md/
 // 2) 같은 매뉴얼(docId)이 여러 개면 발행일이 가장 최근인 것만 사용 (이전 개정은 무시하고 알려 줌)
 // 3) 매뉴얼마다 묶음 파일 → private/manuals/out/<docId>.efbman.json.gz
 //    이 파일을 구글드라이브에 올리고 아이패드 앱 Settings → 매뉴얼 → 가져오기
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { buildManualBundle, detectMeta, MANUAL_PARSER_VERSION, type TocEntry } from '../../src/features/manual/parse';
@@ -21,6 +22,8 @@ const MD_DIR = join(BASE, 'md');
 const OUT = join(BASE, 'out');
 const PY_SCRIPT = join(ROOT, 'tools/manual-convert/pdf2md.py');
 const force = process.argv.includes('--force');
+const images = process.argv.includes('--images');
+const IMG_SCRIPT = join(ROOT, 'tools/manual-convert/pdf2img.py');
 
 interface Candidate {
   path: string;
@@ -49,6 +52,7 @@ function main() {
 
   // 1) PDF → MD (필요한 것만)
   const pdfs = list(INBOX, /\.pdf$/i);
+  const pdfByDoc = new Map<string, string>();
   const py = python();
   for (const pdf of pdfs) {
     if (!py) {
@@ -58,6 +62,7 @@ function main() {
     const probe = execFileSync(py, [PY_SCRIPT, 'probe', pdf], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     const pages = Number(/@@PAGES (\d+)/.exec(probe)?.[1]);
     const m = detectMeta(probe, pdf);
+    pdfByDoc.set(m.docId, pdf);
     const have = mds.find((c) => c.docId === m.docId && (c.issueIso ?? '') >= (m.issueIso ?? ''));
     if (have) {
       have.pdfPages ??= pages;
@@ -116,6 +121,35 @@ function main() {
     );
   }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+  // 그림·표 쪽 사진 묶음 (D-076) — 원본 PDF가 있는 매뉴얼만. 글 묶음·PDF보다 새 사진 묶음이 있으면 건너뜀(--force면 다시)
+  if (images) {
+    const py2 = python();
+    console.log('\n사진 묶음 | 매뉴얼 쪽 연결 | 사진 쪽 | 크기 | 파일');
+    for (const [docId, pdf] of [...pdfByDoc].sort()) {
+      const bundle = join(OUT, `${docId}.efbman.json.gz`);
+      if (!py2 || !existsSync(bundle)) {
+        console.log(`${docId} | (건너뜀: ${py2 ? '글 묶음 없음' : 'Python 없음'})`);
+        continue;
+      }
+      const olds = readdirSync(OUT).filter((f) => f.startsWith(`${docId}-img`) && f.endsWith('.efbimg'));
+      const newest = Math.max(statSync(bundle).mtimeMs, statSync(pdf).mtimeMs);
+      if (!force && olds.length && olds.every((f) => statSync(join(OUT, f)).mtimeMs > newest)) {
+        console.log(`${docId} | (변경 없음 — 그대로) | | | ${olds.join(', ')}`);
+        continue;
+      }
+      for (const f of olds) rmSync(join(OUT, f));
+      console.log(`… ${docId} 사진 만드는 중 (큰 매뉴얼은 수 분)`);
+      const r = spawnSync(py2, ['-W', 'ignore', IMG_SCRIPT, pdf, bundle, join(OUT, `${docId}-img`), ...(/-MEL$/.test(docId) ? ['--raster-only'] : [])], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+      if (r.status !== 0) {
+        console.log(`✗ ${docId} 사진 실패: ${(r.stderr || '').slice(-300)}`);
+        continue;
+      }
+      const j = JSON.parse(r.stdout.trim().split('\n').pop()!);
+      console.log(`${docId} | ${j.mapped}/${j.pages} | ${j.images} | ${j.mb} MB | ${j.files.map((f: string) => basename(f)).join(', ')} (${j.sec}초)`);
+    }
+    if (!pdfByDoc.size) console.log('(inbox에 원본 PDF가 없음 — 사진 묶음은 PDF가 있어야 만들 수 있음)');
+  }
   // 회사 기준 파일 (D-049): private/manuals/company-rules.json → 점검 후 out/ 에 같이 둔다
   const rulesSrc = join(BASE, 'company-rules.json');
   if (existsSync(rulesSrc)) {

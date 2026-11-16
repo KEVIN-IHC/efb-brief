@@ -2,7 +2,6 @@
 // 원칙: 규칙으로 숨기지 않는다. 사용자가 고른 보기 필터만 있고, 필터로 가려진 건수를 항상 표시한다.
 import { useMemo, useState } from 'react';
 import { useActiveFlight } from '../flight/activeFlight';
-import { OfpOpenButton } from '../ofp/OfpOpenButton';
 import { jumpToOfpSource } from '../ofp/sourceJump';
 import type { OfpData, OfpNotamItem, OfpNotamLocation, OfpNotams } from '../ofp/types';
 import { formatDayZ } from '../../lib/time';
@@ -57,7 +56,7 @@ export function NotamPage() {
     return (
       <section className="card placeholder">
         <p>{o ? '현재 OFP에 NOTAM 패키지가 없습니다 (데모 비행이거나 NOTAM이 빠진 OFP).' : '현재 비행의 OFP가 없습니다.'}</p>
-        <OfpOpenButton />
+        <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 여세요.</p>
       </section>
     );
   }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDayZ } from '../../lib/time';
 import { deleteOfp, setActiveFlight, useActiveFlight } from '../flight/activeFlight';
-import { OfpOpenButton } from './OfpOpenButton';
 import { ParsePanel } from './ParsePanel';
 import { parseAviatorOfp } from './parser';
 import { useUploadedOfps } from './useOfp';
@@ -35,9 +34,7 @@ export function RawPdfView({ focus: extFocus }: { focus?: { n: number; t: number
           <span className="muted small">Jeppesen Aviator</span>
         </div>
         <p className="muted small">PDF는 이 기기 안에서만 읽습니다. 인터넷이 필요 없고 외부로 보내지 않습니다. 원본 PDF는 저장하지 않고 추출한 텍스트만 보관합니다.</p>
-        <div className="row">
-          <OfpOpenButton />
-        </div>
+        <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 엽니다.</p>
 
         {uploads.length > 0 && (
           <ul className="loglist upload-list">

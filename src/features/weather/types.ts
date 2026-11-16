@@ -80,6 +80,8 @@ export interface WindPoint {
   levels?: { hpa: number; dir: number | null; spd: number | null; temp: number | null }[];
   /** 0°C 고도 ft (Open-Meteo freezing_level_height) */
   freezingFt?: number | null;
+  /** 시간대별 값 (D-063). series[k] = WindsData.times[k] 시각. 예전 캐시에는 없음 */
+  series?: { levels: { hpa: number; dir: number | null; spd: number | null; temp: number | null }[]; freezingFt: number | null }[];
 }
 
 export interface WindsData {
@@ -87,6 +89,8 @@ export interface WindsData {
   /** 비행 시각이 예보 범위 밖이면 현재 시각 기준으로 대신 받음 */
   basis: 'eto' | 'now';
   points: WindPoint[];
+  /** 시간대별 자료의 시각 목록 (ISO Z, 1시간 간격, D-063) */
+  times?: string[];
 }
 
 /** IndexedDB wxSnapshots 한 줄 (키 [type, station]) */

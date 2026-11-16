@@ -189,7 +189,10 @@ export function startWxScheduler(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
   const tick = () => {
-    if (document.visibilityState === 'visible') void refreshDue();
+    if (document.visibilityState !== 'visible') return;
+    void refreshDue();
+    // 우주기상·PIREP·열대저기압도 같은 주기로 (각자 갱신 간격·실패 대기 지킴, D-070)
+    void import('./extra').then((m) => (m.useWxExtra.getState().loaded ? Promise.resolve() : m.loadExtraCache()).then(() => m.refreshExtra()));
   };
   void loadWxCache().then(tick);
   setInterval(tick, 60_000);

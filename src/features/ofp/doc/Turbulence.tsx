@@ -1,46 +1,47 @@
 // 난류(SR) 구간 블록 — NAV LOG SR 값으로 묶은 연속 구간
+import { fmtHm } from '../../../lib/format';
 import { formatZ } from '../../../lib/time';
-import { SR_BASIS, SR_THRESHOLDS, turbulenceZones } from '../turbulence';
+import { SR_BASIS, SR_THRESHOLDS, turbulenceZones, type TurbZone } from '../turbulence';
 import type { OfpData } from '../types';
 import { DocSection, LevelPill } from './ui';
 
-export function TurbulenceBlock({ o, onWpt }: { o: OfpData; onWpt?: (name: string) => void }) {
+export function TurbulenceBlock({ o, onZone, className }: { o: OfpData; onZone?: (z: TurbZone) => void; className?: string }) {
   const zones = turbulenceZones(o.route);
   const high = zones.filter((z) => z.level === 'warning').length;
   return (
-    <DocSection title="Turbulence · SR" meta={zones.length ? `${zones.length} ZONES${high ? ` · ${high} HIGH` : ''}` : 'NIL'}>
+    <DocSection className={className} title="Turbulence · SR" meta={zones.length ? `${zones.length} ZONES${high ? ` · ${high} HIGH` : ''}` : 'NIL'}>
       {zones.length === 0 ? (
         <p className="muted small">SR {SR_THRESHOLDS.caution} 이상 구간 없음</p>
       ) : (
-        <table className="dt">
-          <thead>
-            <tr>
-              <th>FROM → TO</th>
-              <th className="r">ETO</th>
-              <th>FL</th>
-              <th className="r">MAX SR</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zones.map((z, i) => (
-              <tr key={i} className={`turb-${z.level}`} onClick={onWpt ? () => onWpt(z.points[0].name) : undefined}>
-                <td className="mono strong">
-                  {z.from.name} → {z.to.name}
-                  <div className="wpt-sub">{z.points.length}개 지점</div>
-                </td>
-                <td className="r mono">
-                  {formatZ(z.from.eto)}–{formatZ(z.to.eto)}
-                </td>
-                <td className="mono">{z.fls}</td>
-                <td className="r">
-                  <LevelPill level={z.level}>{`SR ${z.maxSr}${z.level === 'warning' ? ' HIGH' : ''}`}</LevelPill>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="turb-list">
+          {zones.map((z, i) => {
+            const a = z.from.cumMin;
+            const b = z.to.cumMin;
+            return (
+              <li key={i} className={`turb-item turb-${z.level}`}>
+                <button className="turb-btn" onClick={onZone ? () => onZone(z) : undefined} disabled={!onZone} aria-label={onZone ? `${z.from.name}–${z.to.name} 지도에서 보기` : undefined}>
+                  <span className="turb-top">
+                    <LevelPill level={z.level}>{`SR ${z.maxSr}${z.level === 'warning' ? ' HIGH' : ''}`}</LevelPill>
+                    <span className="mono strong">
+                      {z.from.name} → {z.to.name}
+                    </span>
+                    <span className="mono turb-fl">{z.fls}</span>
+                  </span>
+                  <span className="turb-sub mono">
+                    <span>{formatZ(z.from.eto)}–{formatZ(z.to.eto)}</span>
+                    <span title="이륙 후 누적 시간 (accumulated time)">
+                      T/O +{fmtHm(a)} ~ +{fmtHm(b)} ({fmtHm(Math.max(0, b - a))})
+                    </span>
+                    <span className="muted">{z.points.length}개 지점</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
-      <p className="doc-foot muted">{SR_BASIS}</p>
+      {onZone && zones.length > 0 && <p className="small muted">구간을 누르면 지도로 보여 줍니다.</p>}
+      <p className="doc-foot muted">ACCUM = 이륙 후 누적 시간(NAV LOG 계획) · 구간 길이. {SR_BASIS}</p>
     </DocSection>
   );
 }

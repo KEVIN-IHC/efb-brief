@@ -1,3 +1,4 @@
+import type { OfpRouteCheck } from './parser/routeCheck';
 // OFP 데이터 모델 (SPEC §10.2). 시간 분, 거리 NM, 시각 ISO UTC
 // 연료·중량 단위는 OfpData.unit (데모 kg, 회사 Aviator 100LBS → lbs로 환산해 저장)
 
@@ -159,6 +160,8 @@ export interface OfpData {
   fuelStats?: { period?: string; items: { label: string; value: number }[] };
   /** OFP NOTAM PACKAGE 1/2/3 (Phase 4). 원문 구조 그대로 — 분류는 화면에서 규칙으로 계산 */
   notams?: OfpNotams;
+  /** 항로·OFP 번호가 OFP 안 여러 곳에서 같은지 (D-067) */
+  routeCheck?: OfpRouteCheck;
 }
 
 /** 원문 한 줄 (n = 원문 뷰어 줄 번호) */

@@ -1,7 +1,8 @@
 // Settings → 매뉴얼: 묶음 가져오기(새 개정은 자동 교체)·목록·삭제 (D-044)
 import { useEffect, useRef, useState } from 'react';
 import { MANUAL_PARSER_VERSION } from './parse';
-import { deleteManual, listManuals, manualEvents, OlderRevisionError, readManualFile, saveManual, type StoredManual } from './store';
+import { deleteManual, deleteManualImages, importImagePack, isImagePack, listImageIndexes, listManuals, manualEvents, OlderRevisionError, readManualFile, saveManual, type StoredManual } from './store';
+import type { ManualImgIndex } from '../../db/schema';
 import { deleteRules, isRulesJson, loadRules, rulesEvents, saveRules, type StoredRules } from '../brief/rules';
 
 const fmtDate = (iso: string) => iso.slice(0, 10);
@@ -13,8 +14,12 @@ export function ManualCard() {
   const [log, setLog] = useState<string[]>([]);
   const ref = useRef<HTMLInputElement>(null);
 
+  const [imgs, setImgs] = useState<Record<string, ManualImgIndex>>({});
   useEffect(() => {
-    const load = () => void listManuals().then(setDocs).catch(() => setDocs([]));
+    const load = () => {
+      void listManuals().then(setDocs).catch(() => setDocs([]));
+      void listImageIndexes().then((l) => setImgs(Object.fromEntries(l.map((x) => [x.docId, x])))).catch(() => setImgs({}));
+    };
     load();
     manualEvents.addEventListener('change', load);
     return () => manualEvents.removeEventListener('change', load);
@@ -30,9 +35,17 @@ export function ManualCard() {
   const importFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const out: string[] = [];
-    for (const f of Array.from(files)) {
+    // 글 묶음·기준 파일을 먼저, 사진 묶음은 나중에 (사진은 글 묶음이 있어야 들어감)
+    for (const f of Array.from(files).sort((a, b) => Number(isImagePack(a.name)) - Number(isImagePack(b.name)))) {
       setBusy(`${f.name} 읽는 중…`);
       try {
+        // 쪽 사진 묶음 (D-076): 글 묶음을 먼저 가져와야 함 → 같은 번에 고르면 글 묶음부터
+        if (isImagePack(f.name)) {
+          setBusy(`${f.name} 사진 저장 중…`);
+          const r = await importImagePack(f);
+          out.push(`✓ ${r.docId} 쪽 사진 ${r.parts > 1 ? `${r.part}/${r.parts} ` : ''}— ${r.count}쪽 · ${r.mb} MB`);
+          continue;
+        }
         // 회사 기준 파일 (D-049) — 매뉴얼과 같은 곳에서 가져온다
         if (/\.json$/i.test(f.name)) {
           let j: unknown = null;
@@ -84,7 +97,7 @@ export function ManualCard() {
       <div className="card-title">
         <h3>매뉴얼 ({docs.length})</h3>
       </div>
-      {docs.length === 0 && <p className="muted small">아직 없음. Mac에서 만든 묶음 파일(.efbman.json.gz)이나 변환된 .md 파일을 가져오세요.</p>}
+      {docs.length === 0 && <p className="muted small">아직 없음. Mac에서 만든 묶음 파일(.efbman.json.gz)이나 변환된 .md 파일을 가져오세요. 쪽 사진(.efbimg)은 글 묶음 다음에.</p>}
       <ul className="manual-list">
         {docs.map((d) => (
           <li key={d.docId}>
@@ -94,6 +107,19 @@ export function ManualCard() {
             </div>
             <div className="muted small">
               {d.title} · {d.pageCount}쪽{d.itemCount ? ` · 항목 ${d.itemCount}` : ''} · 가져옴 {fmtDate(d.importedAt)}
+              {imgs[d.docId] ? (
+                <span className={imgs[d.docId].issueDate && d.issueDate && imgs[d.docId].issueDate !== d.issueDate ? 'c-warn' : ''}>
+                  {' '}
+                  · 쪽 사진 {imgs[d.docId].count}쪽
+                  {imgs[d.docId].parts.length < imgs[d.docId].partsTotal && ` (부분 ${imgs[d.docId].parts.join(',')}/${imgs[d.docId].partsTotal} — 나머지도 가져오세요)`}
+                  {imgs[d.docId].issueDate && d.issueDate && imgs[d.docId].issueDate !== d.issueDate && ' — 글과 개정이 달라 쓰지 않음'}{' '}
+                  <button className="linkish" onClick={() => void deleteManualImages(d.docId).then(() => manualEvents.dispatchEvent(new Event('change')))}>
+                    사진 삭제
+                  </button>
+                </span>
+              ) : (
+                <span> · 쪽 사진 없음</span>
+              )}
               {d.parserVersion !== MANUAL_PARSER_VERSION && <span className="c-warn"> · 이전 변환 규칙({d.parserVersion}) — Mac에서 묶음을 다시 만들어 가져오면 표시가 나아짐</span>}
             </div>
             <button className="btn" onClick={() => void remove(d)} aria-label={`${d.docId} 삭제`}>
@@ -139,7 +165,7 @@ export function ManualCard() {
         </p>
       ))}
       <p className="muted small">
-        같은 매뉴얼의 새 개정을 가져오면 자동으로 교체됩니다. 매뉴얼은 이 기기 안에만 저장되고 외부로 보내지 않습니다. 운항 판단은 승인된 원본 매뉴얼 기준.
+        같은 매뉴얼의 새 개정을 가져오면 자동으로 교체됩니다. 쪽 사진(.efbimg)은 그림·표가 있는 쪽의 원본 모습 — 매뉴얼 화면의 "원본 쪽 사진"으로 봅니다(용량이 커서 필요한 매뉴얼만). 매뉴얼은 이 기기 안에만 저장되고 외부로 보내지 않습니다. 운항 판단은 승인된 원본 매뉴얼 기준.
       </p>
     </section>
   );

@@ -5,9 +5,10 @@ import { formatAgo, formatDayZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { useSync } from '../../sync/syncManager';
 import { useActiveFlight } from '../flight/activeFlight';
-import { prefetchSatCorridor, SAT_LAYERS, useSat } from '../map/satellite';
+import { SAT_LAYERS, useSat } from '../map/satellite';
+import { prepareFlight, refreshAllWx, useWxActions, type PrepMeta } from './actions';
 import { FRESH_LIMITS, freshness, type WxKind } from './freshness';
-import { flightStations, refreshDue, useWx } from './store';
+import { flightStations, useWx } from './store';
 import type { FltCat, WxSnapshot } from './types';
 
 /** "RKSI METAR · 2h 14m ago" — 색으로 신선도 (SPEC §2.2-1) */
@@ -47,13 +48,14 @@ export function WxStatusCard() {
     sigmet: wx.sigmets?.fetchedAt,
     winds: wx.winds?.flightId === flight.flightId ? wx.winds.fetchedAt : undefined,
   };
-  const busy = Object.values(wx.busy).some(Boolean);
+  const refreshing = useWxActions((s) => s.refreshing);
+  const busy = refreshing || Object.values(wx.busy).some(Boolean);
   const satTimes = SAT_LAYERS.map((l) => sat.times[l.id]).filter(Boolean).sort();
   return (
     <section className="card">
       <div className="card-title">
         <h3>기상 갱신</h3>
-        <button className="btn" disabled={!online || busy} onClick={() => void refreshDue(true)}>
+        <button className="btn" disabled={!online || busy} onClick={() => void refreshAllWx()}>
           {!online ? '오프라인' : busy ? '받는 중…' : '지금 갱신'}
         </button>
       </div>
@@ -73,7 +75,7 @@ export function WxStatusCard() {
           <b className="mono small">{satTimes.length ? `영상 ${formatAgo(satTimes[satTimes.length - 1], now)}` : '지도에서 표시'}</b>
         </li>
       </ul>
-      <p className="muted small">온라인일 때 자동 갱신: METAR 10분 · TAF 30분 · SIGMET 15분 · 바람 60분 · 위성 30분</p>
+      <p className="muted small">온라인일 때 자동 갱신: METAR 10분 · TAF 30분 · SIGMET 15분 · 바람 60분 · 위성 30분. "지금 갱신"(맨 위 ⟳ 기상과 같음)은 우주기상·PIREP·열대저기압까지 함께 받습니다.</p>
     </section>
   );
 }
@@ -82,30 +84,22 @@ export function WxStatusCard() {
 export function PrepareCard() {
   const online = useSync((s) => s.online);
   const { flight, ofp } = useActiveFlight();
-  const [prog, setProg] = useState<{ done: number; total: number; bytes: number } | null>(null);
-  const [meta, setMeta] = useState<{ fetchedAt: string; bytes: number; failed: number } | null>(null);
-  const [running, setRunning] = useState(false);
+  const [meta, setMeta] = useState<PrepMeta | null>(null);
+  const { saving: running, prog } = useWxActions();
   const now = useNow(30_000);
 
   useEffect(() => {
-    void getDB()
-      .then((db) => db.get('wxSnapshots', ['meta', flight.flightId]))
-      .then((r) => setMeta(r ? ((r as WxSnapshot).data as { fetchedAt: string; bytes: number; failed: number }) : null));
+    const load = () =>
+      void getDB()
+        .then((db) => db.get('wxSnapshots', ['meta', flight.flightId]))
+        .then((r) => setMeta(r ? ((r as WxSnapshot).data as PrepMeta) : null));
+    load();
+    window.addEventListener('efb:prep-saved', load);
+    return () => window.removeEventListener('efb:prep-saved', load);
   }, [flight.flightId]);
 
   const route = ofp?.parsed?.route ?? [];
-  const run = async () => {
-    setRunning(true);
-    try {
-      await refreshDue(true);
-      const r = await prefetchSatCorridor(route, (done, total, bytes) => setProg({ done, total, bytes }));
-      const m = { fetchedAt: new Date().toISOString(), ...r };
-      await (await getDB()).put('wxSnapshots', { type: 'meta', station: flight.flightId, fetchedAt: m.fetchedAt, data: m } as never);
-      setMeta(m);
-    } finally {
-      setRunning(false);
-    }
-  };
+  const run = () => void prepareFlight();
   const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
   return (
     <section className="card">
@@ -115,7 +109,7 @@ export function PrepareCard() {
           {running ? '저장 중…' : '비행 준비 완료'}
         </button>
       </div>
-      <p className="muted small">출발 전에 한 번 누르면 공항 METAR·TAF, SIGMET, 루트 바람·기온, 루트 좌우 200NM 위성 영상을 기기에 저장합니다. 순항 중(오프라인)에는 저장된 것을 그대로 봅니다.</p>
+      <p className="muted small">맨 위 줄 <b>⤓ 저장</b>과 같습니다. 출발 전에 한 번 누르면 공항 METAR·TAF, SIGMET, 루트 바람·기온, 루트 좌우 200NM 위성 영상을 기기에 저장합니다. 순항 중(오프라인)에는 저장된 것을 그대로 봅니다.</p>
       {prog && (
         <div className="progress" aria-label="저장 진행률">
           <div className="bar" style={{ width: `${Math.round((prog.done / Math.max(1, prog.total)) * 100)}%` }} />

@@ -10,7 +10,6 @@ import { FirCommSection } from '../fir/FirCommSection';
 import { ActiveTimers } from '../ops/OpsPage';
 import { useActiveFlight } from '../flight/activeFlight';
 import { Cell, DocSection, LevelPill } from '../ofp/doc/ui';
-import { OfpOpenButton } from '../ofp/OfpOpenButton';
 import { latestActuals, saveWaypointActual, useFlightLogs, voidWaypointActual } from './actuals';
 import { buildChecks, FUEL_DEV_RULES, fuelDevLevel, landingStage, nextWaypoint, project, revisedEto, STAGE_LABEL, STAGE_LEVEL } from './deviation';
 import { EntrySheet } from './EntrySheet';
@@ -61,7 +60,7 @@ export function InflightPage() {
       {!o && (
         <DocSection title="Inflight" className="span-all">
           <p className="muted">현재 비행의 OFP가 없어 웨이포인트 기록을 할 수 없습니다. 메모는 아래에서 남길 수 있습니다.</p>
-          <OfpOpenButton />
+          <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 여세요.</p>
         </DocSection>
       )}
 

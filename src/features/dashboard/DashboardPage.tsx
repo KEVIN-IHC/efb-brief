@@ -5,7 +5,6 @@ import { useSync } from '../../sync/syncManager';
 import { useActiveFlight } from '../flight/activeFlight';
 import { Cell, DocSection, LevelPill } from '../ofp/doc/ui';
 import { etpMargin, fuelMargin, limitMargin, worstLevel, type Margin } from '../ofp/margins';
-import { OfpOpenButton } from '../ofp/OfpOpenButton';
 import { turbulenceZones } from '../ofp/turbulence';
 import { useMemo } from 'react';
 import { AlertsCard } from '../alerts/AlertsCard';
@@ -52,9 +51,7 @@ export function DashboardPage() {
           {o && <Cell k="FLT TIME" v={fmtHm(o.header.airMin)} />}
           {o && <Cell k="MAX FL" v={fmtFl(o.header.cruiseFl)} />}
         </div>
-        <div className="row">
-          <OfpOpenButton variant={isDemo ? 'primary' : 'plain'} label={isDemo ? '회사 OFP 열기' : '다른 OFP 열기'} />
-        </div>
+        {isDemo && <p className="muted small">데모 데이터입니다. 맨 위 줄의 <b>OFP 열기</b>로 회사 OFP를 여세요.</p>}
       </DocSection>
 
       <AlertsCard />
@@ -86,7 +83,7 @@ export function DashboardPage() {
               <li>
                 <span>난류 (SR) 구간</span>
                 <b className={`mono ${turbHigh.length ? 'c-warning' : turb.length ? 'c-caution' : ''}`}>
-                  {turb.length ? `${turb.length}${turbHigh.length ? ` · HIGH ${turbHigh.map((z) => `${z.from.name}–${z.to.name}`).join(', ')}` : ''}` : 'NIL'}
+                  {turb.length ? `${turb.length}${turbHigh.length ? ` · HIGH ${turbHigh.map((z) => `${z.from.name}–${z.to.name} (T/O +${fmtHm(z.from.cumMin)})`).join(', ')}` : ''}` : 'NIL'}
                 </b>
               </li>
               <li>

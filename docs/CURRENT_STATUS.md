@@ -2,14 +2,14 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-12 (추가 기능 D-055~D-060 배포 fe06c57)
+> 마지막 갱신: 2026-11-16 (D-061~D-076, 커밋 전)
 
 ## 1. 한눈에
 
 | 항목 | 상태 |
 |---|---|
 | 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** + **운항관리사식 Briefing(D-049~D-054) 배포 (1e432fe, 2026-11-12)** — 남은 것: 아이패드 확인, 회사 기준 파일 가져오기 확인. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기. **추가 기능 목록 1~8 (D-055~D-060: FIR 통신·Ops 탭·버티컬 뷰·FIR 경계·기상 추가) 배포 (fe06c57, 2026-11-12)** — Worker 재배포 필요(K-35), 아이패드 확인 대기. 목록: `private/manuals/NEXT-ITEMS.md` |
-| 테스트 | ✅ `npm test` 198개 통과 (2026-11-12 Ops·버티컬·기상 추가 포함) · 이전: 167개 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
+| 테스트 | ✅ `npm test` 242개 통과 (2026-11-16 AGTOW 12개 포함) · 이전: 230개 (항로·OFP 번호 일치) · 이전: 214개 · 이전: 212개 (기상 시간대·난류 지수) · 이전: 198개 (2026-11-12 Ops·버티컬·기상 추가 포함) · 이전: 167개 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
 | 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
@@ -25,7 +25,7 @@
 | 1.5 실제 파서 | Aviator 파서 | ✅ | 샘플 10개(A388·B78X, ICN↔LAX·SYD↔ICN) 전부 교차검증 통과. 추가: Lido식 화면, 주간/야간, CRZ WIND, 난류(SR), OFP 열기 버튼 |
 | 2 순항 기록 | 웨이포인트 체크·편차·그래프 | ✅ 로컬 / ⏳ 사용자 확인 | 완료 조건(오프라인 전 구간 기록 → 온라인 일괄 동기화) Mac에서 56개 지점으로 확인 |
 | 3 기상 지도 | Leaflet·METAR/TAF/SIGMET/바람/위성·신선도·오프라인 패키지 | ✅ (Mac 검증 + 아이패드 사용자 확인) | 배포판은 Cloudflare Worker 중계 자동 사용(D-041) |
-| 3.5 4D | 시간 슬라이더·SIGMET 교차 | ⏳ | |
+| 3.5 4D | 시간 슬라이더·SIGMET 교차 | ✅ 로컬 | D-063·D-065: Map 시간 막대·재생(지난 위성 3h + 예보), 바람·SIGMET·✈ 위치·버티컬·플랜 뷰가 함께 움직임. 아이패드 확인 전 |
 | 4 NOTAM | OFP NOTAM 파싱·분류 | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-043. 샘플 10개 패키지별 건수 일치, NOTAM 탭(공항·FIR·분류·강조·근거·원문 이동). e236b29 배포 |
 | 5 매뉴얼·MEL·얼러트 | 1 넣기 → 2 MEL·CDL 매칭·보기·검색 → 3 얼러트 엔진 → (6 AI 질의) | ✅ 로컬·배포 / ⏳ 아이패드 확인 | D-044·D-045·D-046. MEL·Manual 탭, 대시보드 Alerts. A380 MEL·CDL·FCOM·FCTM 수령(`private/manuals/inbox`), FOM 대기 |
 | 6 AI 보조 | | ⏳ | |
@@ -81,6 +81,55 @@
 8. NOTAM 후속(선택): 근거 문서 원문 대조(K-23), D) 시간표(K-22)
 
 ## 8. 세션 인계 (가장 최근 작업)
+
+### 2026-11-16 (7) — NAV LOG 숫자 색 (D-075) · 매뉴얼 쪽 사진 묶음 (D-076)
+- **완료**: NAV LOG 줄 색 제거, SR 숫자 등급 색·굵게(구간은 이름 왼쪽 선), MSA 100 이상만 굵게·진한 주황. 매뉴얼: Mac `npm run manuals -- --images` → 그림·표 쪽만 JPEG 사진 묶음 `.efbimg`(매뉴얼별, 40MB 부분 나눔), 앱 가져오기·"🖼 원본 쪽 사진" 보기, DB v4
+- **변경 파일**: `ofp/doc/NavLog.tsx`, `tools/manual-convert/{pdf2img.py(신규),build.ts}`, `db/schema.ts`(v4), `manual/{store.ts,ManualCard.tsx,PageImages.tsx(신규),ManualInline.tsx,ManualPage.tsx}`, `app/styles.css`, 문서(DECISIONS D-075·076, ARCHITECTURE §3.7o, KNOWN_ISSUES K-29, LOCAL_TEST §21)
+- **사진 묶음 결과** (`npm run manuals -- --images`, 약 5분): CDL 488/488쪽 연결·사진 220쪽 9.5MB · FCOM 6938/6938·3805쪽 198.7MB(5개 파일) · FCTM 478/478·137쪽 8.2MB · MEL 2088/2088·39쪽 2.6MB. FOM은 원본 PDF가 없어 없음
+- **테스트**: `npm test` 242/242, `tsc -b`, `npm run build` 통과.  CDL 사진 묶음 220쪽 9.5MB → 개발 브라우저 가져오기 → Manual 탭 CDL 그림 쪽(글이 깨진 쪽)에서 원본 사진 표시 확인. 개발 브라우저 DB v3→v4 올라가며 기존 자료 유지. 샘플 OFP로 NAV LOG 숫자 색 확인 후 삭제. 사진 묶음 가져오기 자동 테스트는 없음(IndexedDB 필요). **아이패드 확인 전**
+- **주의**: 개발 브라우저 IndexedDB에 CDL 쪽 사진이 들어 있음(Mac 안). 사진에는 회사 표지 글이 찍혀 있음 → `.efbimg`도 private·구글드라이브에만
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §21) → 커밋·배포(요청 시)
+
+### 2026-11-16 (6) — NAV LOG 표시 정리 · AGTOW 모양 (D-074)
+- **완료**: TOC▲·TOD▼·ETP◆ 이름 앞 표시(줄 색 제거), 난류 SR 구간 줄 전체 색, MSA 고도별 진하기(59→16%, 100→29%, 164→49%), AGTOW 두 줄 모양(3단 좁은 카드에서도 줄바꿈 없음)
+- **변경 파일**: `ofp/doc/{NavLog,OfpDocument}.tsx`, `app/styles.css`, 문서(DECISIONS D-074)
+- **테스트**: `npm test` 242/242, `tsc -b`, `npm run build` 통과. 개발 브라우저(샘플 ofp-11, 확인 후 삭제): 1440·375 × 주간/야간 OFP·NAV LOG 카드 넘침 0·가로 스크롤 0. MSA 열은 여전히 1280px 이상에서만(K-43). **아이패드 확인 전**
+- **다음**: 사용자 확인 → 커밋·배포(요청 시). 매뉴얼 그림·표 쪽 사진(K-29)은 사용자 결정 대기
+
+### 2026-11-16 (5) — 창·돌아가기 공통 · WEIGHTS 정리 · 전체 깨짐 점검 (D-073)
+- **완료**: EDTO(34px)·ALTERNATES(7px) 넘침 수정(표 머리글 줄바꿈·여백·표 안 스크롤), 전 탭 375·768·1180·1440 × 주간/야간 점검(카드 밖 넘침 0, 페이지 가로 스크롤 0). WEIGHTS: 좌석 등급·TOTAL PAX 맨 위, PAX·CARGO·기타 = PAYLOAD를 LDW 아래, AGTOW 3열 표. 난류 구간 → 창(확대 플랜 뷰·지점 표) → Map 크게 보기 → 돌아가기(창 다시 열림, 스크롤 같음). OFP MEL/CDL 줄 → 매뉴얼 창. 돌아가기를 앱 공통(`app/returnTo.ts`)으로, Manual도 옮김. 플랜 뷰 SIGMET 가로 띠 버그 수정
+- **변경 파일**: `app/{returnTo.ts(신규),App.tsx,styles.css}`, `manual/{lookup.ts,ManualPage.tsx}`, `ofp/doc/{TurbPopup.tsx(신규),OfpDocument.tsx,Turbulence.tsx}`, `ofp/turbulence.ts`, `vertical/PlanView.tsx`, 문서(DECISIONS D-073, ARCHITECTURE §3.7n, LOCAL_TEST §20)
+- **테스트**: `npm test` 242/242, `tsc -b`, `npm run build` 통과. 개발 브라우저(샘플 ofp-11, 임시 127.0.0.1 서버, 확인 후 삭제·데모로 되돌림): 위 흐름 모두 확인, 돌아가기 스크롤 1201→1201·958.5→958.5. **아이패드 확인 전**
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §16~§20) → 커밋·배포(요청 시)
+
+### 2026-11-16 (4) — AGTOW · SR 지도 · 우주기상 · 맨 위 기상/저장 버튼 · MSA (D-068~D-072)
+- **완료**: WEIGHTS 아래 AGTOW 계산 줄(가장 낮은 값 강조, 샘플 10개 OFP 값과 일치) · 난류 SR 구간 Map 레이어·버티컬 뷰 띠·누르면 Map 이동 · 우주기상 칸 잘림 해결·등급 설명·FOM 근거 3곳(📖 펼치기)·카드 갱신 버튼 제거(맨 위·주기 갱신에 포함) · 맨 위 ⟳ 기상·⤓ 저장·OUTBOX 같은 모양 · NAV LOG MSA ≥ 100 주황
+- **변경 파일**: `ofp/{agtow.ts,agtow.test.ts}`(신규), `ofp/doc/{OfpDocument,Turbulence,NavLog}.tsx`, `ofp/turbulence.ts`, `map/MapPage.tsx`, `vertical/VerticalView.tsx`, `weather/{actions.ts(신규),ExtraCard.tsx,ui.tsx,store.ts}`, `manual/RefList.tsx`(신규), `ops/OpsPage.tsx`, `brief/rules.ts`, `app/{StatusBar.tsx,styles.css}`, `ofp/OfpOpenButton.tsx`, 문서(DECISIONS D-068~072, ARCHITECTURE §3.7m, KNOWN_ISSUES K-42·43, LOCAL_TEST §19). private: `build-ops.py`(우주기상 근거), `company-rules.json`·`out/company-rules.json`(refs.spaceWeather 추가, 이전 파일은 세션 임시 폴더에 백업)
+- **테스트**: `npm test` 242/242, `tsc -b`, `npm run build` 통과. 개발 브라우저(샘플 ofp-11 + 새 회사 기준 파일을 임시 127.0.0.1 서버로, 확인 후 OFP·비행 삭제): ⟳ 기상 → "기상 갱신 완료", ⤓ 저장 → 위성 진행 → "오프라인 저장 완료 7.5 MB", SR 구간 지도 4개·버티컬 띠 4개·목록 누르면 팝업(SR HIGH 구간·이륙 후 시간), 우주기상 FOM 근거 펼침, MSA 164 강조, 375·768·1024·1440 × 주간/야간 가로 스크롤·상태 줄 넘침 0. 작업 중 CSS 일부(SR·우주기상)를 실수로 지웠다가 복구함. **아이패드 확인 전**
+- **주의**: 개발 브라우저 IndexedDB에 새 회사 기준 파일·위성 저장본이 있음(Mac 안)
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §16~§19) → 커밋·배포(요청 시) → 아이패드에 새 company-rules.json 가져오기 → Worker 재배포(K-35). 매뉴얼 그림·표 개선(K-29) 방법 결정
+
+### 2026-11-16 (3) — 항로·OFP 번호 일치 확인 · 난류 이륙 후 시간 (D-067)
+- **완료**: 파서 1.4 — OFP 안 항로 6곳 안팎(CFP 요약 항로 ×2, OFP FPL ×2, 제출된 ATS FPL 사본, NAV LOG)과 OFP 번호 5곳(CFP PLAN ×2, PLAN #, REQUEST NO. ×2) 비교 → FLIGHT 카드에 "✓ 이 OFP의 ROUTE n곳 모두 같음 · ✓ OFP NO. n곳 같음"(펼치면 곳별·원문 줄). 난류 카드 잘림 → 두 줄 목록 + T/O +h:mm 누적 시간·구간 길이, Dashboard·Briefing 문구에도
+- **변경 파일**: `ofp/parser/{routeCheck.ts,routeCheck.test.ts}`(신규), `ofp/parser/index.ts`(버전 1.4), `ofp/types.ts`, `ofp/doc/{OfpDocument,Turbulence}.tsx`, `ofp/OfpPage.tsx`, `dashboard/DashboardPage.tsx`, `brief/cards.ts`, `app/styles.css`, 문서(DECISIONS D-067, ARCHITECTURE §3.7l, LOCAL_TEST §18)
+- **테스트**: `npm test` 230/230(실제 샘플 10개 전부 항로·번호 일치 + 제출 FPL 항로를 일부러 바꾸면 잡아냄), `tsc -b`, `npm run build` 통과. 개발 브라우저에 샘플 ofp-11을 임시 127.0.0.1 서버로 넣어 확인(ROUTE 6곳·OFP 번호 5곳 일치, 난류 4구간 이륙 후 시간) → 확인 후 시험 OFP·비행 삭제, 데모 비행으로 되돌림. 375·768·1180·1440 × 주간/야간 가로 스크롤 0. 샘플 PDF→텍스트 재생성은 추출기 변경이 없어 하지 않음. **아이패드 확인 전**
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §16~§18) → 커밋·배포(요청 시) → Worker 재배포(K-35)
+
+### 2026-11-16 (2) — Map 시간 재생·기상 모음 (D-065) · Manual 돌아가기 (D-066)
+- **사용자 요청**: Mac에서 본 뒤 "맵 기상 재생·움직이기 + 밑에 버티컬 뷰, ATIS·TAF 빼곤 기상은 다 Map 탭으로", "크게 보기로 간 뒤 돌아가기 버튼", "company-rules.json을 앱 안에 합치면 안 되나(보안)" → 합치지 않음(아래)
+- **완료**: Map 시간 막대(지난 위성 −3h~ + 예보 시각, ▶ 재생, 지금 ±h·m 표시), GIBS 시각별 위성(저장·12시간 뒤 삭제), 바람·SIGMET·G-AIRMET 시각 필터, ✈ 예상 위치. 지도 아래 버티컬·플랜 뷰·SIGMET·바람 표·기상 추가, Weather 탭은 공항 METAR·TAF. Manual "← (탭)(으)로 돌아가기"(스크롤·펼침·창 복원). Map 탭을 떠날 때 Leaflet 오류(확대 중) 수정
+- **company-rules.json 합치기 안 함**: 앱 코드는 공개 GitHub 저장소·공개 사이트라 넣으면 누구나 내려받을 수 있음(D-049 유지). 지금처럼 한 번 가져오면 아이패드 IndexedDB에 남음
+- **변경 파일**: `map/{MapPage,satellite}`, `vertical/{TimeBar,useWxPick,VerticalView,wxTime,wxTime.test}`, `weather/WeatherPage`, `manual/{lookup,ManualPage,ManualInline,MelPage}`, `ops/OpsPage`, `app/styles.css`, 문서(DECISIONS D-065·066, ARCHITECTURE §3.7k, KNOWN_ISSUES K-41, LOCAL_TEST §17)
+- **테스트**: `npm test` 214/214, `tsc -b`, `npm run build` 통과. 개발 브라우저: Map 시각 −2h → 위성 1000Z 영상(GIBS 응답 시각 1000Z 확인)·재생으로 −2h→+1h 진행, 시간 범위 −3h~+11h, 지도 아래 카드 5개. MEL 펼침 → 크게 보기 → 돌아가기 = 같은 스크롤(742)·펼침 유지, Briefing 창 → 크게 보기 → 돌아가기 = 같은 스크롤·창 다시 열림. 375·768·1180·1440 × 주간/야간 가로 스크롤 0. **실제 OFP·아이패드·오프라인 재생은 확인 안 함**
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §16·§17) → 커밋·배포(요청 시) → Worker 재배포(K-35)
+
+### 2026-11-16 — OFP 버튼 한 곳 · 매뉴얼 그 자리에서 · 기상 시간대·플랜 뷰·난류 지수 (D-061~D-064)
+- **완료**: 1) OFP 열기 = 맨 위 상태 줄 하나(다른 곳은 안내 글, 아이폰 폭 "OFP") 2) 매뉴얼 그 자리에서: MEL 항목·Ops 📖 근거는 카드 안 펼치기/접기, 얼러트·Briefing 📖는 화면 위 창(닫으면 제자리) 3) Open-Meteo 시간대별 저장(최대 48h) + 시각 선택(지점 통과 시각 ↔ 시각 고정·슬라이더·재생, "지금 ±h") 4) 버티컬 뷰 바탕 선택(앞/뒷바람·ISA·난류 지수·기온 경도·기온 변화 3h) + PIREP·EDR 겹치기 + 선택 시각 위치 선 5) 플랜 뷰(항로 색·바람 화살표·SIGMET·PIREP, 오프라인 육지)
+- **변경 파일**: `app/{App,StatusBar,styles}`, `ofp/{OfpOpenButton,OfpPage,RawPdfView}`, `dashboard/DashboardPage`, `notam/NotamPage`, `inflight/InflightPage`, `manual/{ManualInline(신규),lookup,MelPage}`, `alerts/AlertsCard`, `ops/OpsPage`, `weather/{api,types,WeatherPage}`, `vertical/{profile,VerticalView}` + 신규 `vertical/{wxTime,wxTime.test,useWxPick,TimeBar,PlanView}`. 문서: DECISIONS D-061~064, ARCHITECTURE §3.7h·3.7j, KNOWN_ISSUES K-38·K-39·K-40, LOCAL_TEST §16
+- **테스트**: `npm test` 212/212, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 비행 + 기기 안에 A380 MEL·CDL·FOM·회사 기준을 임시 127.0.0.1 서버로 넣음, 확인 후 서버 종료): 상태 줄 버튼, MEL·CDL 카드 안 펼침, Ops 상황 카드 📖 FOM 근거 펼침(탭 그대로), Briefing 📖 창 → 닫으면 스크롤 위치 같음, Weather 갱신 → 시간 범위 지금 −6h~+12h·슬라이더 +7h·난류 지수 칸·플랜 뷰(육지·바람 화살표 12개). 375·768·1180·1440 × 주간/야간 가로 스크롤 0, 375 상태 줄 넘침 0. **실제 OFP·아이패드로는 확인 안 함. PIREP는 Worker 재배포 전이라 404(K-35) → PIREP·EDR 표시는 자동 테스트로만 확인.** 데모 비행은 지난 날짜라 "지점 통과 시각"은 지금 기준으로 대신 표시됨(실제 비행 전날 OFP로 확인 필요)
+- **주의**: 개발 브라우저 IndexedDB에 매뉴얼 묶음·회사 기준 파일이 들어 있음(Mac 안). 빠르게 탭을 바꾸면 Map 탭에서 Leaflet 콘솔 오류가 날 수 있음(이번 변경과 무관, 자동 탭 전환 중에만 봄)
+- **미해결**: K-39 난류 지수 기준 임시, K-40 플랜 뷰 항로 선만, Map 탭 시간 슬라이더 없음. 커밋 안 함
+- **다음**: 사용자 확인(`LOCAL_TEST.md` §16) → 커밋·배포(요청 시) → Worker 재배포(K-35)
 
 ### 2026-11-12 — 추가 기능 커밋·배포
 - **배포**: 사용자 요청("확인 후 커밋·배포"). 커밋 전 검사: private·PDF 없음, 항공사명·편명·등록번호·FOM 절 코드 새로 넣은 것 없음, 테스트 198/198. fe06c57 push → GitHub Actions 성공. 배포 사이트: 새 코드 있음, `geo/firs.json` 200, `/private/` 404, 회사 파일 내용 없음(이전부터 있던 연료 얼러트 FOM 코드만)

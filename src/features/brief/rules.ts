@@ -122,6 +122,8 @@ export interface CompanyRules {
     thunderstorm: RuleRef;
     windshear: RuleRef;
     volcanic: RuleRef;
+    /** 우주기상 관련 절 (선택, D-070) */
+    spaceWeather?: RuleRef[];
   };
   /** 상황 카드 (선택, D-056) */
   ops?: OpsConfig;

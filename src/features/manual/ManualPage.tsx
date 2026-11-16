@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { directKey, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
 import { ManualText } from './ManualText';
+import { PageImages } from './PageImages';
 import { listManuals, manualEvents, type StoredManual } from './store';
 
 export function ManualPage() {
@@ -212,6 +213,7 @@ export function ManualPage() {
                 </button>
               )}
             </div>
+            <PageImages docId={docId!} seqs={focus ? focus.seqs : [seq]} />
             <ManualText text={focus ? focus.text : page.text} marks={focus ? [] : marks} target={mark} onRef={(k) => void onRef(k)} />
             <p className="muted small man-foot">
               근거: {doc?.title} {doc?.revision ?? ''} {doc?.issueDate ?? ''} · {refLabel ?? '쪽 표시 없음'} · 변환 MD L{page.line}. 변환본이라 표·그림이 깨질 수 있음 — 운항 판단은 승인된 원본 매뉴얼로.

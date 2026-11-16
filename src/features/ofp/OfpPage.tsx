@@ -6,7 +6,7 @@ import { NavLog } from './doc/NavLog';
 import { OfpDocument } from './doc/OfpDocument';
 import { CrzWind } from './doc/CrzWind';
 import { RawPdfView } from './RawPdfView';
-import { OfpOpenButton, useOfpImport } from './OfpOpenButton';
+import { useOfpImport } from './OfpOpenButton';
 
 function ImportStatus() {
   const { busy, msg } = useOfpImport();
@@ -78,7 +78,6 @@ export function OfpPage() {
             <span className="muted">없음</span>
           )}
         </div>
-        <OfpOpenButton showStatus={false} />
       </div>
       <ImportStatus />
       <div className="segmented" role="tablist">
@@ -93,10 +92,10 @@ export function OfpPage() {
       {sub !== 'raw' && loaded && !o && (
         <section className="card placeholder">
           <p>현재 비행의 OFP가 없습니다.</p>
-          <OfpOpenButton />
+          <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 여세요.</p>
         </section>
       )}
-      {o && sub === 'doc' && <OfpDocument o={o} />}
+      {o && sub === 'doc' && <OfpDocument o={o} onLine={jumpToSource} />}
       {o && sub === 'wind' && (
         <div className="page-grid">
           <CrzWind o={o} />

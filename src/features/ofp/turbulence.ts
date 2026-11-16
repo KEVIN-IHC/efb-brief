@@ -1,7 +1,13 @@
 // 난류(SR, shear rate) 구간 묶기 — NAV LOG의 웨이포인트별 SR 값으로 연속 구간을 만든다
 // ⚠ 임시 기준: 회사 OFP 디스패치 노트 표현 "HIGH SR(7-8)", "HIGH SR(8-14)" 를 근거로 7 이상 HIGH.
 //   회사 매뉴얼 기준 확정 필요 (SPEC §17-5). 나중에 Settings로 이동
+import { create } from 'zustand';
 import type { OfpWaypoint } from './types';
+
+/** 보여 줄 난류 구간 (D-069·D-073). popup = 그 자리 창으로, 아니면 Map 지도에서 */
+export const useTurbFocus = create<{ from: number | null; to: number | null; t: number; popup: boolean }>(() => ({ from: null, to: null, t: 0, popup: false }));
+export const focusTurbZone = (z: { from: OfpWaypoint; to: OfpWaypoint }, mode: 'popup' | 'map' = 'map') =>
+  useTurbFocus.setState({ from: z.from.seq, to: z.to.seq, t: Date.now(), popup: mode === 'popup' });
 
 export const SR_THRESHOLDS = { caution: 5, high: 7 };
 export const SR_BASIS = '임시 기준 · SR 5–6 주의, 7 이상 HIGH (디스패치 노트 표현 "HIGH SR(7-8)" 근거) · 회사 매뉴얼 확인 필요';
