@@ -5,8 +5,8 @@ import { getDB } from '../../db/schema';
 import { isOnline } from '../../lib/time';
 import { useActiveFlight } from '../flight/activeFlight';
 import { prefetchSatCorridor } from '../map/satellite';
-import { refreshExtra } from './extra';
-import { refreshDue } from './store';
+import { refreshExtra, useWxExtra } from './extra';
+import { refreshDue, useWx } from './store';
 
 export interface PrepMeta {
   fetchedAt: string;
@@ -30,7 +30,11 @@ export async function refreshAllWx(): Promise<void> {
   useWxActions.setState({ refreshing: true });
   try {
     await Promise.all([refreshDue(true), refreshExtra(undefined, true)]);
-    say(`기상 갱신 완료 ${new Date().toISOString().slice(11, 16).replace(':', '')}Z`);
+    const hhmm = `${new Date().toISOString().slice(11, 16).replace(':', '')}Z`;
+    // 각 자료의 실패는 store에만 남고 여기로 오지 않음 → 모아서 알림 (전에는 실패가 있어도 "완료"로 보였음)
+    const failed = [...Object.entries(useWx.getState().errors), ...Object.entries(useWxExtra.getState().errors)].filter(([, e]) => e).map(([k]) => k.toUpperCase());
+    if (failed.length) say(`기상 갱신 ${hhmm} — 일부 실패: ${failed.join(', ')} (이전 자료 표시 중, Weather 탭에서 이유 확인)`, 'bad');
+    else say(`기상 갱신 완료 ${hhmm}`);
   } catch (e) {
     say(`기상 갱신 일부 실패: ${e instanceof Error ? e.message : String(e)}`, 'bad');
   } finally {
