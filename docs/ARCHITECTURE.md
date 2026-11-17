@@ -228,6 +228,10 @@ IPBS/
 - Mac: `tools/manual-convert/pdf2img.py` (PyMuPDF) ← `build.ts --images`. 파일 `.efbimg` = "EFBIMG1\n" + 머리 길이(4바이트) + 머리 JSON(map: 쪽 seq → PDF 쪽, images: 위치·크기) + JPEG들
 - 앱: `manual/store.ts` `importImagePack`·`pageImages`·`deleteManualImages`, DB v4 `manualImages`([docId, pdf])·`manualImgIndex`(docId), 화면 `manual/PageImages.tsx`
 
+### 3.7p 매뉴얼 목차·쪽 이동 (D-077)
+- `manual/lookup.ts` `buildToc(pages)` → 묶음(`TocGroup`)·항목(`TocEntry`: seq·code·title·depth·pages). 저장하지 않고 화면에서 그때 만듦
+- `manual/ManualPage.tsx`: "목차" 버튼(`.man-toc`), 쪽 수 버튼 → 입력 칸(`.man-jump`, `onJump`: 숫자·`p34`·`directKey`)
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

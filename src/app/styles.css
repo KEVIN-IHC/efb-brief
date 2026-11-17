@@ -741,6 +741,18 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .man-nav { display: flex; align-items: center; gap: var(--sp-2); }
 .man-ref { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); align-items: baseline; margin: var(--sp-3) 0; padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line); }
 .man-foot { margin-top: var(--sp-4); }
+.man-count { min-width: var(--touch); padding: 0 var(--sp-2); font-size: var(--fs-sm); }
+.man-jump { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.man-jump .input { flex: 1 1 auto; min-width: 0; }
+.man-jump .btn { flex: none; }
+.man-toc { margin-top: var(--sp-3); max-height: 60dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); }
+.man-toc details { border-bottom: 1px solid var(--line); }
+.man-toc summary { min-height: var(--touch); display: flex; align-items: center; padding: var(--sp-2) var(--sp-3); font: 600 var(--fs-sm) var(--font); cursor: pointer; overflow-wrap: anywhere; }
+.man-toc summary.cur { color: var(--accent); }
+.man-toc ul { list-style: none; margin: 0; padding: 0 var(--sp-3) var(--sp-2); }
+.man-toc-e { display: flex; flex-wrap: wrap; gap: 2px var(--sp-2); align-items: baseline; width: 100%; min-height: var(--touch); padding: var(--sp-1) var(--sp-2); background: none; border: 0; border-radius: var(--radius-sm); color: var(--text); text-align: left; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.man-toc-e.on { background: var(--accent-soft); color: var(--accent); }
+.man-toc-e .muted { margin-left: auto; }
 .man-link { min-height: var(--touch); }
 .mtext { font-size: var(--fs-sm); line-height: 1.55; overflow-wrap: anywhere; }
 .mtext p { margin: 0 0 var(--sp-2); }

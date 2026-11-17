@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { _resetDBForTests } from '../../db/schema';
 import { buildManualBundle, cleanLine, detectMeta, issueToIso, splitPages, validateBundle } from './parse';
-import { itemSlice } from './lookup';
+import { buildToc, itemSlice, searchPages as search } from './lookup';
 import { deleteManual, findManualItems, listManuals, OlderRevisionError, readManualFile, saveManual } from './store';
 
 const MEL_MD = (issue: string) => `###### _A999_
@@ -403,5 +403,36 @@ describe('itemSlice (항목만 보기)', () => {
     expect(itemSlice(pages, 0, undefined)).toBeNull();
     expect(itemSlice(pages, 0, 'Crosswind')).toBeNull();
     expect(itemSlice(pages, 0, '36-11-01B')).toBeNull();
+  });
+});
+
+describe('목차·띄어쓰기 검색 (D-077)', () => {
+  it('쪽 단위: 같은 코드 이어진 쪽 = 항목 하나, 코드 앞부분으로 묶고 공통 제목은 묶음 이름으로', () => {
+    const toc = buildToc([
+      { seq: 0, code: 'TRL', ref: 'TRL P 1/2', text: '**TRANSMITTAL LETTER**' },
+      { seq: 1, code: 'TRL', ref: 'TRL P 2/2', text: '' },
+      { seq: 2, code: 'MI-99-10', ref: 'MI-99-10 P 1/2', header: 'MEL ITEMS 99 - TEST 99-10 - Lamp', text: '' },
+      { seq: 3, code: 'MI-99-10', ref: 'MI-99-10 P 2/2', text: '' },
+      { seq: 4, code: 'MI-99-20', ref: 'MI-99-20 P 1/1', header: 'MEL ITEMS 99 - TEST 99-20 - Horn', text: '' },
+    ]);
+    expect(toc.map((g) => g.key)).toEqual(['TRL', 'MI-99']);
+    expect(toc[0].entries[0]).toMatchObject({ seq: 0, pages: 2, title: 'TRANSMITTAL LETTER' });
+    expect(toc[1].title).toBe('MI-99 · MEL ITEMS 99 - TEST');
+    expect(toc[1].entries.map((e) => [e.seq, e.pages])).toEqual([[2, 2], [4, 1]]);
+  });
+  it('절 단위: 장으로 묶고 절 번호 깊이로 들여쓰기', () => {
+    const toc = buildToc([
+      { seq: 0, text: '# 가짜 교범' },
+      { seq: 1, ref: 'FOM 제 1 장 일반 · p.3', header: '제 1 장 일반', text: '' },
+      { seq: 2, ref: 'FOM 1.1 · p.4', code: 'FOM-1.1', header: '제 1 장 일반 › 1.1 목적', text: '' },
+      { seq: 3, ref: 'FOM 1.1.1 · p.4', code: 'FOM-1.1.1', header: '제 1 장 일반 › 1.1.1 적용', text: '' },
+    ]);
+    expect(toc.map((g) => g.title)).toEqual(['앞 쪽', 'FOM 제 1 장 일반']);
+    expect(toc[1].entries.map((e) => [e.code, e.title, e.depth])).toEqual([[undefined, '제 1 장 일반', 0], ['1.1', '목적', 0], ['1.1.1', '적용', 1]]);
+  });
+  it('한국어는 띄어쓰기가 달라도 찾음 (영어는 그대로)', () => {
+    const pages = [{ docId: 'X', seq: 0, line: 1, text: '가짜 착빙 조건 문장 fire test' }];
+    expect(search(pages, '착빙조건')).toHaveLength(1);
+    expect(search(pages, 'firetest')).toHaveLength(0);
   });
 });

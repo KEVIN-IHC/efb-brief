@@ -1,6 +1,6 @@
 // Manual 탭 (Phase 5 2단계, D-045): 가져온 매뉴얼을 쪽 단위로 보기 + 오프라인 검색 + "Refer to" 이동
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { directKey, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
+import { buildToc, directKey, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
 import { ManualText } from './ManualText';
 import { PageImages } from './PageImages';
 import { listManuals, manualEvents, type StoredManual } from './store';
@@ -21,6 +21,10 @@ export function ManualPage() {
   const viewRef = useRef<HTMLElement>(null);
   /** 항목 번호로 열었을 때 그 항목만 보기(기본) ↔ 쪽 전체 */
   const [whole, setWhole] = useState(false);
+  /** 목차 펼침 · 쪽 번호 입력 (D-077) */
+  const [tocOpen, setTocOpen] = useState(false);
+  const [jump, setJump] = useState<string | null>(null);
+  const tocRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = () => void listManuals().then(setDocs);
@@ -58,6 +62,21 @@ export function ManualPage() {
   }, [docId, docs]);
 
   const page = pages[seq];
+  const toc = useMemo(() => buildToc(pages), [pages]);
+  const hasPdf = useMemo(() => pages.some((p) => p.pdfPage), [pages]);
+  const curGroup = useMemo(() => {
+    let k = -1;
+    toc.forEach((g, i) => g.seq <= seq && (k = i));
+    return k;
+  }, [toc, seq]);
+  const curEntry = useMemo(() => {
+    let e = -1;
+    for (const x of toc[curGroup]?.entries ?? []) if (x.seq <= seq) e = x.seq;
+    return e;
+  }, [toc, curGroup, seq]);
+  useEffect(() => {
+    if (tocOpen) tocRef.current?.querySelector('.on')?.scrollIntoView({ block: 'center' });
+  }, [tocOpen]);
   const doc = docs?.find((d) => d.docId === docId);
   const slice = useMemo(() => itemSlice(pages, seq, mark), [pages, seq, mark]);
   const focus = slice && !whole ? slice : null;
@@ -75,7 +94,27 @@ export function ManualPage() {
     setSeq(s);
     setMark(m);
     setWhole(false);
+    setTocOpen(false);
+    setJump(null);
     viewRef.current?.scrollIntoView({ block: 'start' });
+  };
+
+  /** 쪽 번호로 이동: 숫자 = 순번(…/전체), p34 = 원본 PDF 쪽(FOM처럼 알 때), 그 밖은 쪽 코드·절 번호 */
+  const onJump = async (raw: string) => {
+    const v = raw.trim();
+    if (!v || !docId || !docs) return;
+    const pdf = /^p\.?\s*(\d+)$/i.exec(v);
+    if (pdf) {
+      const n = Number(pdf[1]);
+      const hit = [...pages].reverse().find((x) => x.pdfPage !== undefined && x.pdfPage <= n);
+      if (hit) return go(docId, hit.seq);
+      return setMsg(`원본 쪽 p.${n}을 찾지 못함 (이 매뉴얼은 원본 쪽 번호가 없음)`);
+    }
+    if (/^\d+$/.test(v)) return go(docId, Math.min(pages.length, Math.max(1, Number(v))) - 1);
+    const dk = directKey(v);
+    const t = dk && (await resolveRef(dk, docId, docs));
+    if (t) return go(t.docId, t.seq, t.mark);
+    setMsg(`"${v}" 위치를 찾지 못함`);
   };
 
   async function runSearch(text: string, sc: string) {
@@ -194,14 +233,64 @@ export function ManualPage() {
             <button className="btn" disabled={seq <= 0} onClick={() => go(docId!, seq - 1, undefined, false)} aria-label="앞 쪽">
               ‹
             </button>
-            <span className="mono small">
+            <button className="btn mono man-count" onClick={() => setJump((j) => (j === null ? '' : null))} aria-label="쪽 번호로 이동" aria-expanded={jump !== null}>
               {pages.length ? seq + 1 : 0}/{pages.length}
-            </span>
+            </button>
             <button className="btn" disabled={seq >= pages.length - 1} onClick={() => go(docId!, seq + 1, undefined, false)} aria-label="다음 쪽">
               ›
             </button>
+            <button className={`btn ${tocOpen ? 'primary' : ''}`} onClick={() => setTocOpen((o) => !o)} aria-expanded={tocOpen} disabled={!toc.length}>
+              목차
+            </button>
           </div>
         </div>
+        {jump !== null && (
+          <form
+            className="man-jump"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onJump(jump);
+            }}
+          >
+            <input
+              className="input mono"
+              autoFocus
+              enterKeyHint="go"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              placeholder={hasPdf ? `1–${pages.length} · p34(원본 쪽) · 1.2.3` : `1–${pages.length} · DSC-21-20 같은 쪽 코드`}
+              value={jump}
+              onChange={(e) => setJump(e.target.value)}
+              aria-label="이동할 쪽"
+            />
+            <button className="btn primary" type="submit" disabled={!jump.trim()}>
+              이동
+            </button>
+            <button className="btn" type="button" onClick={() => setJump(null)}>
+              닫기
+            </button>
+          </form>
+        )}
+        {tocOpen && (
+          <div className="man-toc" ref={tocRef}>
+            {toc.map((g, gi) => (
+              <details key={`${g.key}-${g.seq}`} open={gi === curGroup}>
+                <summary className={gi === curGroup ? 'cur' : ''}>{g.title}</summary>
+                <ul>
+                  {g.entries.map((e) => (
+                    <li key={e.seq}>
+                      <button className={`man-toc-e ${e.seq === curEntry && gi === curGroup ? 'on' : ''}`} style={{ paddingLeft: `calc(${e.depth} * var(--sp-4))` }} onClick={() => go(docId!, e.seq)}>
+                        {e.code && <span className="mono small strong">{e.code}</span>}
+                        <span className="small">{e.title}</span>
+                        {e.pages > 1 && <span className="muted small mono">{e.pages}쪽</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        )}
         {page ? (
           <>
             <div className="man-ref">

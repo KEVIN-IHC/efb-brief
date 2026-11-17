@@ -201,7 +201,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[*_#|¦]/g, ' ');
 
 /**
  * 단순 전문 검색: 모든 낱말이 들어 있는 쪽(AND), 점수 = 낱말 등장 수(쪽당 상한) + 머리 제목·쪽 표시 가산.
- * 따옴표로 묶으면 구절 그대로. 결과는 점수순 → 문서 순서.
+ * 따옴표로 묶으면 구절 그대로. 띄어쓰기만 다르면 찾음(점수 낮게). 결과는 점수순 → 문서 순서.
  */
 export function searchPages(pages: StoredPage[], query: string, limit = 60): SearchHit[] {
   const phrases = [...query.matchAll(/"([^"]+)"|(\S+)/g)].map((m) => norm(m[1] ?? m[2]).trim()).filter((x) => x.length >= 2);
@@ -213,10 +213,18 @@ export function searchPages(pages: StoredPage[], query: string, limit = 60): Sea
     let score = 0;
     let first = -1;
     let all = true;
+    let tight: string | undefined;
     for (const w of phrases) {
       let i = body.indexOf(w);
       const inHead = head.includes(w);
       if (i < 0 && !inHead) {
+        // 한국어 띄어쓰기만 다른 경우 (예: "착빙조건" ↔ "착빙 조건") — 공백 빼고 다시
+        const wt = w.replace(/\s+/g, '');
+        tight ??= body.replace(/\s+/g, '');
+        if (/[가-힣]/.test(wt) && wt.length >= 2 && (tight.includes(wt) || head.replace(/\s+/g, '').includes(wt))) {
+          score += 1;
+          continue;
+        }
         all = false;
         break;
       }
@@ -300,4 +308,114 @@ export function itemSlice(pages: { seq: number; code?: string; text: string }[],
     if (k < nl.length) break;
   }
   return { text: out.join('\n').trim(), seqs };
+}
+
+// ---------- 목차 (D-077) ----------
+export interface TocEntry {
+  seq: number;
+  /** 쪽 코드·절 번호 (예: DSC-21-20-20, 1.2.3) */
+  code?: string;
+  title: string;
+  /** 들여쓰기 단계 (0부터) */
+  depth: number;
+  /** 이 항목이 차지하는 쪽 수 (쪽 단위 매뉴얼) */
+  pages: number;
+}
+export interface TocGroup {
+  key: string;
+  title: string;
+  seq: number;
+  entries: TocEntry[];
+}
+
+const cleanTitle = (s: string) =>
+  s
+    .replace(/\s*Ident\.:.*$/, '')
+    .replace(/\s*¦?\s*A380 ¦ (?:CONFIGURATION DEVIATION LIST|MINIMUM EQUIPMENT LIST|FLIGHT CREW).*$/, '')
+    .replace(/[*_#|]/g, ' ')
+    .replace(/¦/g, ' · ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s·]+|[\s·]+$/g, '')
+    .trim();
+
+/** 쪽 머리 제목이 없을 때: 본문의 첫 굵은 제목 줄 (매뉴얼 이름 줄은 건너뜀) */
+function firstHeading(text: string): string | undefined {
+  for (const line of text.split('\n').slice(0, 12)) {
+    if (!/^#{1,6}\s*\*\*|^\*\*[^*]{4,}\*\*/.test(line)) continue;
+    const t = cleanTitle(line);
+    if (t.length >= 4 && !/FLIGHT CREW · OPERATING MANUAL|^A380 ·/.test(t)) return t;
+  }
+  return undefined;
+}
+
+const firstLine = (text: string) => cleanTitle(text.split('\n').find((l) => cleanTitle(l).length >= 4) ?? '').slice(0, 80);
+
+/**
+ * 목차 만들기 — 묶음에 따로 목차가 없으므로 쪽 정보로 만든다.
+ * 절 단위(FOM·FCRM): 장 → 절 번호 깊이로 들여쓰기. 쪽 단위(Airbus): 같은 쪽 코드가 이어지는 구간 하나 = 항목, 코드 앞부분으로 묶음.
+ */
+export function buildToc(pages: { seq: number; ref?: string; code?: string; header?: string; text: string }[]): TocGroup[] {
+  const groups: TocGroup[] = [];
+  const groupOf = (key: string, title: string, seq: number) => {
+    let g = groups.at(-1);
+    if (!g || g.key !== key) {
+      g = { key, title, seq, entries: [] };
+      groups.push(g);
+    }
+    return g;
+  };
+  const section = pages.some((p) => /^(FOM|FCRM)-/.test(p.code ?? ''));
+  for (let i = 0; i < pages.length; i++) {
+    const p = pages[i];
+    if (section) {
+      const part = /^(FOM|FCRM)\b/.exec(p.ref ?? '')?.[1] ?? '';
+      const [chapter, rest] = (p.header ?? '').split(' › ');
+      if (!p.ref) {
+        groupOf('front', '앞 쪽', p.seq).entries.push({ seq: p.seq, title: firstHeading(p.text) ?? '표지', depth: 0, pages: 1 });
+        continue;
+      }
+      const g = groupOf(`${part}|${chapter}`, `${part} ${chapter}`.trim(), p.seq);
+      const num = p.code?.replace(/^(FOM|FCRM)-/, '');
+      const depth = num ? Math.max(0, num.replace(/^S/, '').split('.').length - 2) : 0;
+      g.entries.push({ seq: p.seq, code: num, title: rest ? rest.replace(/^S?\d+(\.\d+)+\s*/, '') : chapter || p.ref, depth, pages: 1 });
+      continue;
+    }
+    const code = p.code ?? '';
+    const prev = pages[i - 1];
+    if (i > 0 && prev.code === code) {
+      const g = groups.at(-1)!;
+      const e = g.entries.at(-1)!;
+      e.pages++;
+      if (!e.title && p.header) e.title = cleanTitle(p.header);
+      continue;
+    }
+    const segs = code.split('-');
+    const key = !code ? '' : /^\d/.test(code) ? segs[0] : segs.slice(0, 2).join('-');
+    const title = (p.header && cleanTitle(p.header)) || firstHeading(p.text) || firstLine(p.text);
+    groupOf(key, key, p.seq).entries.push({ seq: p.seq, code: code || undefined, title, depth: 0, pages: 1 });
+  }
+  // 묶음 이름: 쪽 단위는 항목 제목들이 가장 많이 같이 쓰는 앞부분 (예: "MEL ITEMS 22 - AUTO FLIGHT") → 항목 제목에서는 그 부분을 뺌
+  if (!section)
+    for (const g of groups) {
+      const words = g.entries.map((e) => e.title.split(' '));
+      const count = new Map<string, number>();
+      for (let i = 1; i < words.length; i++) {
+        const [a, b] = [words[i - 1], words[i]];
+        let n = 0;
+        while (n < a.length && n < b.length && a[n] === b[n]) n++;
+        if (n >= 2) {
+          const k = a.slice(0, n).join(' ').replace(/\s+-$/, '');
+          count.set(k, (count.get(k) ?? 0) + 1);
+        }
+      }
+      const head = [...count].sort((x, y) => y[1] - x[1] || y[0].length - x[0].length)[0]?.[0];
+      const gt = (head ?? (g.entries.length === 1 ? '' : g.entries[0].title)).replace(/\s*·?\s*PRELIMINARY PAGES.*$/, '');
+      g.title = [g.key, gt].filter(Boolean).join(' · ') || '앞 쪽';
+      if (head)
+        for (const e of g.entries) {
+          const rest = e.title.startsWith(head) ? e.title.slice(head.length).replace(/^[\s·-]+/, '') : '';
+          if (rest) e.title = rest;
+        }
+    }
+  return groups;
 }
