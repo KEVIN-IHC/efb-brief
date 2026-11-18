@@ -121,6 +121,10 @@ export interface OfpData {
     avgWindTemp?: string; // P074/M50
     routeString?: string;
     validUntil?: string;
+    /** SPEED SKD 줄: CLB-320/.85 CRZ- 65 DSC-.85/290/ APMS/P 02.5 PCNT (D-079) */
+    speedPlan?: { clb?: string; crz?: string; dsc?: string; apmsPct?: number };
+    /** 2ND-$ 줄: 두 번째로 좋은 FL·TRIP 연료·시간 (D-079) */
+    secondBest?: { fl: number; trip: number; timeMin: number };
   };
   fuel: {
     taxi: number;

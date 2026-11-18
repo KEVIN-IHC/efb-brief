@@ -12,6 +12,7 @@ import { useActiveFlight } from '../flight/activeFlight';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, project } from '../inflight/deviation';
 import { positionAt } from './position';
+import { Checklist } from './Checklist';
 import { RefList } from '../manual/RefList';
 import { setInlineOpen, useInlineOpen } from '../manual/lookup';
 import { DocSection } from '../ofp/doc/ui';
@@ -87,8 +88,48 @@ export function OpsPage() {
   const openCard = useInlineOpen((s) => s['ops:card'] ?? null);
   const setOpenCard = (v: string | null) => setInlineOpen('ops:card', v);
 
+  const [sub, setSubState] = useState<'normal' | 'abnormal'>(() => {
+    try {
+      return sessionStorage.getItem('efb.opsSub') === 'abnormal' ? 'abnormal' : 'normal';
+    } catch {
+      return 'normal';
+    }
+  });
+  const setSub = (s: 'normal' | 'abnormal') => {
+    setSubState(s);
+    try {
+      sessionStorage.setItem('efb.opsSub', s);
+    } catch {
+      /* 저장 안 돼도 화면은 그대로 */
+    }
+  };
+  const tabs = (
+    <div className="segmented span-all" role="tablist" aria-label="Ops 화면">
+      {(
+        [
+          ['normal', '정상 절차'],
+          ['abnormal', '비정상·상황'],
+        ] as const
+      ).map(([id, label]) => (
+        <button key={id} role="tab" aria-selected={sub === id} className={sub === id ? 'on' : ''} onClick={() => setSub(id)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (sub === 'normal')
+    return (
+      <div className="page-grid doc">
+        {tabs}
+        <ActiveTimers />
+        <Checklist flightId={flight.flightId} />
+      </div>
+    );
+
   return (
     <div className="page-grid doc">
+      {tabs}
       <DocSection title="Ops" meta={`${flight.flightNo} ${flight.dep}→${flight.arr}`} className="span-all">
         <p className="small muted">
           상황 카드는 기기에 가져온 회사 매뉴얼 원문을 그대로 엽니다(해석 없음). QRH·ECAM·승인된 EFB를 대신하지 않습니다. 사건 기록은 메모로 저장·동기화되므로 <b>승객 이름 등 개인정보는 적지 마세요</b>.

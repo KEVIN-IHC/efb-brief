@@ -8,7 +8,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.4'; // 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.5'; // 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -82,6 +82,8 @@ function assemble(ctx: ExtractCtx, texts: string[]): OfpData | undefined {
       avgWindTemp: h.avgWindTemp?.value,
       routeString: h.routeString?.value ?? fpl?.route,
       validUntil: valid?.[1],
+      speedPlan: h.speedPlan?.value,
+      secondBest: h.secondBest?.value,
       edtoRule: (d?.notes ?? []).map((n) => /(\d{2,3})\s*MIN\s+(?:EDTO|ETOPS)/.exec(n.text)).find(Boolean)?.slice(1, 2).map((m) => `EDTO ${m}`)[0],
     },
     fuel: {

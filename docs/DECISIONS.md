@@ -547,3 +547,38 @@
   3. 검색: 한국어 낱말은 띄어쓰기만 달라도 찾음(공백 빼고 다시 비교, 점수 낮게). 영어는 그대로(낱말 경계가 섞이지 않게)
 - **확인** 실제 묶음 5개로 목차·검색 미리 봄(Mac 안, 결과는 출력만): 매뉴얼 5개 모두 빈 제목 없이 목차가 만들어짐. 붙여 쓴 한국어 검색어도 찾음
 - **영향** `manual/lookup.ts`(`buildToc`, `searchPages`), `manual/ManualPage.tsx`, `app/styles.css`, 테스트 3개
+
+### D-078 OFP 탭 FMS 대조 · RVSM 체크 · Ops 정상 절차 체크리스트
+- **날짜** 2026-11-18 (사용자: "비행기에 직접 입력한 거랑 OFP 값 차이 적는 란", "coordination·gate no", "rvsm check", "FCOM normal procedure·FOM 바탕 체크박스, Ops에 정상/비정상 탭", 개인 약어 BALT DEBTN HWP. 선택: OFP 탭 맨 위 · 단계적 · 기본 목록 BALT DEBTN HWP + FMS CHK + HAA)
+- **결정**
+  1. OFP 탭 맨 위 "FMS 대조": RAMP FUEL·FOB(OFP 기준 = BLOCK) · TRIP TIME(OFP TRIP 줄 시간, 없으면 비행 시간) · TOTAL DIST(마지막 지점 누적 거리) ↔ 입력값, 차이 = 입력 − OFP. GATE NO · COORD(게이트 좌표) 글 칸. RVSM: QNH 한 칸(100 넘으면 hPa, 아니면 inHg로 보고 둘 다 표시), 고도계 L·STBY·R과 서로 차이
+  2. 허용치 판정은 하지 않음(근거 없는 임계값 금지) — 차이 숫자만, 0이면 초록·아니면 주황 글자
+  3. Ops 탭을 "정상 절차 | 비정상·상황" 두 탭으로. 기존 내용(사건 기록·상황 카드·PA·연락처·보고서)은 "비정상·상황", 진행 중 타이머는 두 탭 모두
+  4. 정상 절차: 개인 체크리스트(기본 FMS CHK · BALT · DEBTN · HWP, 화면에서 항목 추가·빼기·기본으로), 체크 시각 기록, 비행마다 따로. HAA 칸(HDG·ALT·AIR SPEED·REQUIRED FUEL). 기기에 있는 FCOM의 정상 절차(PRO-NOR-SOP) 목차를 그 자리 창으로 열기(D-077 목차 재사용, 원문 그대로)
+  5. 저장: IndexedDB settings 키(`fmsCheck:<비행>`, `opsChecks:<비행>`, `opsHaa:<비행>`, `opsChecklist`) — 기기 안, 시트 동기화 안 함(순항 기록 아님). 입력은 0.4초 뒤 저장
+  6. 다음 단계(미정): FCOM SOP·FOM에서 단계별 체크 항목을 Mac에서 뽑아 회사 기준 파일(비공개)에 넣기 — 회사 매뉴얼 내용이라 공개 코드에 넣지 않음
+- **영향** `checks/checks.ts`(신규), `ofp/doc/FmsCheck.tsx`(신규), `ops/Checklist.tsx`(신규), `ops/OpsPage.tsx`, `ops/store.ts`(`useDraft`, 키 도구 공개), `ofp/doc/OfpDocument.tsx`, `app/styles.css`
+
+### D-079 FMS 입력을 OFP 원래 카드 안으로 · SYSTEMS 카드 · FCOM RVSM 허용 차이 (D-078 1·2·4번 일부 대체)
+- **날짜** 2026-11-18 (사용자가 시안 여러 번 확인: "앱 원래 포맷 유지", "입력칸 위아래가 넘 커", "3자리·소수점(klbs)·6자리 다 되게", "rvsm 편차 limitation fcom 보고 넣어", "하이드롤릭은 노말 체크", "eng oil limitation 링크 MEL처럼", "QNH 1013 = hPa, 범위 찾아봐". 시안 `private/design/2026-11-18-ofp-fms-entry-mockup-v2.html`)
+- **결정**
+  1. OFP 탭 맨 위 별도 "FMS 대조" 표는 없앰. FUEL·FLIGHT 카드는 원래 포맷 그대로 + 오른쪽 얇은 FMS 열. 입력 칸은 테두리 없이 표 숫자와 같은 글씨·줄 높이, 차이는 같은 줄 왼쪽 작은 글씨(0 = ✓ 초록, 그 밖 주황). Enter = 다음 칸
+  2. FUEL: TRIP 줄 = 시간, RAMP OUT 줄 = FOB, FOD 줄 = FOD. 연료 칸은 `290`·`290.2`(천 단위) · `290200` 모두 290,200 (소수점이 있거나 1000 미만이면 ×1000). RESERVE 입력 없음. 아래 줄에 2ND BEST FL·TRIP·시간 + 계획 대비 차이 (Jeppesen `2ND-$ FL 연료(100LBS) 시간`)
+  3. FLIGHT: 회색 줄에 SPEED SKD(CLB·CRZ CI·DSC)·APMS/P %. FMS 표 DIST(OFP 비교) · MAX FL(OFP 비교) · OPT FL · EO FL(`FL` 자동) · GATE(대문자) · COORD(N/S·E/W 버튼 + 숫자 → `37°27.1'`·`126°27.0'`, 분 소수 첫째 자리)
+  4. RVSM: QNH 단위는 FCOM 기압 설정 범위(745–1100 hPa / 22.00–32.48 inHg)로 판별 — `745~1100` hPa, `2200~3248` ÷100 inHg, 소수점 있으면 inHg, 그 밖 "범위 밖". 1050 hPa(31.00 inHg) 초과면 ">1050 SUPP"(FCOM 보충 절차 있음). 고도계 CAPT·STBY·F/O, STBY·F/O는 CAPT 대비 차이를 **FCOM PRO-SPO-RVSM "Maximum differences between altitude indications" 지상 값(F/O 20 · STBY 30 ft)**과 비교해 ✓/⚠ — 근거가 FCOM이라 D-078 2번(판정 안 함)을 이 부분만 바꿈. 표 전체(지상~FL410)와 지상 조건(공항 표고 차 < 75 ft)을 원문대로 아래에 표시
+  5. 새 카드 SYSTEMS · PRE-FLIGHT: ENG OIL 1~4 (qt, `185`→18.5) + "📖 LIMIT"(기기에 있는 FCOM LIM-ENG OIL QUANTITY 쪽을 MEL처럼 그 자리 창으로), HYD GREEN·YELLOW = NORMAL 체크(체크 시각), OXY CREW·CABIN (psi). 오일·산소 최소량 자동 판정은 안 함
+  6. Ops 탭 "FCOM 정상 절차 원문" 칸은 뺌. Ops 체크리스트 모양은 다음 시안에서
+  7. 저장은 D-078 그대로 `fmsCheck:<비행>`(필드 이름은 바뀜 — D-078 코드는 배포 전이라 옛 값 옮기기 없음). 세 카드가 한 값을 같이 씀
+- **영향** `checks/checks.ts`(`parseKilo`·`parseQnh`·`parseFl`·`fmtCoord`·`parseOil`·`altChecks`·`RVSM_MAX_DIFF`), `ofp/doc/Fms.tsx`(신규, `FmsCheck.tsx` 삭제), `ofp/doc/OfpDocument.tsx`, `ofp/parser/aviator.ts`·`index.ts`(`aviator-1.5`)·`types.ts`(`speedPlan`·`secondBest`), `ops/Checklist.tsx`, `app/styles.css`(`--hyd-green`·`--hyd-yellow` 토큰)
+
+### D-080 SYSTEMS 카드 새 모양 · 오일 최소량 계산 · RVSM 기준표 · 열 고정 (D-079 일부 대체)
+- **날짜** 2026-11-19 (사용자가 시안 확인: "WEIGHTS·SYSTEMS 자리 바꿔", "가운데 글자 움직여 정신없음 → 고정", SYSTEMS 칸 묶음 3개 합치기, "오일은 비행시간 보고 산정, OFP RAMP OUT 시간 기준", "주황 표시 해", "FT가 피트로 읽혀", "제목 누르면 limitation 연결, 없으면 FCOM 찾아봐", RVSM R2 + "PFD끼리 / PFD↔ISIS", "75 ft 확인". 시안 `private/design/2026-11-19-final-systems-rvsm-mockup.html`)
+- **결정**
+  1. 카드 순서: FLIGHT → FUEL → WEIGHTS → SYSTEMS → ALTERNATES …
+  2. FMS 칸이 있는 표는 열 너비 고정(`table-layout: fixed`) — 입력·"범위 밖"이 생겨도 가운데 열이 움직이지 않음
+  3. SYSTEMS: ENG OIL 4칸(칸 묶음) + MIN OIL 표(FCOM LIM-ENG 규칙에 **OFP RAMP OUT 시간** 넣어 계산, 소수 첫째 자리 올림, 이 비행에 맞는 규칙만 표시) · HYD GREEN/YELLOW NORMAL 체크 버튼 · OXY CREW/CABIN 2칸. 오일 입력이 최소량 두 값(OAT<0 / OAT≥0) 중 **큰 값보다 적으면 주황** — FCOM 근거라 D-079 5번 "판정 안 함"을 오일만 바꿈(OAT는 아직 모름 → 보수적으로 큰 값)
+  4. 비행 시간 표시는 "FT" 대신 **FLT**(피트와 혼동 방지)
+  5. SYSTEMS 칸 제목을 누르면 기기에 있는 FCOM 쪽을 그 자리 창으로: ENG OIL → `LIM-ENG` OIL QUANTITY, OXY → `LIM-OXY` MINIMUM FLIGHT CREW OXYGEN PRESSURE, HYD → FCOM LIM에 유압 양 쪽이 없어 `PRO-NOR-SOP` "RESERVOIR FLUID LEVEL … CHECK WITHIN NORMAL RANGE"(HYD SD 화면 정상 범위)
+  6. RVSM: QNH · **ELEV(공항 표고, 직접 입력)** · CAPT PFD(vs ELEV) · F/O PFD(vs CAPT) · STBY ISIS(vs CAPT). ✓/⚠ = GND 기준. 아래 기준표 — 행 GND(QNH)·CRZ(약 1시간마다)·FL300+(M.85), 열 PFD↔표고(각 PFD vs ELEV)·PFD↔PFD(기장 vs 부기장)·PFD↔ISIS: GND 75 FOM / 20 FCOM / 30 FCOM, CRZ PFD↔PFD 200 FOM, FL300+ 150 / 320 FCOM(FL410 ISIS 360). 근거 FOM 10.4.1.3 b)·d), FCOM PRO-SPO-RVSM. FCOM 큰 표는 뺌
+- **영향** `checks/checks.ts`(`minOil`·`RVSM_LIMITS`·`altChecks` ELEV, `ofpRefs.flightMin`, `FmsEntry.elev`; `RVSM_MAX_DIFF` 삭제), `ofp/doc/Fms.tsx`, `ofp/doc/OfpDocument.tsx`, `app/styles.css`
+

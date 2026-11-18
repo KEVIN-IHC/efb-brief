@@ -232,6 +232,12 @@ IPBS/
 - `manual/lookup.ts` `buildToc(pages)` → 묶음(`TocGroup`)·항목(`TocEntry`: seq·code·title·depth·pages). 저장하지 않고 화면에서 그때 만듦
 - `manual/ManualPage.tsx`: "목차" 버튼(`.man-toc`), 쪽 수 버튼 → 입력 칸(`.man-jump`, `onJump`: 숫자·`p34`·`directKey`)
 
+### 3.7q FMS 입력 · 정상 절차 체크 (D-078 · D-079)
+- 계산: `features/checks/checks.ts` (`ofpRefs`·`parseKilo`·`parseHm`·`parseFl`·`fmtCoord`·`parseQnh`·`altChecks`·`RVSM_LIMITS`·`parseOil`·`minOil`·`DEFAULT_CHECKLIST`·`progress`)
+- 화면: `ofp/doc/Fms.tsx`(FUEL·FLIGHT 카드 안 FMS 열, SYSTEMS·PRE-FLIGHT 카드 — 칸 제목 → FCOM LIM-ENG·LIM-OXY·SOP HYD 쪽 창(D-080)). `OfpDocument`가 `useDraft` 하나를 세 카드에 나눠 줌. `ops/Checklist.tsx`(Ops "정상 절차" 탭: 체크·HAA)
+- 파서: SPEED SKD·2ND-$ → `header.speedPlan`·`header.secondBest` (`aviator-1.5`)
+- 저장: `ops/store.ts` `useKey`·`putKey`·`useDraft`(입력 칸, 0.4초 뒤 저장) → IndexedDB `settings`
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

@@ -1,23 +1,23 @@
 // 공통 도구 (D-056): 사건 시각 기록 · 연락처 · PA 문안 · 상황 타이머 — 모두 기기 안
 // - 사건 기록 = 순항 메모(LogRecord kind 'memo')에 "⏱ HHMMZ 이름 — 내용" 형식 → 기존 동기화 그대로 (시트 칸 변경 없음)
 // - 연락처·PA 문안·타이머 = IndexedDB settings (동기화 안 함)
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDB, type LogRecord } from '../../db/schema';
 import { saveLog } from '../../sync/outbox';
 import { uuid } from '../../lib/uuid';
 
 export const opsEvents = new EventTarget();
 
-async function getKey<T>(key: string, fallback: T): Promise<T> {
+export async function getKey<T>(key: string, fallback: T): Promise<T> {
   const row = await (await getDB()).get('settings', key);
   return (row?.value as T | undefined) ?? fallback;
 }
-async function putKey(key: string, value: unknown): Promise<void> {
+export async function putKey(key: string, value: unknown): Promise<void> {
   await (await getDB()).put('settings', { key, value });
   opsEvents.dispatchEvent(new Event('change'));
 }
 
-function useKey<T>(key: string, fallback: T): T {
+export function useKey<T>(key: string, fallback: T): T {
   const [v, setV] = useState<T>(fallback);
   useEffect(() => {
     const reload = () => void getKey(key, fallback).then(setV);
@@ -176,4 +176,46 @@ export const reportKey = (flightId: string) => `opsReport:${flightId}`;
 export const useReportDraft = (flightId: string) => useKey<ReportDraft>(reportKey(flightId), { kind: '', title: '', body: '' });
 export async function saveReportDraft(flightId: string, d: ReportDraft): Promise<void> {
   await putKey(reportKey(flightId), d);
+}
+
+/* ---------------- 입력 칸 초안 (D-078) ---------------- */
+
+/** 칸에 쓰는 동안은 화면 상태만 바꾸고 0.4초 뒤 기기에 저장 (글자마다 다시 읽지 않아 커서가 튀지 않음). 키가 바뀌면 다시 읽음 */
+export function useDraft<T extends object>(key: string, fallback: T): [T, (patch: Partial<T>) => void] {
+  const [v, setV] = useState<T>(fallback);
+  const cur = useRef<T>(fallback);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getKey<T>(key, fallback).then((x) => {
+      if (!alive) return;
+      cur.current = x;
+      setV(x);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  // 화면을 떠날 때 기다리던 저장은 바로
+  useEffect(
+    () => () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        void putKey(key, cur.current);
+      }
+    },
+    [key],
+  );
+  const update = (patch: Partial<T>) => {
+    const next = { ...cur.current, ...patch, updatedAt: new Date().toISOString() } as T;
+    cur.current = next;
+    setV(next);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void putKey(key, next);
+    }, 400);
+  };
+  return [v, update];
 }

@@ -10,6 +10,10 @@ import { manualEvents } from '../../manual/store';
 import type { FuelRow, OfpData } from '../types';
 import { Cell, DocSection, LevelPill } from './ui';
 import { TurbulenceBlock } from './Turbulence';
+import { Dlt, FlightFms, FmsCell, FmsInput, showHm, showKilo, SystemsBlock, type Fms } from './Fms';
+import { fmsKey, ofpRefs, parseHm, parseKilo, type FmsEntry } from '../../checks/checks';
+import { useDraft } from '../../ops/store';
+import { flightIdFor } from '../../flight/activeFlight';
 import { focusTurbZone } from '../turbulence';
 
 const U = (o: OfpData) => o.unit.toUpperCase();
@@ -65,8 +69,10 @@ function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void
   );
 }
 
-export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
+export function FlightBlock({ o, onLine, fms }: { o: OfpData; onLine?: (n: number) => void; fms?: Fms }) {
   const h = o.header;
+  const sp = h.speedPlan;
+  const ref = ofpRefs(o);
   const altn = o.alternates.filter((a) => a.role.startsWith('DEST')).map((a) => a.icao);
   return (
     <DocSection title="Flight" meta={[h.planNo && `PLAN ${h.planNo}`, h.computedAt && `COMPUTED ${h.computedAt}`].filter(Boolean).join(' · ')} className="span-all">
@@ -81,6 +87,11 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
           {h.engine && ` · ${h.engine}`}
           {h.selcal && ` · SELCAL ${h.selcal}`}
         </div>
+        {sp && (
+          <div className="flt-sub mono">
+            {[sp.clb && `CLB ${sp.clb}`, sp.crz && `CRZ CI${sp.crz}`, sp.dsc && `DSC ${sp.dsc}`, sp.apmsPct !== undefined && `APMS ${sp.apmsPct}%`].filter(Boolean).join(' · ')}
+          </div>
+        )}
       </div>
       <div className="cells">
         <Cell k="ETD" v={formatZ(h.std)} />
@@ -99,6 +110,7 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
         </div>
       )}
       <RouteCheckRow o={o} onLine={onLine} />
+      {fms && <FlightFms fms={fms} dist={ref.dist} maxFl={ref.maxFl} />}
     </DocSection>
   );
 }
@@ -117,17 +129,54 @@ function fallbackRows(o: OfpData): FuelRow[] {
   ];
 }
 
-export function FuelBlock({ o }: { o: OfpData }) {
+export function FuelBlock({ o, fms }: { o: OfpData; fms?: Fms }) {
   const rows = o.fuel.rows?.length ? o.fuel.rows : fallbackRows(o);
   const m = fuelMargin(o.fuel, o.unit);
+  const e = fms?.[0];
+  const ref = ofpRefs(o);
+  const sb = o.header.secondBest;
+  const tripRow = rows.find((r) => /^TRIP\b/.test(r.label));
+  const d = (v: number | undefined, r: number | undefined) => (v === undefined || r === undefined ? undefined : v - r);
+  /** FMS 칸이 있는 줄: TRIP(시간) · RAMP OUT(FOB) · FOD */
+  const fmsCell = (label: string) => {
+    if (!fms || !e) return null;
+    if (/^TRIP\b/.test(label))
+      return (
+        <FmsCell d={<Dlt d={d(parseHm(e.trip), ref.tripMin)} hm />}>
+          <FmsInput fms={fms} k="trip" ph="TIME" mode="numeric" show={showHm} label="TRIP TIME" />
+        </FmsCell>
+      );
+    if (/^(RAMP OUT|BLOCK)$/.test(label))
+      return (
+        <FmsCell d={<Dlt d={d(parseKilo(e.fob), ref.fob)} />}>
+          <FmsInput fms={fms} k="fob" ph="FOB" show={showKilo} label="FOB" />
+        </FmsCell>
+      );
+    if (/^FOD$/.test(label))
+      return (
+        <FmsCell d={<Dlt d={d(parseKilo(e.fod), ref.fod)} />}>
+          <FmsInput fms={fms} k="fod" ph="FOD" show={showKilo} label="FOD" />
+        </FmsCell>
+      );
+    return <td />;
+  };
   return (
     <DocSection title={`Fuel · ${U(o)}`} meta={<LevelPill level={m.level}>{`EXTRA ${fmtSigned(m.margin)}`}</LevelPill>}>
-      <table className="dt">
+      <table className={`dt ${fms ? 'fms-fuel' : ''}`}>
+        {fms && (
+          <colgroup>
+            <col style={{ width: '36%' }} />
+            <col style={{ width: '21%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '30%' }} />
+          </colgroup>
+        )}
         <thead>
           <tr>
             <th />
             <th className="r">FUEL</th>
             <th className="r">TIME</th>
+            {fms && <th className="r fms-h">FMS</th>}
           </tr>
         </thead>
         <tbody>
@@ -136,12 +185,26 @@ export function FuelBlock({ o }: { o: OfpData }) {
               <td>{r.label}</td>
               <td className="r mono">{fmtKg(r.fuel)}</td>
               <td className="r mono muted">{r.timeMin !== undefined ? fmtHm(r.timeMin) : ''}</td>
+              {fmsCell(r.label)}
             </tr>
           ))}
         </tbody>
       </table>
       <p className="doc-foot">
         BLOCK − 최소 요구량 (RQD + TAXI) = <b className={`mono c-${m.level}`}>{fmtSigned(m.margin)}</b>
+        {sb && (
+          <>
+            <br />
+            2ND BEST FL{sb.fl} · TRIP <b className="mono">{fmtKg(sb.trip)}</b>
+            {tripRow && <span className="fms-dl mono">{fmtSigned(sb.trip - tripRow.fuel)}</span>} · <b className="mono">{fmtHm(sb.timeMin)}</b>
+            {tripRow?.timeMin !== undefined && (
+              <span className="fms-dl mono">
+                {sb.timeMin - tripRow.timeMin >= 0 ? '+' : '−'}
+                {fmtHm(Math.abs(sb.timeMin - tripRow.timeMin))}
+              </span>
+            )}
+          </>
+        )}
       </p>
     </DocSection>
   );
@@ -450,11 +513,14 @@ export function NotesBlock({ o }: { o: OfpData }) {
 }
 
 export function OfpDocument({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
+  // FMS 입력은 세 카드가 한 저장 값을 같이 씀 (D-079)
+  const fms = useDraft<FmsEntry>(fmsKey(flightIdFor(o)), {});
   return (
     <div className="page-grid doc">
-      <FlightBlock o={o} onLine={onLine} />
-      <FuelBlock o={o} />
+      <FlightBlock o={o} onLine={onLine} fms={fms} />
+      <FuelBlock o={o} fms={fms} />
       <WeightBlock o={o} />
+      <SystemsBlock fms={fms} flightMin={ofpRefs(o).flightMin} />
       <AlternatesBlock o={o} />
       <EtpBlock o={o} />
       <TurbulenceBlock o={o} onZone={(z) => focusTurbZone(z, 'popup')} />

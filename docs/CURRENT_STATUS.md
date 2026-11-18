@@ -2,14 +2,14 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-17 (D-077 배포 88428f4 · 점검·K-45 배포 cdb934f)
+> 마지막 갱신: 2026-11-18 (D-078 커밋 전 · OFP FMS 입력 디자인 확정 대기 — 맨 아래 "다음 세션은 여기서 시작")
 
 ## 1. 한눈에
 
 | 항목 | 상태 |
 |---|---|
 | 현재 Phase | **Phase 5 매뉴얼·MEL·얼러트 배포 (7ef2954, 2026-11-10, D-044~D-048)** + **운항관리사식 Briefing(D-049~D-054) 배포 (1e432fe, 2026-11-12)** — 남은 것: 아이패드 확인, 회사 기준 파일 가져오기 확인. Phase 4 NOTAM은 배포됨(e236b29), 아이패드 확인 대기. **추가 기능 목록 1~8 (D-055~D-060: FIR 통신·Ops 탭·버티컬 뷰·FIR 경계·기상 추가) 배포 (fe06c57, 2026-11-12)** — Worker 재배포 필요(K-35), 아이패드 확인 대기. 목록: `private/manuals/NEXT-ITEMS.md` |
-| 테스트 | ✅ `npm test` 245개 통과 (2026-11-17 목차·검색 3개 포함) · 이전: 242개 (AGTOW 12개 포함) · 이전: 230개 (항로·OFP 번호 일치) · 이전: 214개 · 이전: 212개 (기상 시간대·난류 지수) · 이전: 198개 (2026-11-12 Ops·버티컬·기상 추가 포함) · 이전: 167개 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
+| 테스트 | ✅ `npm test` 254개 통과 (2026-11-18 FMS 입력·SPEED SKD·2ND-$ 포함) · 이전: 245개 (2026-11-17 목차·검색 3개 포함) · 이전: 242개 (AGTOW 12개 포함) · 이전: 230개 (항로·OFP 번호 일치) · 이전: 214개 · 이전: 212개 (기상 시간대·난류 지수) · 이전: 198개 (2026-11-12 Ops·버티컬·기상 추가 포함) · 이전: 167개 (2026-11-11 Briefing 포함) · 이전: 139개 통과 (실제 OFP 샘플 10개·NOTAM 원문 대조·실제 MEL 대조 포함), `tsc -b` 통과, `npm run build` 통과 (2026-11-10 FOM 근거 연결) |
 | 브라우저 확인 | ✅ Mac Chrome(개발 브라우저 패널)에서 아이폰·아이패드 세로/가로·PC 크기, 주간/야간 |
 | 아이패드 실기기 | ✅ 사용자 확인 "잘 작동함" (2026-11-05, https://kevin-ihc.github.io/efb-brief/ 홈 화면 앱). 항목별 세부 결과는 받지 않음 |
 | 실제 구글 시트 연동 | ✅ 아이패드 → 시트 온라인 저장 확인 (2026-11-05). 오프라인 복귀 자동 전송 문제는 D-042로 수정 — 아이패드 재확인 필요 |
@@ -260,3 +260,54 @@
 - **테스트**: 개발 브라우저에서 ⟳ 기상 → "일부 실패: WINDS, PIREP, GAIRMET" 표시 확인(개발 서버 중계 404)
 - **배포**: 사용자 요청. cdb934f push → GitHub Actions 성공, 배포 사이트에 새 문구 코드 있음, `/private/` 404
 - **다음**: 아이패드에서 ⟳ 기상 → Worker 재배포 전이면 "일부 실패: PIREP, GAIRMET"가 보여야 정상(K-35). Manual 목차·쪽 이동 확인
+
+### 2026-11-18 — FMS 대조 · RVSM · Ops 정상 절차 체크 (D-078)
+- **완료**: OFP 탭 맨 위 FMS 대조(RAMP FUEL·TRIP TIME·FOB·TOTAL DIST 입력·차이, GATE·COORD, RVSM QNH hPa↔inHg·L/STBY/R 차이). Ops 탭 "정상 절차 | 비정상·상황" 두 탭, 정상 절차 = 개인 체크리스트(FMS CHK·BALT·DEBTN·HWP, 편집 가능, 체크 시각) + HAA 칸 + 기기 FCOM SOP 원문 열기
+- **변경 파일**: `checks/{checks.ts,checks.test.ts}`(신규), `ofp/doc/{FmsCheck.tsx(신규),OfpDocument.tsx}`, `ops/{Checklist.tsx(신규),OpsPage.tsx,store.ts}`, `app/styles.css`, 문서(DECISIONS D-078, ARCHITECTURE §3.7q, KNOWN_ISSUES K-47, 이 문서)
+- **테스트**: `npm test` 252/252, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 OFP): 입력 → 차이(+500 KG, −0:08), QNH 29.92 → 1013 hPa, L−R +20 ft, 새로고침 후 값 유지. 체크·해제·체크 시각, 항목 추가·기본으로, 비정상 탭 기존 내용. 375·768·1180·1440 가로 스크롤 0, 주간·야간. 시험 값은 지움. FCOM SOP 링크는 개발 브라우저에 매뉴얼이 없어 안내 문구만 확인(실제 목록은 아이패드에서)
+- **다음**: 사용자 확인 → 커밋·배포(요청 시). 다음 단계: FCOM SOP·FOM 기반 체크 항목(K-47)
+
+### 2026-11-18 (2) — OFP FMS 입력 디자인 시안 확정 중 → (3)에서 구현
+- **상태**: D-078 코드는 **커밋 안 됨**(작업 폴더에 있음). 사용자가 화면을 보고 바꾸기로 함 → 아래대로 다시 만든 뒤 커밋·배포(요청 시)
+- **최종 시안 파일**: `private/design/2026-11-18-ofp-fms-entry-mockup-v2.html` (v2: 입력 줄 높이 = 앱 표 줄과 같게(14px, 위아래 7px, 32px), 차이는 입력 왼쪽 같은 줄, 칸 좌우 여백 4px. 이전 v1은 `...-mockup.html`). 회사 OFP 값이 있어 private에만
+- **사용자 결정 (시안 여러 번 거쳐 확정)**
+  1. OFP 탭 맨 위 별도 "FMS 대조" 표(`ofp/doc/FmsCheck.tsx`)는 **없앰**. 대신 **원래 FUEL 카드 포맷 그대로**(여백·글씨·줄 강조 동일) + 오른쪽에 얇은 "FMS" 열. 입력 칸은 테두리 없이 숫자만, 비었을 때 흐린 대문자 안내(TRIP 줄 `TIME`, RAMP OUT 줄 `FOB`, FOD 줄 `FOD`). RESERVE 입력 없음. 차이는 입력 아래 작은 글씨(✓ 초록 / +n 주황)
+  2. FUEL 카드 아래 줄: **2ND BEST FL·연료·시간 + 계획 대비 차이**(예: +10,500 · +0:07). Jeppesen `2ND-$ 320 2884 10.07` = FL·TRIP 연료(100LBS)·시간 → 파서에 추가 필요
+  3. FLIGHT 카드도 FUEL과 **같은 여백·글씨**, 표 = 항목 | OFP | FMS. 회색 글자는 **모두 대문자**. 항목: DIST(숫자, 쉼표 자동) · MAX FL(OFP와 비교) · OPT FL · EO FL(3자리 → 앞에 `FL` 자동) · GATE(대문자) · COORD(N/S·E/W 버튼 + 숫자, 자릿수 맞춰 `37°27.1'`·`126°27.0'` 자동) · RVSM(QNH: `1013`→`1013 hPa`, `2992`→`29.92 inHg`, 반대 단위 옆에 / CAPT·STBY·F/O 고도, CAPT 대비 차이)
+  4. FLIGHT 회색 줄에 Jeppesen에서 아직 안 보이던 값을 조용히 추가(“NEW” 표시 없이): 속도 계획 CLB/CRZ CI/DSC, APMS/P %. 그 밖 후보(PROGS·WX, NAM, LOCAL UTC±, 연료 소모 조정 TOW+2000→TRIP+N, 디스패처·CCF·TANK)는 사용자가 "공통 카드는 보기 싫다"고 해서 자리 미정 — 다음에 위치 제안
+  5. 새 카드 **SYSTEMS · PRE-FLIGHT**: ENG OIL 1·2·3·4 (QT — FCOM: 엔진 오일 양 quart 표시, `185`→18.5) · HYD GREEN·YELLOW (초록·노랑 점) · OXY CREW·CABIN (PSI — FCOM). 기준값(최소량) 판정 없음
+  5a. (v2 추가) RAMP OUT·FOD FMS 입력은 klbs 허용: `290`→290,000 · `290.2`→290,200 · `290200` 그대로 (소수점 있거나 1000 미만이면 ×1000)
+  5b. (v2 추가) RVSM 아래에 FCOM PRO-SPO-RVSM "Maximum differences between altitude indications" 표(지상 20/20/30 … FL410 150/150/360 ft) + 지상 QNH 고도계−공항 표고 <75 ft. STBY·F/O 차이를 지상 허용값(F/O 20, STBY 30)과 비교해 ✓/⚠
+  5c. (v2 추가) HYD는 값 입력 대신 NORMAL 체크(체크 시각 Z). ENG OIL 칸 제목 옆 "📖 LIMIT" → FCOM LIM-ENG OIL QUANTITY 쪽을 MEL처럼 그 자리 창(man-pop)으로
+  5d. (v2 추가) QNH 단위 자동 판별 = FCOM 기압 설정 범위(745–1100 hPa / 22.00–32.48 inHg): `745~1100`→hPa, `2200~3248`→÷100 inHg, `29.92`처럼 소수점→inHg, 그 밖은 "범위 밖". 1050 hPa(31.00 inHg) 초과면 FCOM 보충 절차(Operations at QNH above 1050 hPa) 표시. 질문 ①(1013 = hPa) 사용자 확인 완료
+  6. Enter = 다음 칸. 입력은 키보드(손글씨 글꼴 안 씀)
+  7. Ops 탭: "FCOM 정상 절차 원문" 칸 **삭제**. 체크리스트 모양은 사용자가 "못생겼다" → OFP 쪽 끝난 뒤 같은 포맷으로 다시 시안
+- **사용자에게 물어본 것 (답 대기)**: ① QNH 1013을 "10.13 hPa"라고 썼는데 1013 hPa로 표시했음 — 맞는지 ② HYD에 적는 값·단위(FCOM HYD 화면은 숫자 없이 막대) ③ COORD 소수 첫째 자리면 되는지 ④ TTL RSV(Lido)는 Jeppesen에 줄이 없음 — 이번 결정에서 RESERVE 입력은 빼기로 함
+- **다음 작업 순서**: 위 답 받기 → `FmsCheck.tsx` 제거·FUEL/FLIGHT 블록에 FMS 열·SYSTEMS 카드 구현(저장은 D-078 `useDraft`·`fmsCheck:<비행>` 키 재사용, 필드 추가) → 파서에 2ND BEST·속도 계획·APMS 추가(`AVIATOR_PARSER_VERSION` 올림) → Ops 체크리스트 디자인 시안 → 테스트·화면 확인 → DECISIONS에 D-079(D-078 일부 대체) → 커밋·배포(요청 시)
+- **작업 방식 메모**: 디자인은 코드 전에 시안(그림)으로 먼저 확인. 사용자는 **앱 원래 포맷 유지**를 원함(새 큰 표·“NEW” 배지·두꺼운 입력 칸 싫어함)
+
+### 2026-11-18 (3) — FMS 입력 앱 구현 (D-079)
+- **완료**: 시안 v2 확정분 구현. OFP 탭 맨 위 FMS 대조 표 삭제 → FUEL(TRIP 시간·FOB·FOD, klbs 입력)·FLIGHT(DIST·MAX FL·OPT/EO FL·GATE·COORD + RVSM QNH·CAPT/STBY/F/O + FCOM 허용 차이 표) 카드 안 FMS 열, SYSTEMS·PRE-FLIGHT 카드(ENG OIL + 📖 LIMIT → FCOM LIM-ENG 창, HYD NORMAL 체크, OXY). 파서 `aviator-1.5`: SPEED SKD·APMS·2ND-$(FUEL 카드 아래 2ND BEST + 차이). Ops 정상 절차 탭의 FCOM SOP 원문 칸 삭제. QNH 범위 = FCOM 745–1100 hPa / 22.00–32.48 inHg (사용자 "1013 = hPa 맞음, 범위 찾아봐")
+- **변경 파일**: `checks/{checks.ts,checks.test.ts}`, `ofp/doc/{Fms.tsx(신규),OfpDocument.tsx}`, `ofp/doc/FmsCheck.tsx`(삭제), `ofp/parser/{aviator.ts,index.ts,samples.test.ts}`, `ofp/types.ts`, `ops/Checklist.tsx`, `app/styles.css`, 문서(DECISIONS D-079, ARCHITECTURE §3.7q, KNOWN_ISSUES K-47, 이 문서)
+- **테스트**: `npm test` 254/254 (실제 OFP 10개에서 SPEED SKD·2ND-$ 읽기 포함), `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 OFP, :5174): FOB `290`→290,000, `107.5`→107,500(+100), TRIP `916`→9:16(−0:59), DIST·MAX FL 차이, LAT `37271`→37°27.1', LON `126270`→126°27.0', QNH `2992`→29.92 inHg(1013 hPa), STBY +40 ⚠ · F/O +10 ✓, 오일 `185`→18.5, HYD 체크 시각, 새로고침 후 값 유지. 375·768·1440 × 주간/야간 가로 스크롤 0, 입력 줄 높이 = 다른 줄. 시험 값 지움. 콘솔 오류는 기상 중계 404만(K-35)
+- **확인 못 한 것**: 데모 OFP에는 FOD 줄·2ND BEST·SPEED SKD가 없어 그 화면은 개발 브라우저에서 못 봄(파서 테스트로만 확인) → 실제 OFP로 확인 필요. 📖 LIMIT 창은 개발 브라우저에 FCOM이 없어 못 눌러 봄(아이패드에서). 커밋·배포 안 함
+- **답 대기**: COORD 분 소수 첫째 자리면 되는지 (지금은 그렇게 만듦)
+- **다음**: 사용자가 실제 OFP로 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안(같은 포맷) → FLIGHT 후보 값(PROGS·WX, NAM, LOCAL UTC±, TOW+2000→TRIP+N, 디스패처·CCF·TANK) 자리 제안
+
+
+### 2026-11-19 — SYSTEMS·RVSM 다시 시안 (코드 변경 없음)
+- **사용자 요청**: ① WEIGHTS·SYSTEMS 자리 바꾸기 ② SYSTEMS 더 예쁘게/쪼개기 ③ 오일 최소량 간략 표시 ④ RVSM 기준 아주 간략히 + FOM 75 ft 확인. "만들지 말고 이미지 먼저"
+- **시안**: `private/design/2026-11-19-systems-rvsm-mockup.html` — SYSTEMS A(칸 묶음)·B(가로 표)·C(두 카드로 쪼갬), 오일 MIN 한 줄(FT 9:24 → OAT<0 13 qt / OAT≥0 10.7 qt), RVSM에 ELEV 칸 + 기준 두 줄(GND: −ELEV ≤75 · CAPT↔F/O ≤20 · STBY ≤30 / CRZ: 1시간마다 CAPT↔F/O ≤200)
+- **확인한 근거**: 75 ft = FOM 10.4.1.3 b) "QNH Set 시 Primary 고도계 지시고도와 Airport Field Elevation 차이 75 ft 이내" (계기끼리 아님). 순항 두 Primary 고도계 차이 200 ft 이내(초과 = Loss of Redundancy) = FOM 10.4.1.3 d). FCOM 표는 FL300+ 150 ft
+- **다음**: 사용자 선택(A/B/C, ELEV 칸 여부, 순항 200 vs 150) → 구현
+- **(2) 사용자 답**: SYSTEMS = **B(가로 표)**. "가운데 글자 움직여서 정신없음" → 원인: 표 자동 열 너비(입력·"범위 밖"에 따라 가운데 열 이동) → 열 너비 고정(table-layout fixed)으로 고칠 것. RVSM 기준 표시 3안 시안 `private/design/2026-11-19-rvsm-systems-b-mockup.html` (R1 가운데 열에 기준·출처, R2 작은 기준표, R3 두 줄 칩) — 선택 대기
+- **(3) 최종 시안** `private/design/2026-11-19-final-systems-rvsm-mockup.html`: SYSTEMS = 칸 묶음(ENG OIL 4칸 + MIN QT 띠 + HYD 체크 2개 + OXY 2칸) 한 카드. 오일 최소량 = FCOM LIM-ENG 표에 **OFP RAMP OUT 시간** 넣어 계산(소수 첫째 자리 올림, 예 11:04 → OAT<0 13 / OAT≥0 11.6). RVSM = R2 + 기준표(행 GND·CRZ·FL300+, 열 PFD↔표고 · PFD↔PFD · PFD↔ISIS, 큰 숫자 + FOM/FCOM 칩), 가운데 열 "vs ELEV / vs CAPT". 선택 대기: 오일 입력이 최소량보다 작으면 주황 표시할지
+- **(4) 사용자 답**: 오일 최소량 미만 **주황 표시 함**(두 값 중 큰 값 기준). "FT"(피트로 읽힘) → **FLT**. 오일 최소량은 표 모양(OAT 행 · 규칙 · 값). 카드 안 제목 누르면 FCOM 원문 창: ENG OIL → `LIM-ENG` OIL QUANTITY, OXY → `LIM-OXY`(CREW 그래프 P1~2, CABIN P3), HYD → FCOM LIM에 유압 양 쪽 없음 → `PRO-NOR-SOP-40` "HYD SD page RESERVOIR FLUID LEVEL … WITHIN NORMAL RANGE" 쪽(사용자 확인 대기). 시안 같은 파일 갱신
+
+### 2026-11-19 (5) — SYSTEMS·RVSM 앱 구현 (D-080) (다음 세션은 여기서 시작)
+- **완료**: 카드 순서 WEIGHTS → SYSTEMS. FMS 표 열 고정(가운데 글자 안 움직임). SYSTEMS = ENG OIL 4칸 + MIN OIL 표(RAMP OUT 시간, 최소량 미만 주황) + HYD 체크 버튼 + OXY 2칸, 칸 제목 → FCOM LIM-ENG·LIM-OXY·SOP HYD 쪽 창. RVSM = ELEV 칸 추가, CAPT PFD vs ELEV(75 FOM)·F/O PFD vs CAPT(20)·STBY ISIS vs CAPT(30), 기준표 GND/CRZ/FL300+ × PFD↔표고/PFD↔PFD/PFD↔ISIS + FOM·FCOM 표시. "FT"→"FLT"
+- **변경 파일**: `checks/{checks.ts,checks.test.ts}`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `app/styles.css`, 문서(DECISIONS D-080, ARCHITECTURE §3.7q, KNOWN_ISSUES K-47, 이 문서)
+- **테스트**: `npm test` 255/255, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 OFP): QNH `299` 범위 밖 → `1013` 1013 hPa, 가운데 열 위치 변화 0px, ELEV 21·CAPT 30 → +9 ✓, F/O 40 → +10 ✓, STBY 70 → +40 ⚠, ENG 3 `110` → 11.0 주황(최소 13, 데모 FLT 10:15 → 13 / 11.2), HYD 체크, 카드 순서 확인. 375·768·1440 × 주간/야간 가로 스크롤 0, 잘린 칸 0(1440에서 FUEL 첫 열 넓힘). 시험 값 지움. FCOM 없는 개발 브라우저에서 제목 누르면 "FCOM 없음" 안내 확인
+- **확인 못 한 것**: 실제 FCOM이 있는 아이패드에서 제목 → LIM-ENG·LIM-OXY·SOP 쪽이 맞게 열리는지. 실제 OFP의 RAMP OUT 시간·FOD·2ND BEST 화면. 커밋·배포 안 함(D-078~D-080 모두 작업 폴더에만)
+- **다음**: 사용자 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안 → FLIGHT 후보 값 자리 제안
+

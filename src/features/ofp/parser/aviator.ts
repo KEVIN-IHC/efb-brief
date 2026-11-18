@@ -53,6 +53,8 @@ export interface AviatorHeader {
   etd?: Traced<string>; // HHMM
   eta?: Traced<string>;
   routeString?: Traced<string>;
+  speedPlan?: Traced<{ clb?: string; crz?: string; dsc?: string; apmsPct?: number }>;
+  secondBest?: Traced<{ fl: number; trip: number; timeMin: number }>;
 }
 
 export function parseHeader(lines: DocLine[]): AviatorHeader | null {
@@ -81,6 +83,19 @@ export function parseHeader(lines: DocLine[]): AviatorHeader | null {
         const u = tk.find((x) => /LBS$|KGS?$/.test(x));
         if (u) h.unit = { value: u, line: nl.n };
       }
+    }
+    // SPEED SKD   CLB-320/.85  CRZ-  65 DSC-.85/290/ APMS/P 02.5 PCNT. IFR
+    if (!h.speedPlan && /^SPEED SKD\b/.test(t)) {
+      const g = (re: RegExp) => re.exec(t)?.[1];
+      const apms = g(/APMS\/P\s+(\d+(?:\.\d+)?)\s*PCNT/);
+      h.speedPlan = {
+        value: { clb: g(/CLB-\s*([0-9./]+?)\/?(?=\s)/), crz: g(/CRZ-\s*(\S+)/), dsc: g(/DSC-\s*([0-9./]+?)\/?(?=\s)/), apmsPct: apms !== undefined ? Number(apms) : undefined },
+        line: n,
+      };
+    }
+    // 2ND-$    310 3024 10.53  = FL · TRIP 연료(100LBS) · 시간
+    if (!h.secondBest && (m = /^2ND-\$\s+(\d{2,3})\s+(\d{3,5})\s+(\d{2}\.\d{2})\b/.exec(t))) {
+      h.secondBest = { value: { fl: Number(m[1]), trip: Number(m[2]) * H, timeMin: hmToMin(m[3]) }, line: n };
     }
     if (h.costIndex === undefined && (m = /CRZ-\s*(\d{1,4})\b/.exec(t))) h.costIndex = { value: Number(m[1]), line: n };
     if (!h.etd && (m = /ETD\s+[A-Z]{4}\s+(\d{4})Z\s+ETA\s+[A-Z]{4}\s+(\d{4})Z/.exec(t))) {

@@ -24,6 +24,13 @@ describe.skipIf(files.length === 0)('Aviator 실제 샘플', () => {
       expect(o.weights.tow.planned).toBeLessThanOrEqual(o.weights.tow.limit);
       expect(o.alternates.length).toBeGreaterThan(0);
       expect(Number.isFinite(o.header.costIndex)).toBe(true);
+      // D-079: SPEED SKD · 2ND-$
+      expect(o.header.speedPlan?.clb).toMatch(/^\d{3}\/\.\d{2}$/);
+      expect(o.header.speedPlan?.dsc).toMatch(/^\.\d{2}\/\d{3}$/);
+      expect(o.header.speedPlan?.crz).toBe(String(o.header.costIndex));
+      expect(o.header.speedPlan?.apmsPct).toBeGreaterThan(0);
+      expect(o.header.secondBest?.fl).toBeGreaterThan(100);
+      expect(o.header.secondBest?.trip).toBeGreaterThan(o.header.secondBest!.fl);
       // 좌표·바람이 말이 되는지
       for (const w of o.route) {
         expect(Math.abs(w.lat)).toBeLessThanOrEqual(90);
