@@ -311,3 +311,4 @@
 - **확인 못 한 것**: 실제 FCOM이 있는 아이패드에서 제목 → LIM-ENG·LIM-OXY·SOP 쪽이 맞게 열리는지. 실제 OFP의 RAMP OUT 시간·FOD·2ND BEST 화면. 커밋·배포 안 함(D-078~D-080 모두 작업 폴더에만)
 - **다음**: 사용자 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안 → FLIGHT 후보 값 자리 제안
 
+- **배포 (2026-11-19)**: 사용자 요청. 커밋 전 실제 OFP 샘플 10개를 화면 그대로 그려(서버 렌더) FUEL 표 RAMP OUT·FOD 줄, WEIGHTS AGTOW 풀이, 2ND BEST, SYSTEMS 모두 있는 것 확인 — 사용자가 본 "BLOCK·FOD 없음·AGTOW 없음" 화면은 **데모 OFP**(KG, 데모에 원래 없는 값)였음. 실제 편명·등록번호 혼입 검사 통과. e193a9f push → GitHub Actions 성공, 배포 사이트에 `aviator-1.5`·새 화면 코드 있음, `/private/` 404
