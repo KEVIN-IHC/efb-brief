@@ -1,12 +1,12 @@
 // OFP 카드 안 FMS 입력 (D-079): FUEL·FLIGHT 표 오른쪽 얇은 FMS 열 + SYSTEMS·PRE-FLIGHT 카드.
 // 입력 칸은 표 숫자와 같은 글씨·줄 높이(테두리 없음). 차이는 같은 줄 왼쪽 작은 글씨. 기기 안에만 저장(비행마다 따로)
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fmtHm, fmtSigned } from '../../../lib/format';
 import { formatZ } from '../../../lib/time';
 import { altChecks, fmtCoord, minOil, parseFl, parseHm, parseKilo, parseNum, parseOil, parseQnh, RVSM_LIMITS, type FmsEntry } from '../../checks/checks';
 import { docPages, openManualPage, type ManualTarget } from '../../manual/lookup';
 import { listManuals, manualEvents } from '../../manual/store';
-import { kbBlur, kbFocus, moveField, useAppKeyboard } from '../../../app/AppKeyboard';
+import { kbProps, moveField, useAppKeyboard, useKbActive } from '../../../app/AppKeyboard';
 import { DocSection } from './ui';
 
 export type Fms = [FmsEntry, (patch: Partial<FmsEntry>) => void];
@@ -18,13 +18,16 @@ const nf = new Intl.NumberFormat('en-US');
 export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { fms: Fms; k: K; ph: string; show?: (raw: string) => string | undefined; mode?: 'decimal' | 'numeric' | 'text'; label: string; warn?: boolean }) {
   const [e, set] = fms;
   const [focus, setFocus] = useState(false);
-  const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-081)
+  const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-081·D-086 — 초점 없이 "지금 칸")
+  const ref = useRef<HTMLInputElement>(null);
+  const kbEl = useKbActive();
+  const editing = focus || (!!ref.current && kbEl === ref.current);
   const raw = e[k] ?? '';
-  const shown = !focus && raw ? (show?.(raw) ?? raw) : raw;
+  const shown = !editing && raw ? (show?.(raw) ?? raw) : raw;
   return (
     <input
+      ref={ref}
       className={`fms-in mono ${warn ? 'c-warn' : ''}`}
-      inputMode={appKb ? 'none' : mode}
       autoCapitalize="characters"
       autoCorrect="off"
       autoComplete="off"
@@ -33,15 +36,9 @@ export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { 
       aria-label={`${label} FMS 입력`}
       placeholder={ph}
       value={shown}
-      onFocus={(ev) => {
-        setFocus(true);
-        const el = ev.currentTarget;
-        kbFocus({ el, label, set: (v) => set({ [k]: v }) });
-      }}
-      onBlur={(ev) => {
-        setFocus(false);
-        kbBlur(ev.currentTarget);
-      }}
+      {...kbProps(appKb, { label, set: (v) => set({ [k]: v }), raw: () => e[k] ?? '' }, mode)}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
       onChange={(ev) => set({ [k]: ev.target.value })}
       onKeyDown={(ev) => {
         if (ev.key === 'Enter') {

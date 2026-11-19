@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDemoOfp } from '../../mock/demoOfp';
-import { airportWx, wxValues, activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
+import { isOldGeneric, airportWx, wxValues, activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
 import type { OfpData } from '../ofp/types';
 
 describe('합동 브리핑 원고 틀', () => {
@@ -71,5 +71,13 @@ describe('합동 브리핑 원고 틀', () => {
     expect(v.ERA).toMatch(/^항로 교체공항\(ERA\)은 KSFO입니다\. KSFO 1919Z~2119Z 기상 자료 없음/);
     expect(airportWx(ap('RJBB', ['ALTN']), false)).toMatch(/^1919Z~2119Z/);
     expect(wxValues(null)).toEqual({});
+  });
+
+  it('예전 기본 틀만 저장된 목록은 새 틀로 (고친 문장이 있으면 그대로)', () => {
+    const old: JbItem[] = [{ id: 'greet', title: '비행 개요', group: 'a', text: '{편명} {출발}→{도착}, 비행시간 {비행시간}, 순항고도 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}. 연료 계획 {계획방식}.' }];
+    expect(isOldGeneric(old)).toBe(true);
+    expect(isOldGeneric([...old, { id: 'x', title: '내 문단', group: 'a', text: '직접 쓴 문장' }])).toBe(false);
+    expect(isOldGeneric(GENERIC_ITEMS)).toBe(false);
+    expect(isOldGeneric([...GENERIC_ITEMS].reverse())).toBe(false);
   });
 });

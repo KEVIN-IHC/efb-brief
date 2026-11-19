@@ -236,11 +236,12 @@ IPBS/
 - 계산: `features/checks/checks.ts` (`ofpRefs`·`parseKilo`·`parseHm`·`parseFl`·`fmtCoord`·`parseQnh`·`altChecks`·`RVSM_LIMITS`·`parseOil`·`minOil`·`DEFAULT_CHECKLIST`·`progress`)
 - 화면: `ofp/doc/Fms.tsx`(FUEL·FLIGHT 카드 안 FMS 열, SYSTEMS·PRE-FLIGHT 카드 — 칸 제목 → FCOM LIM-ENG·LIM-OXY·SOP HYD 쪽 창(D-080)). `OfpDocument`가 `useDraft` 하나를 세 카드에 나눠 줌. `ops/Checklist.tsx`(Ops "정상 절차" 탭: 체크·HAA)
 - 카드 순서(D-081): FLIGHT → FMS(`FmsBlock`) → RVSM · ALTIMETERS(`RvsmBlock`) → FUEL → WEIGHTS → SYSTEMS … (FMS·RVSM 표는 FLIGHT 카드에서 분리)
-- 앱 키보드(D-081·D-082): `app/AppKeyboard.tsx`(`App.tsx`에 하나) — `.fms-in`·`.kb-in` 칸(FMS 카드들 + 순항 `EntrySheet`)에 초점이 오면 화면 아래 고정 키보드(≥768px만, `inputMode="none"`로 iOS 키보드 숨김). 모듈 상태 `kbFocus`/`kbBlur` + `useSyncExternalStore`, 키 누름은 `pointerdown` 기본 동작 막아 초점 유지, 이전/다음 = `moveField`(화면 순서, 창 안이면 창 안에서만), 열려 있으면 `html.kb-open`(본문·창 아래 `--kb-h` 여백)
+- 앱 키보드(D-081·D-082·D-086): `app/AppKeyboard.tsx`(`App.tsx`에 하나) — 아이패드(≥768px)에서 `.fms-in`·`.kb-in` 칸은 `kbProps()`로 `readOnly`+`inputMode=none`, 누르면(pointerdown) `kbFocus` → 모듈 상태(지금 칸·글자 buf) + `useSyncExternalStore`, 표시용 `useKbActive()`, `.kb-on` 강조. 닫기 = 완료·밖 누르기·칸 사라짐. 키는 pointerdown에서 바로 처리, 이전/다음 = `moveField`(화면 순서, 창 안이면 창 안에서만). 블루투스 키보드 = window keydown. 열려 있으면 `html.kb-open`(본문·창 아래 `--kb-h` 여백)
 - 파서: SPEED SKD·2ND-$ → `header.speedPlan`·`header.secondBest` (`aviator-1.5`)
 - 저장: `ops/store.ts` `useKey`·`putKey`·`useDraft`(입력 칸, 0.4초 뒤 저장) → IndexedDB `settings`
 
 ### 3.7r 합동 브리핑 (D-083)
+- `features/joint/cities.ts` — 공항 → 한국어 도시 이름(D-086)
 - `features/joint/template.ts` — 원고 틀 문법·`parseTemplate`·`autoValues`(OFP 자동 값)·`turbParts`·`renderText`·`activeItems`·`GENERIC_ITEMS`(제목·OFP 값만)
 - `features/joint/JointBrief.tsx` — Ops 탭 "합동 브리핑": 체크리스트(편집) + 원고. 목록 = 기기 `jointItems` → 회사 기준 파일 `jointBrief.items` → `GENERIC_ITEMS`. 비행별 상태 `joint:<flightId>`(`useDraft`), 마지막 입력 `jointLast`
 - 회사 preset 생성: `private/manuals/build-joint.py` → `company-rules.json`의 `jointBrief` (비공개, 기기에서 Settings → 회사 기준 파일 가져오기)

@@ -1,6 +1,6 @@
 // 매시간 System Check 카드 (D-084) — 순항 화면. 칸 = 손글씨 한 줄 순서, 아래 = 기록 표, SD 페이지 체크, 📖 근거
 import { useEffect, useRef, useState } from 'react';
-import { kbBlur, kbFocus, moveField, useAppKeyboard } from '../../app/AppKeyboard';
+import { kbProps, moveField, useAppKeyboard, useKbActive } from '../../app/AppKeyboard';
 import { fmtSigned } from '../../lib/format';
 import { formatZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
@@ -11,7 +11,7 @@ import { listManuals, manualEvents } from '../manual/store';
 import { DocSection } from '../ofp/doc/ui';
 import type { OfpData } from '../ofp/types';
 import { putKey, useDraft, useKey } from '../ops/store';
-import { altCheck, draftKey, ENTRY_KEYS, fuelTotal, lineText, nextDue, nowHHMM, oilDelta, recsKey, SD_PAGES, type HourlyEntry, type HourlyRec } from './hourly';
+import { altCheck, dec1, DEC1_KEYS, draftKey, ENTRY_KEYS, normEntry, fuelTotal, lineText, nextDue, nowHHMM, oilDelta, recsKey, SD_PAGES, type HourlyEntry, type HourlyRec } from './hourly';
 
 type Refs = { alt?: ManualTarget; sd?: ManualTarget; fuel?: ManualTarget; oil?: ManualTarget; press?: ManualTarget; oxy?: ManualTarget };
 
@@ -59,24 +59,27 @@ function Ref({ to, label, src }: { to: ManualTarget | undefined | null; label: s
   );
 }
 
-function Field({ v, set, title, ph, w }: { v: string; set: (v: string) => void; title: string; ph: string; w: number }) {
+function Field({ v, set, title, ph, w, dec }: { v: string; set: (v: string) => void; title: string; ph: string; w: number; dec?: boolean }) {
   const appKb = useAppKeyboard();
+  const ref = useRef<HTMLInputElement>(null);
+  const kbEl = useKbActive();
+  const [focus, setFocus] = useState(false);
+  const editing = focus || (!!ref.current && kbEl === ref.current);
+  const shown = dec && !editing && v ? (dec1(v) ?? v) : v;
   return (
     <input
       className="hc-in mono kb-in"
       style={{ width: `${w}ch` }}
-      inputMode={appKb ? 'none' : 'decimal'}
       autoComplete="off"
       enterKeyHint="next"
       placeholder={ph}
       aria-label={title}
-      value={v}
+      ref={ref}
+      value={shown}
       onChange={(ev) => set(ev.target.value)}
-      onFocus={(ev) => {
-        kbFocus({ el: ev.currentTarget, label: title, set });
-        ev.currentTarget.select();
-      }}
-      onBlur={(ev) => kbBlur(ev.currentTarget)}
+      {...kbProps(appKb, { label: title, set, raw: () => v })}
+      onFocus={(ev) => (setFocus(true), ev.currentTarget.select())}
+      onBlur={() => setFocus(false)}
       onKeyDown={(ev) => {
         if (ev.key === 'Enter') {
           ev.preventDefault();
@@ -129,7 +132,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
   const hasAny = ENTRY_KEYS.some((k) => k !== 'time' && e[k]?.trim()) || sd.size > 0 || !!e.memo?.trim();
 
   const f = (k: (typeof ENTRY_KEYS)[number], title: string, ph: string, w: number) => (
-    <Field v={(k === 'time' ? timeShown : e[k]) ?? ''} set={(v) => set({ [k]: v })} title={title} ph={ph} w={w} />
+    <Field v={(k === 'time' ? timeShown : e[k]) ?? ''} set={(v) => set({ [k]: v })} title={title} ph={ph} w={w} dec={(DEC1_KEYS as readonly string[]).includes(k)} />
   );
   const sl = <span className="hc-sl">/</span>;
 
@@ -138,7 +141,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
     setEditId(null);
   };
   const save = () => {
-    const vals = { ...e, time: timeShown.trim() || nowHHMM() };
+    const vals = normEntry({ ...e, time: timeShown.trim() || nowHHMM() });
     if (editing) {
       void putKey(recsKey(flightId), recs.map((r) => (r.id === editing.id ? { ...r, ...EMPTY, ...vals, id: r.id, savedAt: r.savedAt } : r)));
     } else {
@@ -190,33 +193,33 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
             <div className="hc-ins">{f('time', 'TIME Z', 'HHMM', 5)}</div>
           </div>
           <div className="hc-g">
-            <Ref to={refs && (refs.alt ?? null)} label="ALT C / S / F" src="FOM 10.4.1.3" />
+            <Ref to={refs && (refs.alt ?? null)} label="ALT C / S / F · FT" src="FOM 10.4.1.3" />
             <div className="hc-ins">
-              {f('altC', 'ALT CAPT', 'CAPT', 6)}
+              {f('altC', 'ALT CAPT FT', 'CAPT', 6)}
               {sl}
-              {f('altS', 'ALT STBY', 'STBY', 6)}
+              {f('altS', 'ALT STBY FT', 'STBY', 6)}
               {sl}
-              {f('altF', 'ALT F/O', 'F/O', 6)}
+              {f('altF', 'ALT F/O FT', 'F/O', 6)}
             </div>
           </div>
           <div className="hc-g">
-            <Ref to={refs && (refs.oil ?? null)} label="OIL 1 / 2 / 3 / 4" src="FCOM SOP-150" />
+            <Ref to={refs && (refs.oil ?? null)} label="OIL 1 / 2 / 3 / 4 · QT" src="FCOM SOP-150" />
             <div className="hc-ins">
-              {f('oil1', 'OIL ENG 1', '1', 4.5)}
+              {f('oil1', 'OIL ENG 1 QT', '1', 4.5)}
               {sl}
-              {f('oil2', 'OIL ENG 2', '2', 4.5)}
+              {f('oil2', 'OIL ENG 2 QT', '2', 4.5)}
               {sl}
-              {f('oil3', 'OIL ENG 3', '3', 4.5)}
+              {f('oil3', 'OIL ENG 3 QT', '3', 4.5)}
               {sl}
-              {f('oil4', 'OIL ENG 4', '4', 4.5)}
+              {f('oil4', 'OIL ENG 4 QT', '4', 4.5)}
             </div>
           </div>
           <div className="hc-g">
-            <Ref to={refs && (refs.press ?? null)} label="ΔP / CAB ALT" src="LIM-AIR" />
+            <Ref to={refs && (refs.press ?? null)} label="ΔP PSI / CAB ALT FT" src="LIM-AIR" />
             <div className="hc-ins">
               {f('dp', 'ΔP PSI', 'PSI', 4)}
               {sl}
-              {f('cab', 'CAB ALT', 'FT', 5.5)}
+              {f('cab', 'CAB ALT FT', 'FT', 5.5)}
             </div>
           </div>
           <div className="hc-g">
@@ -230,7 +233,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
             </div>
           </div>
           <div className="hc-g">
-            <Ref to={refs && (refs.oxy ?? null)} label="OXY CKPT / CABIN" src="LIM-OXY" />
+            <Ref to={refs && (refs.oxy ?? null)} label="OXY CKPT / CABIN · PSI" src="LIM-OXY" />
             <div className="hc-ins">
               {f('oxyC', 'OXY CKPT PSI', 'CKPT', 5)}
               {sl}

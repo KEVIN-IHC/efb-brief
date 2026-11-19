@@ -1257,3 +1257,6 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .hc-sub { display: flex; flex-wrap: wrap; gap: 2px var(--sp-3); font-size: 0.68rem; color: var(--text-faint); }
 .hc-tools { display: flex; gap: 4px; flex: none; }
 .hc-copy { margin-top: var(--sp-2); }
+/* 앱 키보드 "지금 칸" (D-086: 아이패드는 초점 대신 이 표시) */
+input.kb-on { background: var(--accent-soft) !important; box-shadow: inset 0 -2px 0 var(--accent); border-radius: 3px; }
+input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-select: none; user-select: none; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { altCheck, fuel100, fuelTotal, lineText, nextDue, oilDelta, recIso, type HourlyRec } from './hourly';
+import { dec1, normEntry, altCheck, fuel100, fuelTotal, lineText, nextDue, oilDelta, recIso, type HourlyRec } from './hourly';
 
 describe('매시간 점검', () => {
   it('손글씨 한 줄 그대로', () => {
@@ -36,5 +36,13 @@ describe('매시간 점검', () => {
     expect(d.at).toBe('2026-11-20T00:50:00.000Z');
     expect(d.inMin).toBe(20);
     expect(nextDue([], 0)).toBeUndefined();
+  });
+
+  it('점 없이 쓰면 소수 첫째 자리 (오일 174 → 17.4, ΔP 86 → 8.6)', () => {
+    expect(dec1('174')).toBe('17.4');
+    expect(dec1('86')).toBe('8.6');
+    expect(dec1('17.4')).toBe('17.4');
+    expect(normEntry({ oil1: '174', dp: '86', cab: '5800' })).toMatchObject({ oil1: '17.4', dp: '8.6', cab: '5800' });
+    expect(lineText({ time: '1700', oil1: '174', oil2: '171', oil3: '17.4', oil4: '174', dp: '86', cab: '5800' })).toBe('1700Z  17.4/17.1/17.4/17.4  8.6/5800');
   });
 });

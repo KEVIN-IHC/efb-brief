@@ -13,6 +13,7 @@ import {
   AUTO_KEYS,
   autoValues,
   GENERIC_ITEMS,
+  isOldGeneric,
   ITEMS_KEY,
   LAST_KEY,
   parseTemplate,
@@ -38,7 +39,9 @@ type Ctx = {
 const cKey = (it: JbItem, n: number) => `${it.id}:${n}`;
 
 export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpData | null; rules: CompanyRules | null }) {
-  const saved = useKey<JbItem[] | null>(ITEMS_KEY, null);
+  const saved0 = useKey<JbItem[] | null>(ITEMS_KEY, null);
+  // 예전 기본 틀을 그대로 저장한 것이면(고친 문장 없음) 무시 → 새 기본 틀·회사 preset
+  const saved = saved0 && !isOldGeneric(saved0) ? saved0 : null;
   const preset = rules?.jointBrief?.items;
   const items = saved ?? preset ?? GENERIC_ITEMS;
   const [st, set] = useDraft<JbState>(stateKey(flightId), {});

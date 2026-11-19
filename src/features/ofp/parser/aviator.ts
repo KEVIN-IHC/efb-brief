@@ -57,6 +57,8 @@ export interface AviatorHeader {
   secondBest?: Traced<{ fl: number; trip: number; timeMin: number }>;
   /** 2쪽 머리 "ATTN CAPT.  7626  REFILE EDTO" 의 계획 방식 표시 */
   planFlags?: Traced<string[]>;
+  /** "HRS UTC+0900" = 도착지 현지 시각 차이 (분) */
+  arrUtcMin?: Traced<number>;
 }
 
 export function parseHeader(lines: DocLine[]): AviatorHeader | null {
@@ -65,6 +67,7 @@ export function parseHeader(lines: DocLine[]): AviatorHeader | null {
     const { text: t, n } = lines[i];
     let m: RegExpExecArray | null;
     if (!h.planNo && (m = /^CFP PLAN\s+(\d+)/.exec(t))) h.planNo = { value: m[1], line: n };
+    if (h.arrUtcMin === undefined && (m = /HRS UTC([+-])(\d{2})(\d{2})/.exec(t))) h.arrUtcMin = { value: (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])), line: n };
     if (!h.planFlags && /^ATTN CAPT\./.test(t)) h.planFlags = { value: t.split(/\s+/).filter((x) => /^(REFILE|EDTO|ETOPS)$/.test(x)), line: n };
     if (!h.flightNo && (m = /FLIGHT RELEASE\s+([A-Z0-9]+)\s+([A-Z]{4})\/([A-Z]{4})\s+ON\s+(\d{2})\/([A-Z]{3})\/(\d{2})/.exec(t))) {
       h = { ...h, flightNo: { value: m[1], line: n }, dep: { value: m[2], line: n }, arr: { value: m[3], line: n } };

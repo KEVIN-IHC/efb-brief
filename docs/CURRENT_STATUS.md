@@ -2,7 +2,7 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-18 (D-078 커밋 전 · OFP FMS 입력 디자인 확정 대기 — 맨 아래 "다음 세션은 여기서 시작")
+> 마지막 갱신: 2026-11-19 (D-086 커밋 전 — 맨 아래 "다음 세션은 여기서 시작")
 
 ## 1. 한눈에
 
@@ -362,7 +362,7 @@
 - **확인 못 한 것**: 아이패드(📖 쪽이 맞게 열리는지). 커밋·배포 안 함
 - **다음**: 사용자 답 → 칸 추가 → 커밋·배포(요청 시)
 
-### 2026-11-19 (12) — 키보드 빠른 입력 · 원고 문장형 · 브리핑 기상 · 매시간 기록 칸 (D-085) (다음 세션은 여기서 시작)
+### 2026-11-19 (12) — 키보드 빠른 입력 · 원고 문장형 · 브리핑 기상 · 매시간 기록 칸 (D-085)
 - **사용자 답**: 1767/1828 = 조종실·객실 산소 압력. 승객은 "총 몇 분"만(배포함)
 - **완료**: 앱 키보드 빠르게·두 번 눌러도 칸 유지(D-085 1). 합동 브리핑 기본 틀 문장형 + {목적지기상}·{교체공항}·{ERA} + "교체공항 · ERA" 문단. 매시간 기록 칸 한 줄형·시각 자동·줄 눌러 수정·↑↓·✕·산소 칸
 - **변경 파일**: `app/{AppKeyboard.tsx,styles.css}`, `joint/{template.ts,JointBrief.tsx,joint.test.ts}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, 문서(DECISIONS D-085, 이 문서) · 비공개 build-joint.py·company-rules.json
@@ -370,3 +370,17 @@
 - **확인 못 한 것**: 실제 아이패드 터치(키보드), 실제 기상 있는 비행의 원고 길이(ERA가 많으면 길어짐). 아이패드에서 회사 기준 파일 다시 가져오기 전엔 preset 대신 기본 틀. 커밋·배포 안 함
 - **기다리는 일 (사이드 대화)**: `private/manuals/NEXT-ITEMS.md` 9번 로드시트 사진 OCR → W&B 자동 기입, 10번 비행 후 기록 PDF·자동 업로드(업로드 안정화 먼저)
 - **배포 (2026-11-19)**: 사용자 요청. 709c76b push → GitHub Actions 성공, 배포 사이트에 매시간 점검 코드 있음, `/private/` 404. 아이패드 확인 대기(K-48, 회사 기준 파일 다시 가져오기)
+
+### 2026-11-19 (13) — 로드시트 OCR(추가 기능 9번) 시안 (코드 변경 없음)
+- **한 것**: 로드시트 형식 확인(A-OPCS 매뉴얼의 ACARS 로드시트 예시), 넣는 방법 2가지(기기 안 OCR · iPad Live Text 붙여넣기), 시안 3개 `private/design/2026-11-19-loadsheet-mockup.html`. 세부는 `private/manuals/NEXT-ITEMS.md` 9번
+- **답 대기**: 시안 A/B/C, 실제 로드시트 사진 2~3장(`private/samples/loadsheet/`), 로드시트 칸 뜻 확인
+- **다음**: 답 받으면 구현(DB_VERSION 올려 사진 스토어, tesseract.js 오프라인 캐시)
+
+### 2026-11-19 (14) — 아이패드 키보드 다시 만듦 · 오일/ΔP 소수점 · 원고 도시·현지 시각 (D-086) (다음 세션은 여기서 시작)
+- **사용자 보고**: iPad Safari에서 키를 빠르게 여러 번 누르면 키보드가 사라짐(Windows 크롬은 정상). 합동 브리핑 원고가 아이패드에서 B안처럼 안 나옴(첫 배포 때 짧은 기본 틀 그대로 — 예전 앱이 남았거나 그 틀이 기기에 저장된 것으로 봄)
+- **완료**: D-086 — 아이패드는 초점 없이 "지금 칸"으로 입력(키보드가 글자를 직접 들고 있음, 첫 키 덮어씀, 완료·밖 누르기로 닫힘, 블루투스 키보드 keydown). 매시간 오일·ΔP 자동 소수점(174→17.4, 86→8.6)·FCOM 단위 표시. 원고 {출발도시}·{도착도시}·{도착시각}(현지) — 파서 `aviator-1.7`(HRS UTC±). 예전 기본 틀만 저장된 목록은 새 틀로. 로드시트 결정·추천 → `private/manuals/NEXT-ITEMS.md` 9번
+- **변경 파일**: `app/{AppKeyboard.tsx,styles.css}`, `ofp/doc/Fms.tsx`, `inflight/EntrySheet.tsx`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/{template.ts,JointBrief.tsx,cities.ts,joint.test.ts}`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts}`, 문서(DECISIONS D-086, KNOWN_ISSUES K-48, ARCHITECTURE, 이 문서) · 비공개 build-joint.py·company-rules.json·NEXT-ITEMS.md
+- **테스트**: `npm test` 271/271(실제 OFP 10개 재파싱 — 도착지 시간대 LAX −7·인천 +9·시드니 +11), `tsc -b`, `npm run build` 통과. 개발 브라우저(1180): 키 연속 4번(같은 순간) → 5555, ⌫·9 → 5559, 다음 칸 → MAX FL 380, 다시 누르면 첫 키 덮어씀, 완료·밖 누르기 닫힘. 매시간 오일 174 → 칸 나오면 17.4, ΔP 86 → 8.6. 원고 "DEMO001 편 인천에서 로스앤젤레스까지". 시험 값 지움
+- **확인 못 한 것**: **실제 iPad Safari 터치**(이번 수정의 핵심, K-48). 실제 OFP의 현지 시각 문장. 커밋·배포 안 함
+- **아이패드에서 확인 순서**: ① Settings 맨 아래 build 시각이 새 배포인지(아니면 홈 화면 앱 완전히 닫았다 열기) ② OFP FMS 칸·Inflight Hourly check에서 키 빠르게 연타 ③ Ops → 합동 브리핑 원고가 "○○에서 ○○까지 … (현지 HH:MM)" 문장인지 — 그래도 예전 틀이면 "항목 편집 → 되돌리기" ④ Settings → 회사 기준 파일에 `private/manuals/company-rules.json` 다시 가져오기(합동 브리핑 15문단)
+- **다음 (우선순위)**: 1) 커밋·배포(요청 시) → 아이패드 확인 2) 로드시트 OCR(NEXT-ITEMS 9) — 사용자가 실제 로드시트 사진을 `private/samples/loadsheet/`에 넣으면 시작(결정: C 확인 창 + OFP 값, 확인하면 WEIGHTS L/S 열) 3) 비행 후 기록 PDF(NEXT-ITEMS 10) — 자동 업로드 안정화가 먼저 4) Ops 체크리스트 디자인 시안 · FLIGHT 후보 값

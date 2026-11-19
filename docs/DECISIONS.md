@@ -626,3 +626,12 @@
   3. 원고 자동 값 추가 `{목적지기상}`(목적지 ETA ±1h 예보, TAF 발표 시각) · `{교체공항}`("목적지에 내리지 못하면 ○○로 회항" + 교체 ETA ±1h 예보) · `{ERA}`(3% ERA·EDTO·ERA 공항과 각 시간창 예보) — Briefing 판정(buildBrief)의 공항별 시간창·TAF를 그대로 씀. 새 문단 "교체공항 · ERA"(기본 틀·회사 preset 둘 다)
   4. 매시간 기록 칸: 손글씨 한 줄처럼 묶음(TIME · ALT C/S/F · OIL 1/2/3/4 · ΔP/CAB · FU+FOB=합계 · OXY CKPT/CABIN). TIME은 지금 시각이 칸에 들어가 있고 고칠 수 있음. 칸을 누르면 전체 선택(덮어쓰기). 기록 줄을 누르면 위 칸으로 불러와 "수정 저장/취소", 줄마다 ↑↓·✕. SD 페이지 "모두" 버튼. 산소 압력 칸 추가(📖 FCOM LIM-OXY, 판정 없음)
 - **영향** `app/AppKeyboard.tsx`, `joint/{template.ts,JointBrief.tsx,joint.test.ts}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `app/styles.css` · 비공개 `private/manuals/{build-joint.py,company-rules.json}`(15문단)
+
+### D-086 아이패드 앱 키보드 = 초점 없는 "지금 칸" · 오일/ΔP 자동 소수점 · 원고 도시 이름·현지 시각 (D-081·D-085 보완)
+- **날짜** 2026-11-19 (사용자: "아이패드 사파리에서 빠르게 여러 번 터치하면 키보드 사라짐, 윈도우 크롬은 됨", "엔진오일 174 → 17.4, ΔP 86 → 8.6, 단위 FCOM 보고", "원고가 B안처럼 표기 안 됨", 로드시트 C에 OFP 값 같이 + A처럼 기입·원본 비교)
+- **결정**
+  1. 아이패드(≥768px)에서는 입력 칸에 초점을 주지 않음(`readOnly`, `inputMode="none"`). 칸을 누르면(pointerdown) 앱이 "지금 칸"으로 기억(`.kb-on` 표시), 키보드는 [완료]·키보드와 입력 칸 밖 누르기·입력 칸이 사라질 때만 닫힘. 키보드가 입력 중 글자를 직접 들고 있어(buf) 화면이 다시 그려지기 전에 다음 키가 와도 잃지 않음. 값이 있는 칸을 누르면 첫 키는 덮어씀(MCDU처럼). 블루투스 키보드는 화면 전체 keydown(숫자·글자·Backspace·Enter/Tab·Esc). 아이폰은 iOS 키보드 그대로. 공통 속성 `kbProps(appKb, {label,set,raw?})`
+  2. 매시간 점검 오일 1~4·ΔP: 점 없이 쓰면 칸에서 나올 때·기록할 때 마지막 자리를 소수로(Preflight 오일 칸 `parseOil`과 같은 규칙). 단위 FCOM 기준 표시: 고도계 FT · 오일 QT · ΔP PSI · CAB ALT FT · 산소 PSI
+  3. 합동 브리핑: `{출발도시}`·`{도착도시}`(공개 공항 → 한국어 도시 이름 표, 없으면 ICAO) · `{도착시각}` = "2019Z(현지 05:19)" — 파서 `aviator-1.7`이 OFP "HRS UTC+0900"(도착지 현지 시각 차이) 읽음. 기본 틀·회사 preset 인사 문장이 도시 이름 사용. 기기에 저장된 목록이 예전 기본 틀 문장뿐이면(고친 문장 없음) 무시하고 새 틀·preset 사용
+  4. 로드시트(NEXT-ITEMS 9): C 확인 창에 OFP 값도 같이, 확인하면 WEIGHTS 카드 L/S 열(A)에 — 실제 사진 받으면 구현
+- **영향** `app/{AppKeyboard.tsx,styles.css}`, `ofp/doc/Fms.tsx`, `inflight/EntrySheet.tsx`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/{template.ts,JointBrief.tsx,cities.ts(신규),joint.test.ts}`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts}` · 비공개 build-joint.py·company-rules.json

@@ -6,7 +6,7 @@
 
 /** 기록 칸 (입력 순서 = 손글씨 순서) */
 export const ENTRY_KEYS = ['time', 'altC', 'altS', 'altF', 'oil1', 'oil2', 'oil3', 'oil4', 'dp', 'cab', 'fu', 'fob', 'oxyC', 'oxyCab'] as const;
-import { RVSM_LIMITS } from '../checks/checks';
+import { parseOil, RVSM_LIMITS } from '../checks/checks';
 
 export interface HourlyEntry {
   time?: string; // HHMM (UTC)
@@ -54,6 +54,19 @@ export const num = (s: string | undefined): number | undefined => {
   return Number.isFinite(v) && s.trim() !== '' ? v : undefined;
 };
 
+/** 소수 첫째 자리 칸: 점 없이 쓰면 마지막 자리를 소수로 (오일 174 → 17.4, ΔP 86 → 8.6). Preflight 오일 칸과 같은 규칙 */
+export const dec1 = (s: string | undefined): string | undefined => {
+  const v = parseOil(s);
+  return v === undefined ? s : v.toFixed(1);
+};
+export const DEC1_KEYS = ['oil1', 'oil2', 'oil3', 'oil4', 'dp'] as const;
+/** 기록할 때 소수 칸 다듬기 */
+export function normEntry<T extends HourlyEntry>(e: T): T {
+  const out = { ...e };
+  for (const k of DEC1_KEYS) if (out[k]?.trim()) out[k] = dec1(out[k]);
+  return out;
+}
+
 /** 연료는 손글씨처럼 100 단위 (2445 = 244,500). 10,000 이상을 쓰면 원래 단위로 보고 100으로 나눔 */
 export const fuel100 = (s: string | undefined): number | undefined => {
   const v = num(s);
@@ -84,8 +97,8 @@ export function altCheck(e: HourlyEntry) {
 /** 엔진별 오일 변화 (앞 기록 대비, 소수 첫째 자리) */
 export function oilDelta(e: HourlyEntry, prev: HourlyEntry | undefined): (number | undefined)[] {
   return (['oil1', 'oil2', 'oil3', 'oil4'] as const).map((k) => {
-    const a = num(e[k]);
-    const b = num(prev?.[k]);
+    const a = parseOil(e[k]);
+    const b = parseOil(prev?.[k]);
     return a === undefined || b === undefined ? undefined : Math.round((a - b) * 10) / 10;
   });
 }
@@ -111,7 +124,8 @@ export function nextDue(recs: HourlyRec[], now: number): { at: string; inMin: nu
 export const nowHHMM = (d = new Date()) => `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
 
 /** 손글씨 한 줄 (복사·표시용) */
-export function lineText(r: HourlyEntry): string {
+export function lineText(r0: HourlyEntry): string {
+  const r = normEntry(r0);
   const j = (xs: (string | undefined)[]) => (xs.some(Boolean) ? xs.map((x) => x || '—').join('/') : '');
   const tot = fuelTotal(r);
   return [

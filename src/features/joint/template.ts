@@ -4,6 +4,7 @@
 import type { AirportBrief, BriefResult } from '../brief/assess';
 import { fmtCeil, fmtVis, fmtWind, type Cond } from '../brief/wx';
 import { turbulenceZones } from '../ofp/turbulence';
+import { cityKo } from './cities';
 import type { OfpData } from '../ofp/types';
 
 export interface JbItem {
@@ -50,16 +51,33 @@ export const GENERIC_ITEMS: JbItem[] = [
     id: 'greet',
     title: '인사 · 비행 개요',
     group: 'a',
-    text: '안녕하십니까, 오늘 {편명} 편 {출발}에서 {도착}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
+    text: '안녕하십니까, 오늘 {편명} 편 {출발도시}에서 {도착도시}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
   },
   { id: 'security', title: '보안', group: 'a', text: `현재 항공보안등급은 ${LEVELS}입니다. 조종실 음어는 <음어>입니다.` },
-  { id: 'wx', title: '기상 · 난류', group: 'a', text: '목적지 {도착} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
+  { id: 'wx', title: '기상 · 난류', group: 'a', text: '목적지 {도착도시} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
   { id: 'altn', title: '교체공항 · ERA', group: 'a', text: '{교체공항} {ERA}' },
   { id: 'service', title: '기내서비스', group: 'a', text: '기내서비스는 [난류 구간 전에 마쳐 주십시오|10,000피트 통과 후 시작해 주십시오|사무장님과 협의해 정하겠습니다].' },
   { id: 'pax', title: '승객', group: 'a', text: '예약 승객은 {승객}입니다. 특별 승객은 [없습니다|있습니다]. <특별 승객 메모>' },
   { id: 'cargo', title: '화물 · CIQ', group: 'a', text: '화물은 {화물}이고, 위험물은 [없습니다|있습니다]. 특별한 CIQ 절차는 [없습니다|있습니다]. <CIQ 메모>' },
   { id: 'cabinlog', title: '객실 결함', group: 'b', text: '객실 관련 정비 이월 항목: {객실결함}. 질문 있으십니까?' },
 ];
+
+/** 예전 기본 틀(D-083 첫 배포·D-085) 문장 — 기기에 저장된 목록이 이것뿐이면(고친 게 없으면) 새 기본 틀/preset을 씀 */
+const OLD_GENERIC_TEXTS = new Set([
+  '{편명} {출발}→{도착}, 비행시간 {비행시간}, 순항고도 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}. 연료 계획 {계획방식}.',
+  `항공보안등급 ${LEVELS}. 음어 <음어>.`,
+  '목적지 {도착} 날씨 [양호|불량|확인 중]. {난류}',
+  '<서비스 시기>',
+  '예약 승객 {승객}. <특별 승객>',
+  '화물 {화물}. <CIQ>',
+  '객실 관련 정비 이월 항목: {객실결함}.',
+  '안녕하십니까, 오늘 {편명} 편 {출발}에서 {도착}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
+  '목적지 {도착} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}',
+]);
+export function isOldGeneric(items: JbItem[]): boolean {
+  // 예전 문장이 하나라도 있고, 나머지도 전부 (예전·지금) 기본 문장일 때만 — 지금 틀을 순서만 바꾼 목록은 그대로 둠
+  return items.some((x) => OLD_GENERIC_TEXTS.has(x.text)) && items.every((x) => OLD_GENERIC_TEXTS.has(x.text) || GENERIC_ITEMS.some((g) => g.text === x.text));
+}
 
 /* ---------------- 원고 틀 나누기 ---------------- */
 
@@ -93,6 +111,8 @@ export const AUTO_KEYS: { key: string; label: string }[] = [
   { key: '편명', label: 'DEMO001' },
   { key: '출발', label: '출발 ICAO' },
   { key: '도착', label: '도착 ICAO' },
+  { key: '출발도시', label: '시드니' },
+  { key: '도착도시', label: '인천' },
   { key: '기종', label: 'A388' },
   { key: '등록부호', label: 'HL0000' },
   { key: '비행시간', label: '9시간 24분' },
@@ -112,6 +132,8 @@ export const AUTO_KEYS: { key: string; label: string }[] = [
 
 const nf = new Intl.NumberFormat('en-US');
 const z = (iso: string) => `${iso.slice(11, 13)}${iso.slice(14, 16)}Z`;
+/** UTC ISO + 분 → 현지 HH:MM */
+const localHm = (iso: string, off: number) => new Date(Date.parse(iso) + off * 60000).toISOString().slice(11, 16);
 const hmKo = (min: number) => {
   const h = Math.floor(min / 60);
   const m = Math.round(min % 60);
@@ -162,7 +184,9 @@ export function autoValues(o: OfpData | null): Record<string, string | undefined
     등록부호: h.reg,
     비행시간: h.airMin ? hmKo(h.airMin) : undefined,
     출발시각: h.takeoff ? z(h.takeoff) : undefined,
-    도착시각: h.sta ? z(h.sta) : undefined,
+    도착시각: h.sta ? `${z(h.sta)}${h.arrUtcMin !== undefined ? `(현지 ${localHm(h.sta, h.arrUtcMin)})` : ''}` : undefined,
+    출발도시: cityKo(h.dep),
+    도착도시: cityKo(h.arr),
     순항고도: fls.length ? (fls.length > 1 ? `FL${fls[0]}에서 FL${fls[fls.length - 1]}까지` : `FL${fls[0]}`) : undefined,
     계획방식: planText(o),
     승객: paxText(o.pax),

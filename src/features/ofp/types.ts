@@ -127,6 +127,8 @@ export interface OfpData {
     secondBest?: { fl: number; trip: number; timeMin: number };
     /** 계획 방식 (D-082): Contingency % · REFILE 공항 · EDTO 표시 · 3% ERA */
     plan?: { contPct?: number; refile?: string[]; edto?: boolean; era3?: string[] };
+    /** 도착지 현지 시각 = UTC + 이 분 (OFP "HRS UTC+0900", D-086) */
+    arrUtcMin?: number;
   };
   fuel: {
     taxi: number;

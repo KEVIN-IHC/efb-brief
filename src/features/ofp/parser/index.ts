@@ -8,7 +8,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.6'; // 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.7'; // 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -84,6 +84,7 @@ function assemble(ctx: ExtractCtx, texts: string[]): OfpData | undefined {
       validUntil: valid?.[1],
       speedPlan: h.speedPlan?.value,
       secondBest: h.secondBest?.value,
+      arrUtcMin: h.arrUtcMin?.value,
       plan: {
         contPct: Number(fuel.rows.map((r) => /^(\d+) PCT CONT$/.exec(r.label)?.[1]).find(Boolean)) || undefined,
         refile: ctx.lines.map((l) => /^REFILE:\s+(.+)$/.exec(l.text.trim())?.[1]).find(Boolean)?.split(/\s+/).filter((x) => /^[A-Z]{4}$/.test(x)),

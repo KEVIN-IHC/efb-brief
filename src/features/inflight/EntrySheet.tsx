@@ -1,6 +1,6 @@
 // 웨이포인트 통과 기록 입력 (탭 한 번 + 숫자 키패드, 아이패드는 앱 키보드 D-082). 아이폰: 아래에서 올라오는 시트 / 넓은 화면: 가운데 창
 import { useEffect, useRef, useState } from 'react';
-import { kbBlur, kbFocus, useAppKeyboard } from '../../app/AppKeyboard';
+import { kbFocus, kbProps, useAppKeyboard } from '../../app/AppKeyboard';
 import { fmtKg, fmtSigned } from '../../lib/format';
 import { formatZ } from '../../lib/time';
 import type { MassUnit, OfpWaypoint } from '../ofp/types';
@@ -23,10 +23,20 @@ export function EntrySheet({ w, unit, revisedEto, existing, onSave, onVoid, onCl
   const [fuel, setFuel] = useState(existing?.fuel != null ? String(existing.fuel) : '');
   const [busy, setBusy] = useState(false);
   const fuelRef = useRef<HTMLInputElement>(null);
-  const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-082)
+  const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-082·D-086)
+  const ataCfg = { label: 'ATA', set: (v: string) => setAta(v.slice(0, 5)), hint: `ETO ${formatZ(revisedEto)}` };
+  const fuelCfgRef = useRef<{ label: string; set: (v: string) => void; hint?: string }>(null!);
+  const fuelCfg = { label: `FUEL ${unit.toUpperCase()}`, set: setFuel, hint: `PLAN ${fmtKg(w.fuelRem)}` };
+  fuelCfgRef.current = fuelCfg;
+
+  // 창이 열리면 FUEL 칸부터 (아이패드는 앱 키보드의 "지금 칸")
+  useEffect(() => {
+    if (!fuelRef.current) return;
+    if (window.matchMedia('(min-width: 768px)').matches) kbFocus(fuelRef.current, fuelCfgRef.current);
+    else fuelRef.current.focus();
+  }, []);
 
   useEffect(() => {
-    fuelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -91,13 +101,11 @@ export function EntrySheet({ w, unit, revisedEto, existing, onSave, onVoid, onCl
           <input
             id="ata"
             className="input big-input mono kb-in"
-            inputMode={appKb ? 'none' : 'numeric'}
+            {...kbProps(appKb, ataCfg, 'numeric')}
             autoComplete="off"
             maxLength={5}
             value={ata}
             onChange={(e) => setAta(e.target.value)}
-            onFocus={(e) => kbFocus({ el: e.currentTarget, label: 'ATA', set: (v) => setAta(v.slice(0, 5)), hint: `ETO ${formatZ(revisedEto)}` })}
-            onBlur={(e) => kbBlur(e.currentTarget)}
           />
           <button type="button" className="btn" onClick={() => shift(-1)} aria-label="1분 빼기">
             −1
@@ -119,13 +127,11 @@ export function EntrySheet({ w, unit, revisedEto, existing, onSave, onVoid, onCl
             id="fuel"
             ref={fuelRef}
             className="input big-input mono kb-in"
-            inputMode={appKb ? 'none' : 'numeric'}
+            {...kbProps(appKb, fuelCfg, 'numeric')}
             autoComplete="off"
             placeholder={unit === 'lbs' ? `${fmtKg(w.fuelRem)} 또는 ${Math.round(w.fuelRem / 100)}` : fmtKg(w.fuelRem)}
             value={fuel}
             onChange={(e) => setFuel(e.target.value)}
-            onFocus={(e) => kbFocus({ el: e.currentTarget, label: `FUEL ${unit.toUpperCase()}`, set: setFuel, hint: `PLAN ${fmtKg(w.fuelRem)}` })}
-            onBlur={(e) => kbBlur(e.currentTarget)}
           />
           <button type="button" className="btn" onClick={() => setFuel(String(w.fuelRem))}>
             계획값
