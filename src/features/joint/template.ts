@@ -82,11 +82,11 @@ export function parseTemplate(text: string): Seg[] {
 /* ---------------- OFP에서 끌어오는 값 ---------------- */
 
 export const AUTO_KEYS: { key: string; label: string }[] = [
-  { key: '편명', label: 'AAR602' },
+  { key: '편명', label: 'DEMO001' },
   { key: '출발', label: '출발 ICAO' },
   { key: '도착', label: '도착 ICAO' },
   { key: '기종', label: 'A388' },
-  { key: '등록부호', label: 'HL7634' },
+  { key: '등록부호', label: 'HL0000' },
   { key: '비행시간', label: '9시간 24분' },
   { key: '출발시각', label: 'ETD Z' },
   { key: '도착시각', label: 'ETA Z' },
@@ -120,14 +120,15 @@ export function planText(o: OfpData): string {
   return parts.join(' · ') || '기본 계획';
 }
 
-/** 승객 예약: "FIRST 0/0 BUSINESS 74/78 ECONOMY 344/417" → 비즈니스 74/78, 이코노미 344/417, 앞 숫자 합 418명 */
+/** 승객 예약: "FIRST 0/0 BUSINESS 74/78 ECONOMY 344/417" → "비즈니스 74분, 이코노미 344분, 총 418분"
+ *  앞 숫자 = 예약 인원 (뒤 숫자는 좌석 고장·좌석 수 변경·오버부킹으로 앞보다 작을 수 있어 브리핑에선 말하지 않음) */
 export function paxText(pax: string | undefined): string | undefined {
   if (!pax) return undefined;
   const ko: Record<string, string> = { FIRST: '퍼스트', BUSINESS: '비즈니스', PRESTIGE: '비즈니스', ECONOMY: '이코노미' };
   const cls = [...pax.matchAll(/([A-Z]+)\s+(\d+)\/(\d+)/g)].filter((m) => Number(m[2]) > 0);
   if (!cls.length) return undefined;
   const total = cls.reduce((s, m) => s + Number(m[2]), 0);
-  return `${cls.map((m) => `${ko[m[1]] ?? m[1]} ${m[2]}/${m[3]}`).join(', ')}, 총 ${nf.format(total)}명`;
+  return `${cls.map((m) => `${ko[m[1]] ?? m[1]} ${nf.format(Number(m[2]))}분`).join(', ')}, 총 ${nf.format(total)}분`;
 }
 
 export interface TurbPart {

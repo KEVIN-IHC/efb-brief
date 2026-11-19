@@ -23,12 +23,13 @@ describe('합동 브리핑 원고 틀', () => {
 
   it('원고 글: 고른 값·쓴 값·마지막 값·빠진 자동 값', () => {
     const it0: JbItem = { id: 'x', title: 't', group: 'a', text: '{편명} [가|나] <음어> {없는값}' };
-    expect(renderText(it0, { choice: { 'x:0': 1 }, input: { 'x:1': 'APPLE' } }, { 편명: 'AAR602' }, [])).toBe('AAR602 나 APPLE [없는값?]');
-    expect(renderText(it0, {}, { 편명: 'AAR602' }, [], { 음어: 'BANANA' })).toBe('AAR602 가 BANANA [없는값?]');
+    expect(renderText(it0, { choice: { 'x:0': 1 }, input: { 'x:1': 'APPLE' } }, { 편명: 'DEMO001' }, [])).toBe('DEMO001 나 APPLE [없는값?]');
+    expect(renderText(it0, {}, { 편명: 'DEMO001' }, [], { 음어: 'BANANA' })).toBe('DEMO001 가 BANANA [없는값?]');
   });
 
   it('승객 예약 글', () => {
-    expect(paxText('FIRST 0/0 BUSINESS 74/78 ECONOMY 344/417')).toBe('비즈니스 74/78, 이코노미 344/417, 총 418명');
+    expect(paxText('FIRST 0/0 BUSINESS 74/78 ECONOMY 344/417')).toBe('비즈니스 74분, 이코노미 344분, 총 418분');
+    expect(paxText('FIRST 2/0 BUSINESS 409/408')).toBe('퍼스트 2분, 비즈니스 409분, 총 411분');
     expect(paxText(undefined)).toBeUndefined();
   });
 
