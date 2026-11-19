@@ -13,6 +13,7 @@ import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, project } from '../inflight/deviation';
 import { positionAt } from './position';
 import { Checklist } from './Checklist';
+import { JointBrief } from '../joint/JointBrief';
 import { RefList } from '../manual/RefList';
 import { setInlineOpen, useInlineOpen } from '../manual/lookup';
 import { DocSection } from '../ofp/doc/ui';
@@ -46,6 +47,7 @@ const GROUPS: { id: OpsCard['group']; title: string }[] = [
 ];
 
 type Refs = ReturnType<typeof useBriefData>['refs'];
+type Sub = 'joint' | 'normal' | 'abnormal';
 
 function copyText(t: string, done: () => void) {
   void navigator.clipboard?.writeText(t).then(done, () => alert('복사 실패 — 길게 눌러 직접 복사하세요'));
@@ -88,14 +90,15 @@ export function OpsPage() {
   const openCard = useInlineOpen((s) => s['ops:card'] ?? null);
   const setOpenCard = (v: string | null) => setInlineOpen('ops:card', v);
 
-  const [sub, setSubState] = useState<'normal' | 'abnormal'>(() => {
+  const [sub, setSubState] = useState<Sub>(() => {
     try {
-      return sessionStorage.getItem('efb.opsSub') === 'abnormal' ? 'abnormal' : 'normal';
+      const v = sessionStorage.getItem('efb.opsSub');
+      return v === 'abnormal' || v === 'joint' ? v : 'normal';
     } catch {
       return 'normal';
     }
   });
-  const setSub = (s: 'normal' | 'abnormal') => {
+  const setSub = (s: Sub) => {
     setSubState(s);
     try {
       sessionStorage.setItem('efb.opsSub', s);
@@ -107,6 +110,7 @@ export function OpsPage() {
     <div className="segmented span-all" role="tablist" aria-label="Ops 화면">
       {(
         [
+          ['joint', '합동 브리핑'],
           ['normal', '정상 절차'],
           ['abnormal', '비정상·상황'],
         ] as const
@@ -117,6 +121,14 @@ export function OpsPage() {
       ))}
     </div>
   );
+
+  if (sub === 'joint')
+    return (
+      <div className="page-grid doc">
+        {tabs}
+        <JointBrief flightId={flight.flightId} o={o} rules={data.rules ?? null} />
+      </div>
+    );
 
   if (sub === 'normal')
     return (

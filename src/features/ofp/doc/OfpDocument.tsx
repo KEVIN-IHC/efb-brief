@@ -86,6 +86,13 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
           {h.engine && ` · ${h.engine}`}
           {h.selcal && ` · SELCAL ${h.selcal}`}
         </div>
+        {(h.plan?.contPct || h.plan?.refile?.length || h.edtoRule || h.plan?.edto) && (
+          <div className="flt-plan">
+            {h.plan?.contPct && <span className={`pill ${h.plan.contPct === 3 ? 'plan-3' : 'plan-n'}`}>{h.plan.contPct}% CONT{h.plan.contPct === 3 && h.plan.era3?.length ? ` · ERA ${h.plan.era3.join(' ')}` : ''}</span>}
+            {h.plan?.refile?.length ? <span className="pill plan-x">REFILE · {h.plan.refile.join(' ')}</span> : null}
+            {(h.edtoRule || h.plan?.edto) && <span className="pill plan-x">{h.edtoRule ?? 'EDTO'}</span>}
+          </div>
+        )}
         {sp && (
           <div className="flt-sub mono">
             {[sp.clb && `CLB ${sp.clb}`, sp.crz && `CRZ CI${sp.crz}`, sp.dsc && `DSC ${sp.dsc}`, sp.apmsPct !== undefined && `APMS ${sp.apmsPct}%`].filter(Boolean).join(' · ')}

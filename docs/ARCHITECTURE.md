@@ -240,6 +240,12 @@ IPBS/
 - 파서: SPEED SKD·2ND-$ → `header.speedPlan`·`header.secondBest` (`aviator-1.5`)
 - 저장: `ops/store.ts` `useKey`·`putKey`·`useDraft`(입력 칸, 0.4초 뒤 저장) → IndexedDB `settings`
 
+### 3.7r 합동 브리핑 (D-083)
+- `features/joint/template.ts` — 원고 틀 문법·`parseTemplate`·`autoValues`(OFP 자동 값)·`turbParts`·`renderText`·`activeItems`·`GENERIC_ITEMS`(제목·OFP 값만)
+- `features/joint/JointBrief.tsx` — Ops 탭 "합동 브리핑": 체크리스트(편집) + 원고. 목록 = 기기 `jointItems` → 회사 기준 파일 `jointBrief.items` → `GENERIC_ITEMS`. 비행별 상태 `joint:<flightId>`(`useDraft`), 마지막 입력 `jointLast`
+- 회사 preset 생성: `private/manuals/build-joint.py` → `company-rules.json`의 `jointBrief` (비공개, 기기에서 Settings → 회사 기준 파일 가져오기)
+- OFP 계획 방식 `header.plan`(contPct·refile·edto·era3) — 파서 `aviator-1.6`, FLIGHT 카드 `.flt-plan` 배지
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

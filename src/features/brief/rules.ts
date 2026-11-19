@@ -127,6 +127,8 @@ export interface CompanyRules {
   };
   /** 상황 카드 (선택, D-056) */
   ops?: OpsConfig;
+  /** 합동 브리핑 preset (D-083) */
+  jointBrief?: JointBriefConfig;
 }
 
 /** 상황 카드 (D-056): 회사 매뉴얼 절 링크·사건 버튼·정보 양식·타이머. 목록과 절 코드는 회사 기준 파일에만 */
@@ -150,6 +152,12 @@ export interface OpsCard {
   timer?: OpsTimerDef;
 }
 
+/** 합동 브리핑 preset (D-083) — 원고 틀 문법은 features/joint/template.ts */
+export interface JointBriefConfig {
+  source?: string;
+  items: { id: string; title: string; ref?: string; group: 'a' | 'b'; text: string }[];
+}
+
 export interface OpsConfig {
   source?: string;
   cards: OpsCard[];
@@ -167,6 +175,7 @@ export function validateRules(json: unknown): string | null {
   if (typeof r.version !== 'number' || r.version > RULES_FORMAT_VERSION) return `지원하지 않는 버전 (${r.version}) — 앱을 새로 고침해 보세요`;
   for (const k of ['takeoff', 'approach', 'alternate', 'dispatch', 'windLimits', 'lowTime', 'rff', 'coldTemp'] as const) if (!r[k]) return `항목 없음: ${k}`;
   if (!Array.isArray(r.approach?.levels) || !r.approach.levels.length) return 'approach.levels 비어 있음';
+  if (r.jointBrief && (!Array.isArray(r.jointBrief.items) || r.jointBrief.items.some((x) => !x.id || !x.title || typeof x.text !== 'string'))) return 'jointBrief.items 형식 오류';
   if (r.ops && (!Array.isArray(r.ops.cards) || r.ops.cards.some((c) => !c.id || !c.title || !Array.isArray(c.refs)))) return 'ops.cards 형식 오류';
   return null;
 }

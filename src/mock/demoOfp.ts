@@ -4,7 +4,7 @@ import { bearingDeg, gcDistanceNm, gcInterpolate, type LatLon } from '../lib/geo
 import type { OfpData, OfpEtp, OfpRecord, OfpWaypoint } from '../features/ofp/types';
 import { DEMO_FLIGHT } from './demoFlight';
 
-export const DEMO_PARSER_VERSION = "demo-4";
+export const DEMO_PARSER_VERSION = "demo-5"; // 5: 계획 방식 (D-083)
 
 const RKSI: LatLon = { lat: 37.4692, lon: 126.4505 };
 const KLAX: LatLon = { lat: 33.9425, lon: -118.4081 };
@@ -137,6 +137,7 @@ export function buildDemoOfp(): OfpData {
       cruiseFl: 350,
       costIndex: 80,
       edtoRule: 'EDTO 180',
+      plan: { contPct: 3, era3: ['KSFO'] },
     },
     fuel: { ...FUEL, block, minRequired },
     weights: {
@@ -167,6 +168,8 @@ export function buildDemoOfp(): OfpData {
       },
     ],
     fuelStats: { period: "42 flights (DEMO)", items: [ { label: "MEAN", value: -350 }, { label: "95%", value: 1400 }, { label: "99%", value: 2300 } ] },
+    pax: 'FIRST 0/0 BUSINESS 60/78 ECONOMY 300/417',
+    cargo: 'PAX 70000 LBS · CARGO 12000 LBS',
     notes: [
       'EXTRA 2,000 KG — 출발지 지상 지연 대비 (DEMO)',
       'DM03–DM06 구간 MOD TURB 예보 FL330–FL370 (DEMO)',

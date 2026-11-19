@@ -1179,3 +1179,53 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .kb-k.n { font-family: var(--mono); font-weight: 600; }
 .kb-k.ac { background: var(--accent); color: var(--accent-ink); font-size: var(--fs-sm); font-weight: 700; }
 .fms-in:focus { background: var(--accent-soft); border-radius: 3px; }
+
+/* ---------- 합동 브리핑 (D-083) ---------- */
+.jb-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+@media (min-width: 1024px) { .jb-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.jb-seg { margin: 0; }
+.jb-lbl, .jb-gh { font: 800 0.64rem/1.2 var(--font); letter-spacing: 0.12em; color: var(--text-faint); margin: var(--sp-3) 0 6px; }
+.jb-gh { margin-top: var(--sp-4); padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); text-transform: none; }
+.jb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.jb-chip { min-height: var(--touch); padding: 0 14px; border-radius: 22px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text-dim); font: 600 var(--fs-sm) var(--font); cursor: pointer; }
+.jb-chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.jb-chip:disabled { opacity: 0.45; cursor: default; }
+.jb-row { padding: var(--sp-2) 0 var(--sp-3); border-bottom: 1px solid var(--line); }
+.jb-row.off { opacity: 0.45; }
+.jb-row-h { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; min-height: var(--touch); }
+.jb-check { display: flex; align-items: center; gap: var(--sp-3); flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.jb-check input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+.jb-title { font: 700 var(--fs-sm) var(--font); letter-spacing: 0.04em; color: var(--text); }
+.jb-row.said .jb-title { color: var(--text-dim); }
+.jb-ref { font-size: 0.68rem; color: var(--text-faint); white-space: nowrap; }
+.jb-tools { display: flex; gap: 4px; flex-wrap: wrap; }
+.jb-live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-left: 34px; }
+.jb-val { font: 700 var(--fs-sm) var(--mono); color: var(--accent); overflow-wrap: anywhere; }
+.jb-val.miss, .jb-fill.miss { color: var(--warn); }
+.jb-in { min-height: var(--touch); width: 12em; max-width: 100%; margin: 0; font-size: var(--fs-sm); }
+.jb-preview { padding-left: 34px; font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.jb-turb { display: grid; gap: 6px; width: 100%; }
+.jb-turb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.jb-add { margin-top: var(--sp-2); }
+.jb-reset { margin-top: var(--sp-3); }
+.jb-editor { margin: var(--sp-2) 0 0 34px; padding: var(--sp-3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--raised); display: grid; gap: var(--sp-2); }
+.jb-ed-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.jb-ed-row .input { margin: 0; flex: 1 1 10em; min-width: 0; min-height: var(--touch); }
+.jb-ed-row .jb-ed-ref { flex: 0 1 9em; }
+.jb-ed-row .jb-ed-g { flex: 0 1 11em; }
+.jb-ed-text { margin: 0; width: 100%; min-height: 7em; font-size: var(--fs-sm); line-height: 1.6; resize: vertical; }
+.jb-ed-ins .jb-chip { font-family: var(--mono); font-size: var(--fs-xs); }
+.jb-script { font-size: var(--fs-md); line-height: 1.9; }
+.jb-script p { margin: 0 0 var(--sp-4); }
+.jb-script p.said { color: var(--text-dim); }
+.jb-blk { display: block; font: 800 0.64rem/1.4 var(--font); letter-spacing: 0.12em; color: var(--text-faint); }
+.jb-blk .mono { letter-spacing: 0.04em; }
+.jb-fill { color: var(--accent); font-weight: 700; border-bottom: 1px dashed var(--accent); padding: 0 2px; }
+.jb-tap { display: inline; font: inherit; font-weight: 700; color: var(--accent); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 4px; padding: 2px 6px; cursor: pointer; line-height: 1.5; }
+/* OFP 계획 방식 배지 (D-083) */
+.flt-plan { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-2); }
+.flt-plan .pill { font-family: var(--mono); }
+.pill.plan-n { color: var(--accent); }
+.pill.plan-3, .pill.plan-x { color: var(--warn); }
+.jb-part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; max-width: 100%; }
+.jb-plbl { font-size: var(--fs-xs); color: var(--text-faint); }

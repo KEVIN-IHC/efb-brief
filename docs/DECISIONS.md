@@ -596,3 +596,13 @@
 - **날짜** 2026-11-19 (사용자: "순항에도 쓰기")
 - **결정** D-081 키보드를 앱 전체 하나(`app/AppKeyboard.tsx`, `App.tsx`에 둠)로 옮기고 순항 통과 기록 창(ATA·FUEL)에도 연결. 위 막대 힌트 = ATA는 ETO(수정값), FUEL은 PLAN 잔량. 이전/다음은 창 안 칸끼리만. 키보드가 열려 있으면 본문·창 아래에 키보드 높이(`--kb-h`)만큼 여백(`.kb-open`) → 창이 위로 올라가 가리지 않음. 입력 칸이 사라지면(창 닫힘·탭 이동) 키보드도 닫힘
 - **영향** `app/{AppKeyboard.tsx(ofp/doc/FmsKeyboard.tsx에서 옮김),App.tsx,styles.css}`, `inflight/EntrySheet.tsx`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`
+
+### D-083 합동 브리핑 (체크리스트 + 원고, 편집·저장) · OFP 계획 방식 표시
+- **날짜** 2026-11-19 (사용자: 시안 A 체크리스트형 + C의 서비스·"포함할 문단" 칩 + B 원고 출력. "원고 preset 내가 수정할 수 있게, 저장되게", "녹색 부분은 변경 가능", "체크리스트에서 추가·삭제·수정·순서 변경". 앞서 "OFP에 3% contingency인지 EDTO인지 refile인지 표기". 시안 `private/design/2026-11-19-joint-brief-mockup.html`)
+- **결정**
+  1. Ops 탭 첫 화면 "합동 브리핑": 왼쪽 체크리스트(a 모든 비행 / b 첫 비행·교체, 말했음 체크, 칩으로 고르기, 칸에 쓰기, 포함할 문단 칩, 첫 비행·교체 ↔ 이어서), 오른쪽 원고(그대로 읽는 문장, 초록 점선 = OFP 자동, 칩 = 눌러서 바꿈, 복사). 아이패드 가로(≥1024) 두 칸, 그 아래 위아래
+  2. 원고 틀 문법: `{편명}` OFP 자동 · `[가|나]` 고르기 · `<음어>` 직접 쓰기. 자동 값: 편명·출발·도착·기종·등록부호·비행시간·출발/도착시각·순항고도·계획방식·승객(예약)·화물·객실결함(MEL 25·33·35·38·44장)·MEL·난류(OFP SR 구간별 시각·경과 + Light/Moderate/Severe 고르기)
+  3. 항목 목록 우선순위: 사용자가 고친 목록(기기 `jointItems`) → 회사 기준 파일 `jointBrief.items` preset(비공개, `private/manuals/build-joint.py`로 생성 — FOM 6.1.2.3 a)·b), 12.2.10, 12.2.19, 12.2.16~17, 2.3.4, 2.2.7·S2.2.1, 2.2.8.1·S2.5, S2.3.1, 8.2.13, 6.1.5, 14.7.3 기반 14문단) → 코드의 기본 틀(제목·OFP 값만, 공개 저장소라 회사 문장 없음). 편집: 위/아래(같은 묶음 안), 수정(제목·FOM 위치·묶음·원고, 자동 값·선택지·입력 칸 끼워 넣기 버튼), 지우기, 추가, 되돌리기
+  4. 비행마다 기기 안 저장(`joint:<flightId>`: 체크·고른 값·쓴 값·난류 정도·뺀 문단·첫 비행 여부). 직접 쓴 값은 다음 비행 기본값(`jointLast`). 동기화 안 함
+  5. OFP 계획 방식: 파서 `aviator-1.6` — 연료 줄 `N PCT CONT` → contPct, 2쪽 머리 `ATTN CAPT. … REFILE EDTO`, `REFILE:` 공항, `3% CONT ERA` 교체공항 → `header.plan`. FLIGHT 카드 머리 배지(3% = 주황, REFILE·EDTO = 주황, 5% = 청록)
+- **영향** `joint/{template.ts,JointBrief.tsx,joint.test.ts}`(신규), `ops/OpsPage.tsx`, `brief/rules.ts`(`jointBrief`), `ofp/{types.ts,parser/aviator.ts,parser/index.ts,doc/OfpDocument.tsx}`, `mock/demoOfp.ts`(demo-5: 계획 방식·승객·화물), `app/styles.css`

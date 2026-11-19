@@ -125,6 +125,8 @@ export interface OfpData {
     speedPlan?: { clb?: string; crz?: string; dsc?: string; apmsPct?: number };
     /** 2ND-$ 줄: 두 번째로 좋은 FL·TRIP 연료·시간 (D-079) */
     secondBest?: { fl: number; trip: number; timeMin: number };
+    /** 계획 방식 (D-082): Contingency % · REFILE 공항 · EDTO 표시 · 3% ERA */
+    plan?: { contPct?: number; refile?: string[]; edto?: boolean; era3?: string[] };
   };
   fuel: {
     taxi: number;
