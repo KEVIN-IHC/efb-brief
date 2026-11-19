@@ -47,19 +47,33 @@ const LEVELS = '[평시(GREEN)|관심(BLUE)|주의(YELLOW)|경계(ORANGE)|심각
  * FOM에 맞춘 원고 preset은 회사 기준 파일(company-rules.json `jointBrief.items`, 비공개)에서 온다.
  */
 export const GENERIC_ITEMS: JbItem[] = [
+  // a) 모든 비행 — FOM 6.1.2.3 a)
   {
     id: 'greet',
     title: '인사 · 비행 개요',
     group: 'a',
     text: '안녕하십니까, 오늘 {편명} 편 {출발도시}에서 {도착도시}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
   },
-  { id: 'security', title: '보안', group: 'a', text: `현재 항공보안등급은 ${LEVELS}입니다. 조종실 음어는 <음어>입니다.` },
-  { id: 'wx', title: '기상 · 난류', group: 'a', text: '목적지 {도착도시} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
+  {
+    id: 'security',
+    title: '보안',
+    group: 'a',
+    text: `현재 항공보안등급은 ${LEVELS}입니다. 의심스러운 승객이나 물품은 즉시 보고 바랍니다. 조종실 음어는 <음어>입니다. 위해 인물 탑승 정보는 [없습니다|있습니다]. 도움 가능한 Extra Crew·회사 직원은 [없습니다|탑승합니다]. 귀중품·위험품 탑재는 [없습니다|있습니다].`,
+  },
+  { id: 'wx', title: '항로 · 목적지 기상 · 난류', group: 'a', text: '목적지 {도착도시} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
   { id: 'altn', title: '교체공항 · ERA', group: 'a', text: '{교체공항} {ERA}' },
   { id: 'service', title: '기내서비스', group: 'a', text: '기내서비스는 [난류 구간 전에 마쳐 주십시오|10,000피트 통과 후 시작해 주십시오|사무장님과 협의해 정하겠습니다].' },
-  { id: 'pax', title: '승객', group: 'a', text: '예약 승객은 {승객}입니다. 특별 승객은 [없습니다|있습니다]. <특별 승객 메모>' },
+  { id: 'pax', title: '승객 · 특별 승객', group: 'a', text: '예약 승객은 {승객}입니다. VIP·CIP는 [없습니다|탑승합니다], Deadhead 승무원은 [없습니다|탑승합니다], 환자 승객은 [없습니다|탑승합니다].' },
   { id: 'cargo', title: '화물 · CIQ', group: 'a', text: '화물은 {화물}이고, 위험물은 [없습니다|있습니다]. 특별한 CIQ 절차는 [없습니다|있습니다]. <CIQ 메모>' },
-  { id: 'cabinlog', title: '객실 결함', group: 'b', text: '객실 관련 정비 이월 항목: {객실결함}. 질문 있으십니까?' },
+  // b) 그날 첫 비행·승무원 교체 — FOM 6.1.2.3 b) 항목 이름만 따르고 문장은 일반 표현 (신호 횟수 등 회사 세부는 preset에)
+  { id: 'entry', title: 'Cockpit Entry Procedure', group: 'b', text: '조종실 출입은 인터폰으로 허가를 받은 뒤 음어, 노크 [3회|2-1|1-2], Keypad 순서로 해 주시고, 문 앞에서 한 분이 지켜봐 주십시오.' },
+  { id: 'sterile', title: 'Sterile Cockpit 절차', group: 'b', text: '순항을 제외한 10,000피트 이하, 푸시백, 지상 활주, 이착륙 중에는 Sterile Cockpit입니다. 안전과 관계없는 연락은 삼가 주시고, 위급하면 비상 호출로 연락해 주십시오.' },
+  { id: 'safety', title: '안전 고려사항', group: 'b', text: '오늘 비행의 안전 고려사항은 {안전요점}입니다. <안전 고려사항>' },
+  { id: 'seatbelt', title: 'Seat Belt Sign 운영', group: 'b', text: '좌석벨트 신호는 탑승 전부터 상승 중 10,000피트까지, 강하 중 10,000피트부터 정지할 때까지, 난류가 예상될 때 켭니다. 신호 방법은 [회사 표준대로 하겠습니다|오늘은 따로 정하겠습니다]. <신호 메모>' },
+  { id: 'turbpa', title: 'Turbulence · 비정상 시 PA', group: 'b', text: '난류 방송은 [객실에서 해 주십시오|조종실에서 하겠습니다]. 난류 구간 진입 전에 예상 시간과 정도를 알려 드리고, 심하면 "Cabin Crew, be seated" 방송하겠습니다. 착석 후 이석은 제가 알려 드리겠습니다.' },
+  { id: 'emer', title: '비상 절차', group: 'b', text: '비상 착륙 시에는 상황, 착륙 방법과 남은 시간, Brace·탈출 신호를 누가 어떻게 줄지 직접 알려 드리겠습니다.' },
+  { id: 'coord', title: 'PIC와 객실승무원 협조', group: 'b', text: '비정상 상황 뒤에는 처리 후 사무장님께 설명드리겠습니다. 객실에 이상이 있으면 언제든 바로 알려 주십시오.' },
+  { id: 'cabinlog', title: '객실일지 · 장비 결함 정보 교환', group: 'b', text: '객실 관련 정비 이월 항목: {객실결함}. 승객 안전·편의에 영향을 주는 장비 결함은 서로 바로 알리고, 객실 결함은 객실일지에 적어 도착 후 알려 주십시오. 질문 있으십니까?' },
 ];
 
 /** 예전 기본 틀(D-083 첫 배포·D-085) 문장 — 기기에 저장된 목록이 이것뿐이면(고친 게 없으면) 새 기본 틀/preset을 씀 */
@@ -73,6 +87,10 @@ const OLD_GENERIC_TEXTS = new Set([
   '객실 관련 정비 이월 항목: {객실결함}.',
   '안녕하십니까, 오늘 {편명} 편 {출발}에서 {도착}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
   '목적지 {도착} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}',
+  // D-086 기본 틀(8문단)
+  '예약 승객은 {승객}입니다. 특별 승객은 [없습니다|있습니다]. <특별 승객 메모>',
+  `현재 항공보안등급은 ${LEVELS}입니다. 조종실 음어는 <음어>입니다.`,
+  '객실 관련 정비 이월 항목: {객실결함}. 질문 있으십니까?',
 ]);
 export function isOldGeneric(items: JbItem[]): boolean {
   // 예전 문장이 하나라도 있고, 나머지도 전부 (예전·지금) 기본 문장일 때만 — 지금 틀을 순서만 바꾼 목록은 그대로 둠
@@ -125,6 +143,7 @@ export const AUTO_KEYS: { key: string; label: string }[] = [
   { key: '객실결함', label: '객실 관련 MEL' },
   { key: 'MEL', label: 'MEL/CDL 번호' },
   { key: '난류', label: 'SR 구간·시각·정도' },
+  { key: '안전요점', label: 'EDTO·3%·MEL·난류 요약' },
   { key: '목적지기상', label: '목적지 ETA ±1h 예보 (문장)' },
   { key: '교체공항', label: '회항할 교체공항·기상 (문장)' },
   { key: 'ERA', label: 'ERA 공항·예상 시간대 기상 (문장)' },
@@ -193,7 +212,20 @@ export function autoValues(o: OfpData | null): Record<string, string | undefined
     화물: cargo ? `${nf.format(Number(cargo.replace(/,/g, '')))} LBS` : undefined,
     객실결함: cabin.length ? cabin.join(', ') : '없음',
     MEL: o.mel.length ? o.mel.map((m) => `${m.kind} ${m.itemNo}`).join(', ') : '없음',
+    안전요점: safetyText(o),
   };
+}
+
+/** {안전요점}: OFP에서 안전에 관계된 것만 짧게 — EDTO · 3% CONT · MEL/CDL · 난류 구간 수 */
+export function safetyText(o: OfpData): string {
+  const parts: string[] = [];
+  const p = o.header.plan;
+  if (o.header.edtoRule || p?.edto) parts.push(`${o.header.edtoRule ?? 'EDTO'} 비행`);
+  if (p?.contPct === 3) parts.push('3% Contingency 운항');
+  if (o.mel.length) parts.push(`MEL/CDL ${o.mel.length}건(${o.mel.map((m) => m.itemNo).join(', ')})`);
+  const tz = turbulenceZones(o.route).length;
+  if (tz) parts.push(`OFP 난류 구간 ${tz}곳`);
+  return parts.length ? parts.join(', ') : 'OFP상 특별한 사항 없음';
 }
 
 /** {난류}: OFP SR 주의 구간 → 구간별 문장 조각 (정도는 화면에서 고름) */

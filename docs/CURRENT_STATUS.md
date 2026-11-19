@@ -2,7 +2,7 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-19 (D-086 배포 9250fb6 — 맨 아래 "다음 세션은 여기서 시작")
+> 마지막 갱신: 2026-11-19 (D-087·D-088·D-089, 배포 전 — 맨 아래 "다음 세션은 여기서 시작")
 
 ## 1. 한눈에
 
@@ -376,7 +376,7 @@
 - **답 대기**: 시안 A/B/C, 실제 로드시트 사진 2~3장(`private/samples/loadsheet/`), 로드시트 칸 뜻 확인
 - **다음**: 답 받으면 구현(DB_VERSION 올려 사진 스토어, tesseract.js 오프라인 캐시)
 
-### 2026-11-19 (14) — 아이패드 키보드 다시 만듦 · 오일/ΔP 소수점 · 원고 도시·현지 시각 (D-086) (다음 세션은 여기서 시작)
+### 2026-11-19 (14) — 아이패드 키보드 다시 만듦 · 오일/ΔP 소수점 · 원고 도시·현지 시각 (D-086)
 - **사용자 보고**: iPad Safari에서 키를 빠르게 여러 번 누르면 키보드가 사라짐(Windows 크롬은 정상). 합동 브리핑 원고가 아이패드에서 B안처럼 안 나옴(첫 배포 때 짧은 기본 틀 그대로 — 예전 앱이 남았거나 그 틀이 기기에 저장된 것으로 봄)
 - **완료**: D-086 — 아이패드는 초점 없이 "지금 칸"으로 입력(키보드가 글자를 직접 들고 있음, 첫 키 덮어씀, 완료·밖 누르기로 닫힘, 블루투스 키보드 keydown). 매시간 오일·ΔP 자동 소수점(174→17.4, 86→8.6)·FCOM 단위 표시. 원고 {출발도시}·{도착도시}·{도착시각}(현지) — 파서 `aviator-1.7`(HRS UTC±). 예전 기본 틀만 저장된 목록은 새 틀로. 로드시트 결정·추천 → `private/manuals/NEXT-ITEMS.md` 9번
 - **변경 파일**: `app/{AppKeyboard.tsx,styles.css}`, `ofp/doc/Fms.tsx`, `inflight/EntrySheet.tsx`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/{template.ts,JointBrief.tsx,cities.ts,joint.test.ts}`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts}`, 문서(DECISIONS D-086, KNOWN_ISSUES K-48, ARCHITECTURE, 이 문서) · 비공개 build-joint.py·company-rules.json·NEXT-ITEMS.md
@@ -385,3 +385,31 @@
 - **배포 (2026-11-19)**: 사용자 요청. 9250fb6 push → GitHub Actions 성공, 배포 사이트에 `aviator-1.7` 코드 있음, `/private/` 404
 - **아이패드에서 확인 순서**: ① Settings 맨 아래 build 시각이 새 배포인지(아니면 홈 화면 앱 완전히 닫았다 열기) ② OFP FMS 칸·Inflight Hourly check에서 키 빠르게 연타 ③ Ops → 합동 브리핑 원고가 "○○에서 ○○까지 … (현지 HH:MM)" 문장인지 — 그래도 예전 틀이면 "항목 편집 → 되돌리기" ④ Settings → 회사 기준 파일에 `private/manuals/company-rules.json` 다시 가져오기(합동 브리핑 15문단)
 - **다음 (우선순위)**: 1) 아이패드 확인(위 순서) 2) 로드시트 OCR(NEXT-ITEMS 9) — 사용자가 실제 로드시트 사진을 `private/samples/loadsheet/`에 넣으면 시작(결정: C 확인 창 + OFP 값, 확인하면 WEIGHTS L/S 열) 3) 비행 후 기록 PDF(NEXT-ITEMS 10) — 자동 업로드 안정화가 먼저 4) Ops 체크리스트 디자인 시안 · FLIGHT 후보 값
+
+### 2026-11-19 (15) — 합동 브리핑 FOM 6.1.2.3 b) 전 항목 (D-087)
+- **사용자 지적**: 좌석벨트 사인 운영·Sterile Cockpit 등 합동 브리핑 필수 항목이 빠짐
+- **원인**: 배포 앱 기본 틀(회사 기준 파일 다시 가져오기 전)은 b) 문단이 객실 결함 1개뿐. 회사 preset에도 FOM b)의 안전 고려사항·PIC-객실 협조·장비 결함 정보 교환이 따로 없었음
+- **완료**: FOM 6.1.2.3·12.2.10~17·2.2.7~2.3.4·S2.2.1~S2.5·8.2.13·12.2.29~30 다시 대조. 기본 틀 15문단(b) 8개, 일반 문장), 회사 preset 18문단(b) 10개), `{안전요점}` 자동 값, 새 문단 [넣기] 버튼, preset 없을 때 주황 안내
+- **변경 파일**: `joint/{template.ts,JointBrief.tsx,joint.test.ts}`, 문서(DECISIONS D-087, 이 문서) · 비공개 `private/manuals/{build-joint.py,company-rules.json}`
+- **테스트**: `npm test` 274/274, `tsc -b`, `npm run build` 통과. 회사 기준 파일 형식 점검 통과(18문단 렌더). 개발 브라우저(데모, 회사 파일 없음): b) 8문단·원고 문장·안전요점 "EDTO 180 비행, 3% Contingency 운항, MEL/CDL 3건(…)" 확인, 375·768·1440 × 주간/야간 가로 스크롤 0
+- **확인 못 한 것**: 회사 기준 파일을 앱에 가져온 뒤 18문단 화면(파일 형식·렌더만 확인). 아이패드. 커밋·배포 안 함
+- **아이패드에서**: 배포 후 Settings → 회사 기준 파일에 `private/manuals/company-rules.json` 다시 가져오기 → Ops 합동 브리핑 "첫 비행·교체"에 좌석벨트·Sterile 등 나오는지. 원고를 고쳐 쓰던 중이면 "새 문단 n개 [넣기]"
+- **다음**: 사용자 확인 → 커밋·배포(요청 시) → 아이패드 확인(K-48) → 로드시트 OCR(NEXT-ITEMS 9)
+
+### 2026-11-19 (16) — OFP 카드 정리 · OPS PLAN · 매시간 연료/오일 요약 · 새 배포 자동 받기 (D-088)
+- **사용자 보고(아이패드)**: ΔP 86이 8.6으로 안 바뀜, 새로 고침해도 옛날 합동 브리핑 → 배포 사이트 JS에 D-086 코드가 있는 것 확인 = **아이패드가 예전 서비스 워커 캐시 사용**. 새 버전 자동 확인·다시 불러오기 추가
+- **완료**: OPS PLAN 칸, FLIGHT+ALTERNATES, 순서 FUEL·WEIGHTS → RVSM·SYSTEMS(한 카드) → FMS, 같은 줄 높이 맞춤, 매시간 요약 상자(ALT 차이·FUEL vs RAMP·OIL 사용)
+- **변경 파일**: `main.tsx`, `ofp/doc/{OfpDocument.tsx,Fms.tsx}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/joint.test.ts`, `app/styles.css`, 문서(DECISIONS D-088, 이 문서)
+- **테스트**: `npm test` 276/276, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모): 1180에서 FUEL/WEIGHTS 414·414, RVSM·SYSTEMS 505(좌우 두 칸), FMS/ETP 343·343. ΔP 86 → 8.6, 오일 172/174/171/174 기록 후 169/172/171 → −0.3/−0.2/±0, FUEL vs RAMP 표시. 375·768·1180·1440 × 주간/야간 가로 스크롤 0. 시험 값 지움
+- **확인 못 한 것**: 실제 아이패드(새 배포 자동 받기 포함). 1440 폭은 3열이라 WEIGHTS 옆 한 칸 빔. 커밋·배포 안 함(D-087 포함)
+- **아이패드에서 (배포 후)**: 이번 한 번은 앱을 완전히 닫았다 열거나 두 번 새로 고침(예전 서비스 워커에는 자동 받기 코드가 없음) → Settings 맨 아래 build 시각 확인 → 이후 배포는 자동. 그다음 회사 기준 파일 다시 가져오기(합동 브리핑 18문단)
+- **다음**: 커밋·배포(요청 시) → 아이패드 확인 → 로드시트 OCR(NEXT-ITEMS 9)
+
+### 2026-11-19 (17) — 앱 키보드 ± 키 (D-089) (다음 세션은 여기서 시작)
+- **사용자 선택**: 시안 C(숫자판 오른쪽 세로 열)에서 = PLAN 빼기. 같은 메시지의 나머지 요청(ΔP·램프 연료·오일·OPS PLAN·카드 합치기·높이)은 (16)에서 이미 완료
+- **완료**: 숫자판 +10 · +1 · −1 · −10, 기준값(칸 값 → 계획 값 → 0) 막대 표시, 칸별 계획 값(D-089 3), 소수 칸 0.1 단위
+- **변경 파일**: `app/{kbStep.ts,kbStep.test.ts,AppKeyboard.tsx,styles.css}`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `hourly/HourlyCheck.tsx`, `inflight/EntrySheet.tsx`, 문서(DECISIONS D-089, 이 문서) · 비공개 시안 `private/design/2026-11-19-keyboard-step-mockup.html`
+- **테스트**: `npm test` 280/280, `tsc -b`, `npm run build` 통과. 개발 브라우저(1180·768, 데모): MAX FL 빈칸 +10 → 360(OFP 350), −1 → 359, 이어서 370 치면 370, FOB +0.1 → 107.5, GATE ± 흐림, 매시간 오일1 174 → 오일2 기준 17.4 · −0.1 → 17.3, TIME 기준 칸 값. 768 가로 스크롤 0, 키 글자 넘침 없음. 시험 값 지움
+- **확인 못 한 것**: 실제 아이패드 터치. 순항 기록 FUEL에 100 단위 줄임 값(2445)을 쓴 뒤 ±는 원래 단위로 계산됨(빈칸·전체 값은 정상). 커밋·배포 안 함(D-087~D-089)
+- **다음**: 커밋·배포(요청 시) → 아이패드 확인((16)의 순서 + 키보드 ±) → 로드시트 OCR(NEXT-ITEMS 9)
+

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildDemoOfp } from '../../mock/demoOfp';
-import { isOldGeneric, airportWx, wxValues, activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
+import { safetyText, isOldGeneric, airportWx, wxValues, activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
 import type { OfpData } from '../ofp/types';
+import { opsPlan } from '../ofp/doc/OfpDocument';
 
 describe('합동 브리핑 원고 틀', () => {
   it('자동·선택·입력 조각으로 나눔 (번호는 선택·입력 순서)', () => {
@@ -80,4 +81,35 @@ describe('합동 브리핑 원고 틀', () => {
     expect(isOldGeneric(GENERIC_ITEMS)).toBe(false);
     expect(isOldGeneric([...GENERIC_ITEMS].reverse())).toBe(false);
   });
+
+  it('FOM 6.1.2.3 b) 항목이 기본 틀에 빠짐없이 (첫 비행·교체)', () => {
+    const b = GENERIC_ITEMS.filter((x) => x.group === 'b').map((x) => x.title).join(' / ');
+    for (const k of ['Cockpit Entry', 'Sterile', '안전 고려사항', 'Seat Belt', 'Turbulence', '비상 절차', '협조', '객실일지', '장비 결함']) expect(b).toContain(k);
+  });
+
+  it('안전 고려사항 요약', () => {
+    const base = buildDemoOfp();
+    const o = { ...base, header: { ...base.header, plan: { contPct: 3 }, edtoRule: 'EDTO 180' }, mel: [] } as OfpData;
+    expect(safetyText(o)).toMatch(/^EDTO 180 비행, 3% Contingency 운항/);
+    const none = { ...base, header: { ...base.header, plan: undefined, edtoRule: undefined }, mel: [], route: [] } as unknown as OfpData;
+    expect(safetyText(none)).toBe('OFP상 특별한 사항 없음');
+  });
+
+  it('D-086 기본 틀 그대로 저장한 목록도 새 틀로', () => {
+    const d086: JbItem[] = [
+      { id: 'pax', title: '승객', group: 'a', text: '예약 승객은 {승객}입니다. 특별 승객은 [없습니다|있습니다]. <특별 승객 메모>' },
+      { id: 'wx', title: '기상', group: 'a', text: '목적지 {도착도시} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
+    ];
+    expect(isOldGeneric(d086)).toBe(true);
+  });
+
+  it('OFP OPS PLAN 칸: EDTO · REFILE · CONT', () => {
+    const base = buildDemoOfp();
+    const mk = (plan: OfpData['header']['plan'], edtoRule?: string) => ({ ...base, header: { ...base.header, plan, edtoRule } }) as OfpData;
+    expect(opsPlan(mk({ contPct: 5, refile: ['RJBB', 'RJGG'] }))).toBe('REFILE · 5% CONT');
+    expect(opsPlan(mk({ contPct: 3, era3: ['KSFO'] }))).toBe('3% CONT');
+    expect(opsPlan(mk({ contPct: 5, refile: ['YBBN'], edto: true }, 'EDTO 180'))).toBe('EDTO 180 · REFILE · 5% CONT');
+    expect(opsPlan(mk(undefined))).toBe('—');
+  });
 });
+

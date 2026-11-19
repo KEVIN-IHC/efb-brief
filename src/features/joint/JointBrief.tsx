@@ -44,6 +44,8 @@ export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpDat
   const saved = saved0 && !isOldGeneric(saved0) ? saved0 : null;
   const preset = rules?.jointBrief?.items;
   const items = saved ?? preset ?? GENERIC_ITEMS;
+  // 고친 목록을 쓰는 중인데 기준(preset·기본 틀)에 새로 생긴 문단 — 눌러서 넣기
+  const missing = saved ? (preset ?? GENERIC_ITEMS).filter((p) => !saved.some((x) => x.id === p.id)) : [];
   const [st, set] = useDraft<JbState>(stateKey(flightId), {});
   const last = useKey<Record<string, string>>(LAST_KEY, {});
   const { brief } = useBrief();
@@ -145,8 +147,17 @@ export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpDat
             </button>
           </div>
         )}
+        {missing.length > 0 && (
+          <div className="chk-bar jb-reset">
+            <span className="small c-warn">기준 원고에 새 문단 {missing.length}개: {missing.map((x) => x.title).join(' · ')}</span>
+            <button className="btn small" onClick={() => saveItems([...items, ...missing])}>
+              넣기
+            </button>
+          </div>
+        )}
+        {!preset && <p className="small c-warn">회사 기준 파일 preset이 없어 일반 기본 틀입니다. 신호 횟수 등 회사 문장은 Settings → 회사 기준 파일 가져오기 후 나옵니다.</p>}
         <p className="small muted">
-          초록 = OFP에서 자동, 칩 = 눌러서 고르기. 근거 FOM 6.1.2.3 · 12.2.10. {preset ? `원고 preset: ${rules?.jointBrief?.source ?? '회사 기준 파일'}` : '회사 기준 파일에 preset이 없어 기본 틀만 보입니다(Settings → 회사 기준 파일).'}
+          초록 = OFP에서 자동, 칩 = 눌러서 고르기. 근거 FOM 6.1.2.3 · 12.2.10. {preset ? `원고 preset: ${rules?.jointBrief?.source ?? '회사 기준 파일'}` : ''}
           {saved && ' · 고친 원고 사용 중'}
         </p>
       </DocSection>

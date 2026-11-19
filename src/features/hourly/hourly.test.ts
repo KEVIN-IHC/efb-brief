@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dec1, normEntry, altCheck, fuel100, fuelTotal, lineText, nextDue, oilDelta, recIso, type HourlyRec } from './hourly';
+import { oilBase, dec1, normEntry, altCheck, fuel100, fuelTotal, lineText, nextDue, oilDelta, recIso, type HourlyRec } from './hourly';
 
 describe('매시간 점검', () => {
   it('손글씨 한 줄 그대로', () => {
@@ -44,5 +44,13 @@ describe('매시간 점검', () => {
     expect(dec1('17.4')).toBe('17.4');
     expect(normEntry({ oil1: '174', dp: '86', cab: '5800' })).toMatchObject({ oil1: '17.4', dp: '8.6', cab: '5800' });
     expect(lineText({ time: '1700', oil1: '174', oil2: '171', oil3: '17.4', oil4: '174', dp: '86', cab: '5800' })).toBe('1700Z  17.4/17.1/17.4/17.4  8.6/5800');
+  });
+
+  it('오일 사용량 기준: Preflight 오일 → 없으면 첫 기록', () => {
+    const recs = [{ time: '0100' }, { oil1: '17.4', oil2: '17.2' }] as never[];
+    expect(oilBase({ oil1: '18' }, recs)?.src).toBe('PREFLIGHT');
+    expect(oilBase({}, recs)?.src).toBe('FIRST');
+    expect(oilBase(undefined, [])).toBeUndefined();
+    expect(oilDelta({ oil1: '17.1' }, oilBase({ oil1: '174' }, [])!.base)[0]).toBe(-0.3);
   });
 });

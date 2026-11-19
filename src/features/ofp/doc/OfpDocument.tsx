@@ -1,4 +1,4 @@
-// Lido식 OFP 요약 문서: FLIGHT → FUEL → WEIGHTS → ALTERNATES → EDTO/ETP → MEL/CDL → NOTES
+// Lido식 OFP 요약 문서: FLIGHT(+ALTERNATES) → FUEL → WEIGHTS → RVSM·SYSTEMS PRE-FLIGHT → FMS → EDTO/ETP → MEL/CDL → NOTES
 import { useEffect, useState } from 'react';
 import { fmtFl, fmtHm, fmtKg, fmtSigned } from '../../../lib/format';
 import { formatLatLon } from '../../../lib/geo';
@@ -10,7 +10,7 @@ import { manualEvents } from '../../manual/store';
 import type { FuelRow, OfpData } from '../types';
 import { Cell, DocSection, LevelPill } from './ui';
 import { TurbulenceBlock } from './Turbulence';
-import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, SystemsBlock, RvsmBlock, type Fms } from './Fms';
+import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, PreflightBlock, type Fms } from './Fms';
 import { fmsKey, ofpRefs, parseHm, parseKilo, type FmsEntry } from '../../checks/checks';
 import { useDraft } from '../../ops/store';
 import { flightIdFor } from '../../flight/activeFlight';
@@ -69,6 +69,16 @@ function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void
   );
 }
 
+/** OPS PLAN 칸: EDTO(OFP에 있을 때만 — 쌍발기) · REFILE · 3%/5% CONT. 여러 개면 함께 */
+export function opsPlan(o: OfpData): string {
+  const h = o.header;
+  const parts: string[] = [];
+  if (h.edtoRule || h.plan?.edto) parts.push(h.edtoRule ?? 'EDTO');
+  if (h.plan?.refile?.length) parts.push('REFILE');
+  if (h.plan?.contPct) parts.push(`${h.plan.contPct}% CONT`);
+  return parts.join(' · ') || '—';
+}
+
 export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
   const h = o.header;
   const sp = h.speedPlan;
@@ -106,7 +116,7 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
         <Cell k="MAX FL" v={fmtFl(h.cruiseFl)} />
         <Cell k="CI" v={Number.isFinite(h.costIndex) ? h.costIndex : '—'} />
         <Cell k="AVG W/T" v={h.avgWindTemp ?? '—'} />
-        <Cell k="EDTO" v={h.edtoRule ?? '—'} />
+        <Cell k="OPS PLAN" v={opsPlan(o)} tone={h.plan?.contPct === 3 || h.plan?.refile?.length || h.edtoRule || h.plan?.edto ? 'warn' : undefined} />
         <Cell k="PLAN VALID" v={h.validUntil ?? '—'} />
       </div>
       {h.routeString && (
@@ -116,6 +126,12 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
         </div>
       )}
       <RouteCheckRow o={o} onLine={onLine} />
+      {o.alternates.length > 0 && (
+        <div className="sub-sec">
+          <div className="sub-h">ALTERNATES</div>
+          <AlternatesTable o={o} />
+        </div>
+      )}
     </DocSection>
   );
 }
@@ -148,19 +164,19 @@ export function FuelBlock({ o, fms }: { o: OfpData; fms?: Fms }) {
     if (/^TRIP\b/.test(label))
       return (
         <FmsCell d={<Dlt d={d(parseHm(e.trip), ref.tripMin)} hm />}>
-          <FmsInput fms={fms} k="trip" ph="TIME" mode="numeric" show={showHm} label="TRIP TIME" />
+          <FmsInput fms={fms} k="trip" ph="TIME" mode="numeric" show={showHm} label="TRIP TIME" step={{ kind: 'hm', plan: ref.tripMin }} />
         </FmsCell>
       );
     if (/^(RAMP OUT|BLOCK)$/.test(label))
       return (
         <FmsCell d={<Dlt d={d(parseKilo(e.fob), ref.fob)} />}>
-          <FmsInput fms={fms} k="fob" ph="FOB" show={showKilo} label="FOB" />
+          <FmsInput fms={fms} k="fob" ph="FOB" show={showKilo} label="FOB" step={{ kind: 'kilo', plan: ref.fob }} />
         </FmsCell>
       );
     if (/^FOD$/.test(label))
       return (
         <FmsCell d={<Dlt d={d(parseKilo(e.fod), ref.fod)} />}>
-          <FmsInput fms={fms} k="fod" ph="FOD" show={showKilo} label="FOD" />
+          <FmsInput fms={fms} k="fod" ph="FOD" show={showKilo} label="FOD" step={{ kind: 'kilo', plan: ref.fod }} />
         </FmsCell>
       );
     return <td />;
@@ -330,9 +346,10 @@ export function WeightBlock({ o }: { o: OfpData }) {
   );
 }
 
-export function AlternatesBlock({ o }: { o: OfpData }) {
+/** 교체공항 표 — FLIGHT 카드 안 (D-088) */
+function AlternatesTable({ o }: { o: OfpData }) {
   return (
-    <DocSection title="Alternates">
+    <>
       <div className="table-wrap">
         <table className="dt">
         <thead>
@@ -360,7 +377,7 @@ export function AlternatesBlock({ o }: { o: OfpData }) {
       </table>
       </div>
       {o.alternates.find((a) => a.route)?.route && <p className="doc-foot mono">ROUTE TO ALTN: {o.alternates.find((a) => a.route)!.route}</p>}
-    </DocSection>
+    </>
   );
 }
 
@@ -522,13 +539,12 @@ export function OfpDocument({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
   const fms = useDraft<FmsEntry>(fmsKey(flightIdFor(o)), {});
   return (
     <div className="page-grid doc">
+      {/* 순서 (D-088): FLIGHT(+ALTERNATES) → FUEL · WEIGHTS → RVSM·SYSTEMS PRE-FLIGHT · FMS */}
       <FlightBlock o={o} onLine={onLine} />
-      <FmsBlock fms={fms} dist={ofpRefs(o).dist} />
-      <RvsmBlock fms={fms} />
       <FuelBlock o={o} fms={fms} />
       <WeightBlock o={o} />
-      <SystemsBlock fms={fms} flightMin={ofpRefs(o).flightMin} />
-      <AlternatesBlock o={o} />
+      <PreflightBlock fms={fms} flightMin={ofpRefs(o).flightMin} />
+      <FmsBlock fms={fms} dist={ofpRefs(o).dist} maxFl={ofpRefs(o).maxFl} />
       <EtpBlock o={o} />
       <TurbulenceBlock o={o} onZone={(z) => focusTurbZone(z, 'popup')} />
       <MelBlock o={o} />

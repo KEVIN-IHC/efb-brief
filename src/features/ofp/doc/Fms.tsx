@@ -8,6 +8,7 @@ import { docPages, openManualPage, type ManualTarget } from '../../manual/lookup
 import { listManuals, manualEvents } from '../../manual/store';
 import { kbProps, moveField, useAppKeyboard, useKbActive } from '../../../app/AppKeyboard';
 import { DocSection } from './ui';
+import type { Step } from '../../../app/kbStep';
 
 export type Fms = [FmsEntry, (patch: Partial<FmsEntry>) => void];
 type K = Exclude<keyof FmsEntry, 'latH' | 'lonH' | 'updatedAt'>;
@@ -15,7 +16,7 @@ type K = Exclude<keyof FmsEntry, 'latH' | 'lonH' | 'updatedAt'>;
 const nf = new Intl.NumberFormat('en-US');
 
 /** 테두리 없는 입력 칸. 누르고 있는 동안은 입력한 글자, 떠나면 다듬은 표시 */
-export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { fms: Fms; k: K; ph: string; show?: (raw: string) => string | undefined; mode?: 'decimal' | 'numeric' | 'text'; label: string; warn?: boolean }) {
+export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn, step }: { fms: Fms; k: K; ph: string; show?: (raw: string) => string | undefined; mode?: 'decimal' | 'numeric' | 'text'; label: string; warn?: boolean; /** ± 키 (D-089) */ step?: Step }) {
   const [e, set] = fms;
   const [focus, setFocus] = useState(false);
   const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-081·D-086 — 초점 없이 "지금 칸")
@@ -36,7 +37,7 @@ export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { 
       aria-label={`${label} FMS 입력`}
       placeholder={ph}
       value={shown}
-      {...kbProps(appKb, { label, set: (v) => set({ [k]: v }), raw: () => e[k] ?? '' }, mode)}
+      {...kbProps(appKb, { label, set: (v) => set({ [k]: v }), raw: () => e[k] ?? '', step }, mode)}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
       onChange={(ev) => set({ [k]: ev.target.value })}
@@ -108,7 +109,7 @@ function Hemi({ fms, k, a, b }: { fms: Fms; k: 'latH' | 'lonH'; a: string; b: st
 }
 
 /** FMS 카드 (FLIGHT 카드에서 분리): DIST·FL·GATE·COORD */
-export function FmsBlock({ fms, dist }: { fms: Fms; dist?: number }) {
+export function FmsBlock({ fms, dist, maxFl }: { fms: Fms; dist?: number; /** OFP 순항고도 = MAX FL ± 기준 */ maxFl?: number }) {
   const [e] = fms;
   const dd = (v: number | undefined, ref: number | undefined) => (v === undefined || ref === undefined ? undefined : v - ref);
   return (
@@ -131,28 +132,28 @@ export function FmsBlock({ fms, dist }: { fms: Fms; dist?: number }) {
             <td>DIST</td>
             <td className="r mono">{dist !== undefined ? nf.format(dist) : '—'}</td>
             <FmsCell d={<Dlt d={dd(parseNum(e.dist), dist)} />}>
-              <FmsInput fms={fms} k="dist" ph="NM" mode="numeric" show={showNum} label="DIST" />
+              <FmsInput fms={fms} k="dist" ph="NM" mode="numeric" show={showNum} label="DIST" step={{ kind: 'num', plan: dist }} />
             </FmsCell>
           </tr>
           <tr>
             <td>MAX FL</td>
             <td className="r mono muted">—</td>
             <FmsCell>
-              <FmsInput fms={fms} k="maxFl" ph="FL" mode="numeric" show={showFl} label="MAX FL" />
+              <FmsInput fms={fms} k="maxFl" ph="FL" mode="numeric" show={showFl} label="MAX FL" step={{ kind: 'num', plan: maxFl }} />
             </FmsCell>
           </tr>
           <tr>
             <td>OPT FL</td>
             <td className="r mono muted">—</td>
             <FmsCell>
-              <FmsInput fms={fms} k="optFl" ph="FL" mode="numeric" show={showFl} label="OPT FL" />
+              <FmsInput fms={fms} k="optFl" ph="FL" mode="numeric" show={showFl} label="OPT FL" step={{ kind: 'num', plan: parseFl(e.maxFl) ?? maxFl, planLabel: 'MAX FL' }} />
             </FmsCell>
           </tr>
           <tr>
             <td>EO FL</td>
             <td className="r mono muted">—</td>
             <FmsCell>
-              <FmsInput fms={fms} k="eoFl" ph="FL" mode="numeric" show={showFl} label="EO FL" />
+              <FmsInput fms={fms} k="eoFl" ph="FL" mode="numeric" show={showFl} label="EO FL" step={{ kind: 'num' }} />
             </FmsCell>
           </tr>
           <tr>
@@ -183,12 +184,25 @@ export function FmsBlock({ fms, dist }: { fms: Fms; dist?: number }) {
 }
 
 /** RVSM · ALTIMETERS 카드 (FLIGHT 카드에서 분리): QNH·표고·PFD 3개 + 기준표 */
-export function RvsmBlock({ fms }: { fms: Fms }) {
+/** RVSM · SYSTEMS PRE-FLIGHT 한 카드 (D-088) — 위 RVSM 고도계, 아래 오일·유압·산소 */
+export function PreflightBlock({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
+  return (
+    <DocSection title="RVSM · Systems pre-flight" meta="FOM · FCOM" className="span-all">
+      <div className="pf-two">
+        <RvsmPart fms={fms} />
+        <SystemsPart fms={fms} flightMin={flightMin} />
+      </div>
+    </DocSection>
+  );
+}
+
+function RvsmPart({ fms }: { fms: Fms }) {
   const [e] = fms;
   const q = parseQnh(e.qnh);
   const alt = altChecks(e);
   return (
-    <DocSection title="RVSM · Altimeters">
+    <div className="sub-sec first">
+      <div className="sub-h">RVSM · ALTIMETERS</div>
       <table className="dt fms-t2">
         <colgroup>
           <col style={{ width: '30%' }} />
@@ -214,34 +228,34 @@ export function RvsmBlock({ fms }: { fms: Fms }) {
             <td>ELEV</td>
             <td className="r mono muted">FT</td>
             <FmsCell>
-              <FmsInput fms={fms} k="elev" ph="FT" mode="numeric" show={showNum} label="ELEV 공항 표고" />
+              <FmsInput fms={fms} k="elev" ph="FT" mode="numeric" show={showNum} label="ELEV 공항 표고" step={{ kind: 'num' }} />
             </FmsCell>
           </tr>
           <tr>
             <td>CAPT PFD</td>
             <td className="r fms-vs">vs ELEV</td>
             <FmsCell d={alt.capt && <Dlt d={alt.capt.d} ok={alt.capt.ok} tol />}>
-              <FmsInput fms={fms} k="altC" ph="FT" mode="numeric" show={showNum} label="CAPT PFD 고도" />
+              <FmsInput fms={fms} k="altC" ph="FT" mode="numeric" show={showNum} label="CAPT PFD 고도" step={{ kind: 'num', plan: parseNum(e.elev), planLabel: 'ELEV' }} />
             </FmsCell>
           </tr>
           <tr>
             <td>F/O PFD</td>
             <td className="r fms-vs">vs CAPT</td>
             <FmsCell d={alt.fo && <Dlt d={alt.fo.d} ok={alt.fo.ok} tol />}>
-              <FmsInput fms={fms} k="altF" ph="FT" mode="numeric" show={showNum} label="F/O PFD 고도" />
+              <FmsInput fms={fms} k="altF" ph="FT" mode="numeric" show={showNum} label="F/O PFD 고도" step={{ kind: 'num', plan: parseNum(e.altC), planLabel: 'CAPT' }} />
             </FmsCell>
           </tr>
           <tr>
             <td>STBY ISIS</td>
             <td className="r fms-vs">vs CAPT</td>
             <FmsCell d={alt.stby && <Dlt d={alt.stby.d} ok={alt.stby.ok} tol />}>
-              <FmsInput fms={fms} k="altS" ph="FT" mode="numeric" show={showNum} label="STBY ISIS 고도" />
+              <FmsInput fms={fms} k="altS" ph="FT" mode="numeric" show={showNum} label="STBY ISIS 고도" step={{ kind: 'num', plan: parseNum(e.altC), planLabel: 'CAPT' }} />
             </FmsCell>
           </tr>
         </tbody>
       </table>
       <RvsmLimits />
-    </DocSection>
+    </div>
   );
 }
 
@@ -374,11 +388,11 @@ function SysTitle({ label, src, to }: { label: string; src: string; to: ManualTa
   );
 }
 
-function CellIn({ fms, k, title, ph, show, mode, warn }: { fms: Fms; k: K; title: string; ph: string; show: (r: string) => string | undefined; mode?: 'decimal' | 'numeric'; warn?: boolean }) {
+function CellIn({ fms, k, title, ph, show, mode, warn, step }: { fms: Fms; k: K; title: string; ph: string; show: (r: string) => string | undefined; mode?: 'decimal' | 'numeric'; warn?: boolean; step?: Step }) {
   return (
     <label className="fms-cell">
       <span className="cell-k">{title}</span>
-      <FmsInput fms={fms} k={k} ph={ph} show={show} mode={mode} label={title} warn={warn} />
+      <FmsInput fms={fms} k={k} ph={ph} show={show} mode={mode} label={title} warn={warn} step={step} />
     </label>
   );
 }
@@ -401,7 +415,7 @@ function HydChip({ fms, k, label, color }: { fms: Fms; k: 'hydG' | 'hydY'; label
 }
 
 /** SYSTEMS · PRE-FLIGHT 카드 (D-080): ENG OIL 4칸 + 최소량(FCOM LIM-ENG, RAMP OUT 시간) · HYD NORMAL 체크 · OXY 2칸. 오일이 최소량(두 값 중 큰 값)보다 적으면 주황 */
-export function SystemsBlock({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
+function SystemsPart({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
   const [e] = fms;
   const refs = useFcomRefs();
   const mo = minOil(flightMin);
@@ -410,13 +424,14 @@ export function SystemsBlock({ fms, flightMin }: { fms: Fms; flightMin?: number 
     return v !== undefined && mo !== undefined && v < mo.max;
   };
   return (
-    <DocSection title="Systems · Pre-flight" meta="FCOM">
+    <div className="sub-sec">
+      <div className="sub-h">SYSTEMS · PRE-FLIGHT</div>
       <div className="fms-lbl">
         <SysTitle label="ENG OIL · QT" src="LIM-ENG" to={refs && (refs.oil ?? null)} />
       </div>
       <div className="fms-cells c4">
         {(['oil1', 'oil2', 'oil3', 'oil4'] as const).map((k, i) => (
-          <CellIn key={k} fms={fms} k={k} title={`ENG ${i + 1}`} ph="QT" show={showOil} warn={low(k)} />
+          <CellIn key={k} fms={fms} k={k} title={`ENG ${i + 1}`} ph="QT" show={showOil} warn={low(k)} step={{ kind: 'num', dp: 1, plan: i ? parseOil(e.oil1) : undefined, planLabel: 'ENG 1' }} />
         ))}
       </div>
       {mo && (
@@ -458,10 +473,10 @@ export function SystemsBlock({ fms, flightMin }: { fms: Fms; flightMin?: number 
         <SysTitle label="OXY · PSI" src="LIM-OXY" to={refs && (refs.oxy ?? null)} />
       </div>
       <div className="fms-cells c2">
-        <CellIn fms={fms} k="oxyCrew" title="CREW" ph="PSI" mode="numeric" show={showNum} />
-        <CellIn fms={fms} k="oxyCabin" title="CABIN" ph="PSI" mode="numeric" show={showNum} />
+        <CellIn fms={fms} k="oxyCrew" title="CREW" ph="PSI" mode="numeric" show={showNum} step={{ kind: 'num' }} />
+        <CellIn fms={fms} k="oxyCabin" title="CABIN" ph="PSI" mode="numeric" show={showNum} step={{ kind: 'num', plan: parseNum(e.oxyCrew), planLabel: 'CREW' }} />
       </div>
       <p className="fms-limn">오일 최소량 = OFP RAMP OUT 시간으로 계산(소수 첫째 자리 올림). 주황 = 두 값 중 큰 값보다 적음. 제목을 누르면 FCOM 원문.</p>
-    </DocSection>
+    </div>
   );
 }

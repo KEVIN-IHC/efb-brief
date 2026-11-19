@@ -4,9 +4,18 @@
 //   아이패드에서는 입력 칸에 초점을 주지 않는다(readOnly). 칸을 누르면 앱이 "지금 칸"을 기억하고,
 //   키보드는 [완료] 또는 키보드·입력 칸 밖을 누를 때만 닫힘. 블루투스 키보드는 화면 전체 keydown으로 받음.
 // 쓰는 법: <input className="kb-in" {...kbProps(appKb, { label, set })} /> · 표시를 바꾸려면 useKbActive()로 지금 칸인지 확인
-import { memo, useEffect, useSyncExternalStore, type PointerEvent as RPointerEvent, type SyntheticEvent } from 'react';
+import { Fragment, memo, useEffect, useSyncExternalStore, type PointerEvent as RPointerEvent, type SyntheticEvent } from 'react';
+import { stepBase, stepFmt, stepLabel, stepValue, type Step } from './kbStep';
 
-type Cfg = { label: string; set: (v: string) => void; hint?: string; /** 다듬기 전 값 (표시가 다른 칸) */ raw?: () => string };
+type Cfg = {
+  label: string;
+  set: (v: string) => void;
+  hint?: string;
+  /** 다듬기 전 값 (표시가 다른 칸) */
+  raw?: () => string;
+  /** ± 키 (D-089): 없으면 ± 키를 흐리게 */
+  step?: Step;
+};
 /** buf = 키보드가 들고 있는 지금 글자 — 화면이 다시 그려지기 전에 다음 키가 와도 앞 글자를 잃지 않게 */
 type Active = Cfg & { el: HTMLInputElement; fresh: boolean; buf: string };
 
@@ -75,11 +84,20 @@ export function moveField(el: HTMLInputElement, dir: 1 | -1) {
   }
 }
 
-function put(a: Active, v: string) {
-  a.fresh = false;
+/* 키보드 막대(기준값)를 다시 그리기 위한 글자 버전 */
+let ver = 0;
+const vsubs = new Set<() => void>();
+const vsub = (f: () => void) => (vsubs.add(f), () => void vsubs.delete(f));
+
+function put(a: Active, v: string, fresh = false) {
+  a.fresh = fresh;
   a.buf = v;
   a.set(v);
+  ver++;
+  vsubs.forEach((f) => f());
 }
+/** ± 키: 기준값(칸 값 → 계획 값 → 0)에서 바꾸고, 다음 숫자 키는 새로 씀 */
+const step = (a: Active, k: number) => a.step && put(a, stepValue(a.step, a.buf, k), true);
 const insert = (a: Active, ch: string) => put(a, (a.fresh ? '' : a.buf) + ch);
 const backspace = (a: Active) => put(a, a.buf.slice(0, -1));
 
@@ -108,6 +126,7 @@ const stop = (e: SyntheticEvent) => e.preventDefault();
 /** 앱에 하나만 둔다 (App.tsx) */
 export function AppKeyboard() {
   const a = useSyncExternalStore(subscribe, () => active, () => null);
+  useSyncExternalStore(vsub, () => ver, () => 0);
   const on = useAppKeyboard();
   const open = on && !!a;
 
@@ -177,6 +196,15 @@ export function AppKeyboard() {
         <span className="kb-f">
           {a.label}
           {ofp && /\d/.test(ofp) && <i className="mono">{a.hint ? ofp : `OFP ${ofp}`}</i>}
+          {a.step &&
+            (() => {
+              const b = stepBase(a.step, a.buf);
+              return (
+                <b className="mono kb-base">
+                  ± 기준 {stepFmt(a.step, b.n)} · {b.src === 'value' ? '칸 값' : b.src === 'plan' ? (a.step.planLabel ?? 'PLAN') : '0'}
+                </b>
+              );
+            })()}
         </span>
         <button type="button" className="kb-nb kb-done" {...nb(kbClose)}>
           완료
@@ -217,10 +245,23 @@ export function AppKeyboard() {
           </div>
         </div>
         <div className="kb-np">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0'].map((c) => (
-            <K key={c} t={c} c="n" fn={ins(c)} />
+          {/* 시안 C: 숫자판 3열 + 오른쪽 ± 열 (위에서 +10 · +1 · −1 · −10) */}
+          {[
+            ['1', '2', '3', 10],
+            ['4', '5', '6', 1],
+            ['7', '8', '9', -1],
+            ['.', '0', '⌫', -10],
+          ].map((row) => (
+            <Fragment key={String(row[3])}>
+              {(row.slice(0, 3) as string[]).map((c) => (c === '⌫' ? <K key={c} t="⌫" c="s" aria="지우기" fn={() => backspace(a)} /> : <K key={c} t={c} c="n" fn={ins(c)} />))}
+              <K
+                t={a.step ? stepLabel(a.step, row[3] as number) : `${(row[3] as number) > 0 ? '+' : '−'}${Math.abs(row[3] as number)}`}
+                c={`st ${(row[3] as number) < 0 ? 'm' : ''} ${a.step ? '' : 'off'}`}
+                aria={`${row[3]}`}
+                fn={() => step(a, row[3] as number)}
+              />
+            </Fragment>
           ))}
-          <K t="⌫" c="s" aria="지우기" fn={() => backspace(a)} />
         </div>
       </div>
     </div>

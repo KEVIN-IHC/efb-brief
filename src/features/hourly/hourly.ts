@@ -103,6 +103,14 @@ export function oilDelta(e: HourlyEntry, prev: HourlyEntry | undefined): (number
   });
 }
 
+/** 엔진별 오일 사용량 = 기준(출발 전 Preflight 오일 → 없으면 첫 기록) 대비 (D-088) */
+export function oilBase(preflight: Partial<Record<'oil1' | 'oil2' | 'oil3' | 'oil4', string>> | undefined, recs: HourlyEntry[]): { base: HourlyEntry; src: 'PREFLIGHT' | 'FIRST' } | undefined {
+  const keys = ['oil1', 'oil2', 'oil3', 'oil4'] as const;
+  if (preflight && keys.some((k) => parseOil(preflight[k]) !== undefined)) return { base: preflight, src: 'PREFLIGHT' };
+  const first = recs.find((r) => keys.some((k) => parseOil(r[k]) !== undefined));
+  return first ? { base: first, src: 'FIRST' } : undefined;
+}
+
 /** 기록 시각(HHMM) → ISO. 저장 시각과 같은 날, 12시간 넘게 미래면 전날 */
 export function recIso(r: HourlyRec): string {
   const m = /^(\d{2})(\d{2})$/.exec(r.time ?? '');

@@ -635,3 +635,32 @@
   3. 합동 브리핑: `{출발도시}`·`{도착도시}`(공개 공항 → 한국어 도시 이름 표, 없으면 ICAO) · `{도착시각}` = "2019Z(현지 05:19)" — 파서 `aviator-1.7`이 OFP "HRS UTC+0900"(도착지 현지 시각 차이) 읽음. 기본 틀·회사 preset 인사 문장이 도시 이름 사용. 기기에 저장된 목록이 예전 기본 틀 문장뿐이면(고친 문장 없음) 무시하고 새 틀·preset 사용
   4. 로드시트(NEXT-ITEMS 9): C 확인 창에 OFP 값도 같이, 확인하면 WEIGHTS 카드 L/S 열(A)에 — 실제 사진 받으면 구현
 - **영향** `app/{AppKeyboard.tsx,styles.css}`, `ofp/doc/Fms.tsx`, `inflight/EntrySheet.tsx`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/{template.ts,JointBrief.tsx,cities.ts(신규),joint.test.ts}`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts}` · 비공개 build-joint.py·company-rules.json
+
+### D-087 합동 브리핑 = FOM 6.1.2.3 b) 9개 항목 전부 (D-083·D-085 보완)
+- **날짜** 2026-11-19 (사용자: "싯벨트 사인 운영, sterile cockpit 룰 등 joint briefing에 필요한 게 빠진 것 같다. FOM 제대로 살펴본 거 맞아? 다시 들여다보고 만들어봐")
+- **원인** 회사 preset(비공개 파일)에는 Sterile·좌석벨트가 있었지만, 회사 기준 파일을 다시 가져오기 전의 앱(배포판 기본 틀)은 b) 문단이 "객실 결함" 1개뿐. preset에도 FOM b)의 "안전 고려사항"·"PIC와 객실승무원 간 협조사항"·"장비 결함 정보 교환"이 따로 없었음
+- **결정**
+  1. 코드 기본 틀(공개)도 FOM 6.1.2.3 b) 항목 이름대로 문단을 둠: Cockpit Entry · Sterile Cockpit · 안전 고려사항 · Seat Belt Sign 운영 · Turbulence/비정상 PA · 비상 절차 · PIC-객실 협조 · 객실일지/장비 결함 정보 교환. 문장은 일반 표현(신호 횟수·버튼 이름 등 회사 세부는 preset에만). preset 없을 때 주황 안내
+  2. 회사 preset 18문단(`private/manuals/build-joint.py`): 위 b) 항목 + Two-Crew Rule · PA Quiet Hours, 보안 문단에 12.2.11(사무장 보안점검 완료 보고 후 탑승), 출입 문단에 12.2.17.3(청정구역 확인·커튼·이름 문의·미통보 Emergency Access는 LOCK), 좌석벨트 문단에 2.2.7 ON 조건 + S2.2.1, 비상 문단에 12.2.29~30(비상벨·청정구역), 협조 문단에 2.2.8·S2.2.2(다자 통화)·FCRM 5.1.5
+  3. 새 자동 값 `{안전요점}` = EDTO · 3% CONT · MEL/CDL 번호 · OFP 난류 구간 수
+  4. 고친 목록을 쓰는 중에 기준(preset·기본 틀)에 새 문단이 생기면 "기준 원고에 새 문단 n개 … [넣기]". D-086 기본 틀을 그대로 저장한 목록은 새 틀로
+- **영향** `joint/{template.ts,JointBrief.tsx,joint.test.ts}` · 비공개 `private/manuals/{build-joint.py,company-rules.json}`
+
+### D-088 OFP 카드 순서·합치기 · OPS PLAN 칸 · 매시간 연료/오일 요약 · 새 배포 자동 받기
+- **날짜** 2026-11-19 (사용자 아이패드 사진: "EDTO 자리에 EDTO·REFILE·3% 적기(380은 4발기라 EDTO 아님)", "FLIGHT와 ALTERNATE 합치기", "순서 FUEL·WEIGHT·RVSM과 SYSTEM PREFLIGHT·마지막 FMS", "RVSM과 SYSTEM PREFLIGHT 합치기", "상자 높이 비슷하게", "Hourly ΔP 86 → 8.6 안 됨", "램프 연료 대비 차이·오일 최초 대비 사용량 잘 보이게", "아이패드는 새로 고침해도 옛날 합동 브리핑")
+- **결정**
+  1. FLIGHT 칸 EDTO → **OPS PLAN**: OFP에 있는 것만 `EDTO 180 · REFILE · 5% CONT` 순(3% CONT·REFILE·EDTO면 주황). EDTO는 OFP에 EDTO 표시가 있을 때만(샘플은 B78X만, A388은 없음)
+  2. FLIGHT 카드 안에 ALTERNATES 표(구분 머리줄). 순서: FLIGHT(+ALTN) → FUEL · WEIGHTS → RVSM·SYSTEMS PRE-FLIGHT(한 카드, ≥1024px 좌우 두 칸, 아래는 위아래) → FMS → EDTO·ETP → TURBULENCE → MEL → NOTES
+  3. OFP 문서 격자는 같은 줄 카드 높이를 맞춤(`align-items: stretch`)
+  4. 매시간 점검 요약 상자: ALT 차이 · **FUEL vs RAMP**(FU+FOB − 출발 연료, FMS FOB 칸 → 없으면 OFP RAMP OUT, 마이너스 주황) · **OIL 사용**(출발 전 SYSTEMS 오일 칸 → 없으면 첫 기록 대비, 앞 기록 대비는 작게). 기록 줄 아래도 RAMP 차이·오일 사용량
+  5. 새 배포 받기: `virtual:pwa-register` — 앱을 열 때·다시 볼 때·30분마다 새 버전 확인, 설치되면 자동 다시 불러옴. (ΔP 소수점·합동 브리핑 새 원고는 D-086 배포에 이미 있었고, 아이패드가 예전 서비스 워커 캐시를 쓰고 있었음 — 배포 사이트 코드로 확인)
+- **영향** `main.tsx`, `ofp/doc/{OfpDocument.tsx,Fms.tsx}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/joint.test.ts`, `app/styles.css`
+
+### D-089 앱 키보드 ± 키 (계획 값 기준)
+- **날짜** 2026-11-19 (사용자: "키보드에 + − 버튼, 계획 숫자 기준으로 바뀌게. 빈칸에서도, +10 −10도. 계획 값 없으면 0 기준, 숫자 직접 입력도 가능" → 시안 `private/design/2026-11-19-keyboard-step-mockup.html` 중 **C에서 = PLAN 뺀 것**)
+- **결정**
+  1. 숫자판 4열: 오른쪽 세로 열 위에서 +10 · +1 · −1 · −10. 키보드 높이 그대로. ± 없는 칸(LAT·LON·GATE·QNH)은 흐리게
+  2. 기준값 = 칸에 쓴 값 → 없으면 계획 값 → 없으면 0. 막대에 "± 기준 350 · PLAN/칸 값/0". ±를 누른 뒤 숫자를 치면 새로 씀
+  3. 칸별 계획 값: FMS DIST = OFP 거리 · MAX FL = OFP 순항고도 · OPT FL = MAX FL 칸 · TRIP TIME = OFP 시간(1분) · FOB/FOD = OFP 연료(천 단위, 한 번 0.1 = 100) · CAPT PFD = ELEV 칸 · F/O·STBY = CAPT 칸 · 오일 2~4 = 1번 칸 · CABIN 산소 = CREW 칸. 매시간 점검 = 앞 기록(첫 기록 오일 = 출발 전 SYSTEMS 칸, F/O·STBY = CAPT, 오일 2~4 = 1번). 순항 기록 ATA = ETO(HHMM, 자정 넘김), FUEL = 계획 잔량(한 번 100)
+  4. 소수 칸(오일·ΔP)은 한 번 0.1, 열 번 1.0 — 키 글자가 +0.1 / +1로 바뀜 (사용자 미답 → 이렇게 정함)
+- **영향** `app/{kbStep.ts,kbStep.test.ts,AppKeyboard.tsx,styles.css}`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `hourly/HourlyCheck.tsx`, `inflight/EntrySheet.tsx`

@@ -8,6 +8,19 @@ import { startSyncManager } from './sync/syncManager';
 import { applyTheme, useTheme } from './app/theme';
 import { loadActiveFlight, reparseStale } from './features/flight/activeFlight';
 import { startWxScheduler } from './features/weather/store';
+import { registerSW } from 'virtual:pwa-register';
+
+// 새 배포 받기 (D-088): iPad Safari는 예전 서비스 워커를 오래 붙잡음 → 앱을 열 때·다시 볼 때·30분마다 새 버전 확인,
+// 새 버전이 설치되면 자동으로 다시 불러옴(입력 중 값은 기기에 저장돼 있어 그대로 남음)
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, r) {
+    if (!r) return;
+    const check = () => navigator.onLine && void r.update().catch(() => undefined);
+    setInterval(check, 30 * 60000);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
+  },
+});
 
 applyTheme(useTheme.getState().pref);
 import './app/styles.css';

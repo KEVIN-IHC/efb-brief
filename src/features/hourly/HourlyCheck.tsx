@@ -5,13 +5,14 @@ import { fmtSigned } from '../../lib/format';
 import { formatZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { uuid } from '../../lib/uuid';
-import { fmsKey, parseKilo, type FmsEntry } from '../checks/checks';
+import { fmsKey, parseKilo, parseOil, type FmsEntry } from '../checks/checks';
+import type { Step } from '../../app/kbStep';
 import { docPages, loadCodeRefs, openManualPage, type ManualTarget } from '../manual/lookup';
 import { listManuals, manualEvents } from '../manual/store';
 import { DocSection } from '../ofp/doc/ui';
 import type { OfpData } from '../ofp/types';
 import { putKey, useDraft, useKey } from '../ops/store';
-import { altCheck, dec1, DEC1_KEYS, draftKey, ENTRY_KEYS, normEntry, fuelTotal, lineText, nextDue, nowHHMM, oilDelta, recsKey, SD_PAGES, type HourlyEntry, type HourlyRec } from './hourly';
+import { altCheck, dec1, DEC1_KEYS, num, draftKey, ENTRY_KEYS, normEntry, fuelTotal, lineText, nextDue, nowHHMM, oilBase, oilDelta, recsKey, SD_PAGES, type HourlyEntry, type HourlyRec } from './hourly';
 
 type Refs = { alt?: ManualTarget; sd?: ManualTarget; fuel?: ManualTarget; oil?: ManualTarget; press?: ManualTarget; oxy?: ManualTarget };
 
@@ -59,7 +60,7 @@ function Ref({ to, label, src }: { to: ManualTarget | undefined | null; label: s
   );
 }
 
-function Field({ v, set, title, ph, w, dec }: { v: string; set: (v: string) => void; title: string; ph: string; w: number; dec?: boolean }) {
+function Field({ v, set, title, ph, w, dec, step }: { v: string; set: (v: string) => void; title: string; ph: string; w: number; dec?: boolean; step?: Step }) {
   const appKb = useAppKeyboard();
   const ref = useRef<HTMLInputElement>(null);
   const kbEl = useKbActive();
@@ -77,7 +78,7 @@ function Field({ v, set, title, ph, w, dec }: { v: string; set: (v: string) => v
       ref={ref}
       value={shown}
       onChange={(ev) => set(ev.target.value)}
-      {...kbProps(appKb, { label: title, set, raw: () => v })}
+      {...kbProps(appKb, { label: title, set, raw: () => v, step })}
       onFocus={(ev) => (setFocus(true), ev.currentTarget.select())}
       onBlur={() => setFocus(false)}
       onKeyDown={(ev) => {
@@ -121,6 +122,10 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
   const tot = fuelTotal(view);
   const alt = altCheck(view);
   const od = oilDelta(view, prev);
+  // 오일 사용량 기준: Preflight(OFP 화면 SYSTEMS 오일 칸) → 없으면 첫 기록
+  const ob = oilBase(fms, recs);
+  const obd = ob && (editing ? editing.id !== (ob.base as HourlyRec).id : true) ? oilDelta(view, ob.base) : undefined;
+  const fuelSrc = parseKilo(fms.fob) !== undefined ? 'FMS FOB' : 'OFP RAMP';
   const sd = new Set(e.sd ?? []);
   const toggleSd = (id: string) => {
     const s2 = new Set(latest.current.sd ?? []);
@@ -131,8 +136,20 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
   };
   const hasAny = ENTRY_KEYS.some((k) => k !== 'time' && e[k]?.trim()) || sd.size > 0 || !!e.memo?.trim();
 
+  // ± 키 기준 (D-089): 앞 기록 값. F/O·STBY 고도는 지금 쓴 CAPT 값, 엔진 2~4 오일은 지금 쓴 1번 값 먼저
+  const stepFor = (k: (typeof ENTRY_KEYS)[number]): Step => {
+    if (k === 'time') return { kind: 'hm', clock: true };
+    const dec = (DEC1_KEYS as readonly string[]).includes(k);
+    const p = (s: string | undefined) => (s?.trim() ? (dec ? parseOil(s) : num(s)) : undefined);
+    if ((k === 'altF' || k === 'altS') && p(e.altC) !== undefined) return { kind: 'num', plan: p(e.altC), planLabel: 'CAPT' };
+    if ((k === 'oil2' || k === 'oil3' || k === 'oil4') && p(e.oil1) !== undefined && p(prev?.[k]) === undefined) return { kind: 'num', dp: 1, plan: p(e.oil1), planLabel: 'ENG 1' };
+    const pv = p(prev?.[k]);
+    // 첫 기록의 오일 = 출발 전 SYSTEMS 오일 칸
+    if (pv === undefined && (k === 'oil1' || k === 'oil2' || k === 'oil3' || k === 'oil4') && parseOil(fms[k]) !== undefined) return { kind: 'num', dp: 1, plan: parseOil(fms[k]), planLabel: 'PREFLIGHT' };
+    return dec ? { kind: 'num', dp: 1, plan: pv, planLabel: '앞 기록' } : { kind: 'num', plan: pv, planLabel: '앞 기록' };
+  };
   const f = (k: (typeof ENTRY_KEYS)[number], title: string, ph: string, w: number) => (
-    <Field v={(k === 'time' ? timeShown : e[k]) ?? ''} set={(v) => set({ [k]: v })} title={title} ph={ph} w={w} dec={(DEC1_KEYS as readonly string[]).includes(k)} />
+    <Field v={(k === 'time' ? timeShown : e[k]) ?? ''} set={(v) => set({ [k]: v })} title={title} ph={ph} w={w} dec={(DEC1_KEYS as readonly string[]).includes(k)} step={stepFor(k)} />
   );
   const sl = <span className="hc-sl">/</span>;
 
@@ -242,23 +259,49 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
           </div>
         </div>
 
-        <div className="hc-d">
-          {alt.pfd && (
-            <span>
-              F/O−CAPT {altTxt(alt.pfd, alt.pfd.lor)} <i>≤{alt.pfd.lim}</i>
-            </span>
+        <div className="hc-sum">
+          {(alt.pfd || alt.isis) && (
+            <div className="hc-stat">
+              <span className="cell-k">ALT 차이</span>
+              <span className="hc-stat-v">
+                {alt.pfd && (
+                  <span>
+                    F/O {altTxt(alt.pfd, alt.pfd.lor)} <i>≤{alt.pfd.lim}</i>
+                  </span>
+                )}
+                {alt.isis && (
+                  <span>
+                    STBY {altTxt(alt.isis)} {alt.isis.lim !== undefined && <i>≤{alt.isis.lim}</i>}
+                  </span>
+                )}
+              </span>
+            </div>
           )}
-          {alt.isis && (
-            <span>
-              STBY−CAPT {altTxt(alt.isis)} {alt.isis.lim !== undefined && <i>≤{alt.isis.lim}</i>}
-            </span>
-          )}
-          {od.some((x) => x !== undefined) && <span className="mono">OIL {od.map(sgn1).join(' / ')}</span>}
           {dep100 !== undefined && (
-            <span className="mono">
-              출발 FOB {dep100}
-              {tot !== undefined && <b> {sgn(tot - dep100)}</b>} <i>{parseKilo(fms.fob) !== undefined ? 'FMS' : 'OFP RAMP OUT'}</i>
-            </span>
+            <div className="hc-stat">
+              <span className="cell-k">FUEL vs RAMP</span>
+              <span className="hc-stat-v mono">
+                <b className={`hc-big ${tot !== undefined && tot - dep100 < 0 ? 'c-warn' : ''}`}>{tot !== undefined ? sgn(tot - dep100) : '—'}</b>
+                <span className="hc-mini">
+                  {tot ?? '—'} vs {dep100} <i>{fuelSrc}</i>
+                </span>
+              </span>
+            </div>
+          )}
+          {(obd?.some((x) => x !== undefined) || od.some((x) => x !== undefined)) && (
+            <div className="hc-stat">
+              <span className="cell-k">OIL 사용 · QT</span>
+              <span className="hc-stat-v mono">
+                {obd?.some((x) => x !== undefined) && (
+                  <b className="hc-big hc-oil">{obd.map(sgn1).join('/')}</b>
+                )}
+                <span className="hc-mini">
+                  {!obd?.some((x) => x !== undefined) && <>{od.map(sgn1).join("/")} <i>앞 기록 대비</i></>}
+                  {obd?.some((x) => x !== undefined) && <i>{ob!.src === 'PREFLIGHT' ? '출발 전 대비' : '첫 기록 대비'}</i>}
+                  {od.some((x) => x !== undefined) && obd?.some((x) => x !== undefined) && prev !== ob?.base && <> · 앞 기록 {od.map(sgn1).join('/')}</>}
+                </span>
+              </span>
+            </div>
           )}
         </div>
 
@@ -294,14 +337,14 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
             const a = altCheck(r);
             const t = fuelTotal(r);
             const ok = (!a.pfd || a.pfd.ok) && (!a.isis || a.isis.ok);
-            const odr = oilDelta(r, recs[i - 1]);
+            const odr = ob ? oilDelta(r, ob.base) : oilDelta(r, recs[i - 1]);
             return (
               <li key={r.id} className={r.id === editId ? 'on' : ''}>
                 <button type="button" className="hc-line mono" onClick={() => startEdit(r)} aria-label={`${r.time}Z 기록 수정`}>
                   <span className={ok ? '' : 'c-warn'}>{lineText(r)}</span>
                   <span className="hc-sub">
+                    {t !== undefined && dep100 !== undefined && <span className={t - dep100 < 0 ? 'c-warn' : ''}>RAMP {sgn(t - dep100)}</span>}
                     {odr.some((x) => x !== undefined && x !== 0) && <span>OIL {odr.map(sgn1).join('/')}</span>}
-                    {t !== undefined && dep100 !== undefined && <span>FUEL {sgn(t - dep100)}</span>}
                     <span>SD {r.sd?.length ?? 0}/{SD_PAGES.length}</span>
                   </span>
                 </button>
@@ -335,7 +378,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
         </button>
       )}
       <p className="small muted">
-        줄을 누르면 위 칸에서 고칠 수 있습니다. 시각은 지금 시각이 자동으로 들어가고 고칠 수 있습니다. 연료는 100 단위(2445 = 244,500). 고도계 ✓/⚠ = FL300 이상 FCOM 표(PFD 150 · ISIS 320), 아래는 FOM 순항 200 · 200 초과 = Loss of Redundancy. 오일·여압·연료·산소는 숫자만(판정 안 함). 기기 안에만 저장.
+        줄을 누르면 위 칸에서 고칠 수 있습니다. 시각은 지금 시각이 자동으로 들어가고 고칠 수 있습니다. 연료는 100 단위(2445 = 244,500). 고도계 ✓/⚠ = FL300 이상 FCOM 표(PFD 150 · ISIS 320), 아래는 FOM 순항 200 · 200 초과 = Loss of Redundancy. FUEL vs RAMP = FU+FOB − 출발 연료(FMS FOB 칸 → 없으면 OFP RAMP OUT), 마이너스면 누유 의심(주황). OIL 사용 = 출발 전 SYSTEMS 오일 칸(없으면 첫 기록) 대비. 오일·여압·산소는 숫자만(판정 안 함). 기기 안에만 저장.
       </p>
     </DocSection>
   );

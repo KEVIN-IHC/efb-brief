@@ -1,6 +1,7 @@
 // 웨이포인트 통과 기록 입력 (탭 한 번 + 숫자 키패드, 아이패드는 앱 키보드 D-082). 아이폰: 아래에서 올라오는 시트 / 넓은 화면: 가운데 창
 import { useEffect, useRef, useState } from 'react';
 import { kbFocus, kbProps, useAppKeyboard } from '../../app/AppKeyboard';
+import type { Step } from '../../app/kbStep';
 import { fmtKg, fmtSigned } from '../../lib/format';
 import { formatZ } from '../../lib/time';
 import type { MassUnit, OfpWaypoint } from '../ofp/types';
@@ -24,9 +25,11 @@ export function EntrySheet({ w, unit, revisedEto, existing, onSave, onVoid, onCl
   const [busy, setBusy] = useState(false);
   const fuelRef = useRef<HTMLInputElement>(null);
   const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-082·D-086)
-  const ataCfg = { label: 'ATA', set: (v: string) => setAta(v.slice(0, 5)), hint: `ETO ${formatZ(revisedEto)}` };
-  const fuelCfgRef = useRef<{ label: string; set: (v: string) => void; hint?: string }>(null!);
-  const fuelCfg = { label: `FUEL ${unit.toUpperCase()}`, set: setFuel, hint: `PLAN ${fmtKg(w.fuelRem)}` };
+  // ± 키 (D-089): ATA 기준 = ETO(분), FUEL 기준 = 계획 잔량, 한 번 100
+  const etoD = new Date(revisedEto);
+  const ataCfg = { label: 'ATA', set: (v: string) => setAta(v.slice(0, 5)), hint: `ETO ${formatZ(revisedEto)}`, step: { kind: 'hm', clock: true, plan: etoD.getUTCHours() * 60 + etoD.getUTCMinutes(), planLabel: 'ETO' } as Step };
+  const fuelCfgRef = useRef<{ label: string; set: (v: string) => void; hint?: string; step?: Step }>(null!);
+  const fuelCfg = { label: `FUEL ${unit.toUpperCase()}`, set: setFuel, hint: `PLAN ${fmtKg(w.fuelRem)}`, step: { kind: 'num', unit: 100, plan: w.fuelRem } as Step };
   fuelCfgRef.current = fuelCfg;
 
   // 창이 열리면 FUEL 칸부터 (아이패드는 앱 키보드의 "지금 칸")
