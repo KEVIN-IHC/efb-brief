@@ -1,4 +1,5 @@
 // Phase 2 순항 기록: 웨이포인트 체크(ATA·연료) → 편차·착륙 예상·그래프·점검 알림. 메모. 모두 오프라인 저장 → 자동 동기화
+import { HourlyCheck } from '../hourly/HourlyCheck';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OutboxItem } from '../../db/schema';
 import { fmtKg, fmtSigned } from '../../lib/format';
@@ -98,6 +99,8 @@ export function InflightPage() {
       )}
 
       <ActiveTimers />
+
+      <HourlyCheck flightId={flight.flightId} o={o ?? null} />
 
       {rem.length > 0 && (
         <DocSection title="Checks due" className="span-all">

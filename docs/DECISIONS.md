@@ -606,3 +606,23 @@
   4. 비행마다 기기 안 저장(`joint:<flightId>`: 체크·고른 값·쓴 값·난류 정도·뺀 문단·첫 비행 여부). 직접 쓴 값은 다음 비행 기본값(`jointLast`). 동기화 안 함
   5. OFP 계획 방식: 파서 `aviator-1.6` — 연료 줄 `N PCT CONT` → contPct, 2쪽 머리 `ATTN CAPT. … REFILE EDTO`, `REFILE:` 공항, `3% CONT ERA` 교체공항 → `header.plan`. FLIGHT 카드 머리 배지(3% = 주황, REFILE·EDTO = 주황, 5% = 청록)
 - **영향** `joint/{template.ts,JointBrief.tsx,joint.test.ts}`(신규), `ops/OpsPage.tsx`, `brief/rules.ts`(`jointBrief`), `ofp/{types.ts,parser/aviator.ts,parser/index.ts,doc/OfpDocument.tsx}`, `mock/demoOfp.ts`(demo-5: 계획 방식·승객·화물), `app/styles.css`
+
+### D-084 매시간 System Check (순항 화면)
+- **날짜** 2026-11-19 (사용자: 손으로 "1700z 31000/30090/31020 17.4/17.4/17.4/17.4 8.6/5800 455+2445=3000 1767/1828" — 시각·고도계·엔진 오일·여압(ΔP/캐빈 고도)·FU+FOB=합계 순서로 적음. "SD 페이지 다 점검하지만 저걸 주로 씀", "FCOM normal procedure cruise SD 페이지 체크 다 만들어도 좋음", "MEL처럼 reference 연결")
+- **결정**
+  1. Inflight 화면에 "Hourly check" 카드: 칸 순서 = 손글씨 순서 (TIME Z · CAPT/STBY/F/O · ENG 1~4 오일 · ΔP/CAB ALT · FU/FOB) + SD 페이지 체크 8개(FCOM PRO-NOR-SOP-150: ENG·BLEED·ELEC·HYD·F/CTL·FUEL·DOOR + ECAM MEMO) + 메모 → "기록". 아이패드는 앱 키보드(D-081)
+  2. 자동 계산: 고도계 차이(FL300 이상 FCOM PFD 150·ISIS 320, 아래 FOM 순항 200, 200 초과 = Loss of Redundancy — 기존 RVSM 표 D-080), 오일 앞 기록 대비 변화, FU+FOB 합계와 출발 FOB 차이(FMS 칸 FOB → 없으면 OFP RAMP OUT). 오일·여압·연료는 숫자만(판정 기준 없음)
+  3. 연료는 손글씨처럼 100 단위(2445 = 244,500), 10,000 이상을 쓰면 원래 단위로 보고 100으로 나눔
+  4. 다음 점검 = 마지막 기록 + 60분(머리줄, 지나면 주황)
+  5. 근거 📖(MEL처럼 그 자리 창): 고도계 FOM 10.4.1.3, 오일·SD·연료 FCOM PRO-NOR-SOP-150, 여압 FCOM LIM-AIR
+  6. 기록은 기기 안(비행마다 `hourly:<flightId>`), 동기화 안 함. 표 + "손글씨 줄로 복사"
+- **영향** `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`(신규), `inflight/InflightPage.tsx`, `app/styles.css`
+
+### D-085 합동 브리핑 기상 문장 · 매시간 기록 칸 다시 만듦 · 앱 키보드 빠른 입력 (D-081·D-083·D-084 보완)
+- **날짜** 2026-11-19 (사용자: 아이패드 사진 — "원고 B처럼 출력하라 했잖아", "키보드 빠르게 누르면 사라진다", "기록 칸 딱 넣을 수 있게, 수정 가능, 입력시간 자동이되 수정 가능, 수정·삭제·추가·순서 변경 자유롭게", "1767/1828 = CKPT·CABIN OXY PR", "조인트 브리핑에 목적지 ETA ±1시간 기상, 못 내리면 어디로 다이버트, ERA 공항과 예상 시간대 날씨")
+- **결정**
+  1. 앱 키보드: 키를 손가락이 닿는 순간(pointerdown) 처리하고 키보드 안의 mousedown·touchend 기본 동작을 막음(iOS에서 click·초점 이동이 안 생김). 키를 누른 뒤 0.6초 안에 입력 칸 초점이 빠지면(다른 칸을 누른 게 아니면) 같은 칸으로 되돌림. 이전/다음·완료는 그대로 옮기거나 닫음
+  2. 합동 브리핑 코드 기본 틀(회사 기준 파일 없을 때)도 B안처럼 이어 읽는 문장 — 인사·비행 개요·보안등급·음어·기상·교체/ERA·서비스·승객·화물·객실 결함 (회사 절차·신호 문장은 여전히 비공개 preset에만)
+  3. 원고 자동 값 추가 `{목적지기상}`(목적지 ETA ±1h 예보, TAF 발표 시각) · `{교체공항}`("목적지에 내리지 못하면 ○○로 회항" + 교체 ETA ±1h 예보) · `{ERA}`(3% ERA·EDTO·ERA 공항과 각 시간창 예보) — Briefing 판정(buildBrief)의 공항별 시간창·TAF를 그대로 씀. 새 문단 "교체공항 · ERA"(기본 틀·회사 preset 둘 다)
+  4. 매시간 기록 칸: 손글씨 한 줄처럼 묶음(TIME · ALT C/S/F · OIL 1/2/3/4 · ΔP/CAB · FU+FOB=합계 · OXY CKPT/CABIN). TIME은 지금 시각이 칸에 들어가 있고 고칠 수 있음. 칸을 누르면 전체 선택(덮어쓰기). 기록 줄을 누르면 위 칸으로 불러와 "수정 저장/취소", 줄마다 ↑↓·✕. SD 페이지 "모두" 버튼. 산소 압력 칸 추가(📖 FCOM LIM-OXY, 판정 없음)
+- **영향** `app/AppKeyboard.tsx`, `joint/{template.ts,JointBrief.tsx,joint.test.ts}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `app/styles.css` · 비공개 `private/manuals/{build-joint.py,company-rules.json}`(15문단)

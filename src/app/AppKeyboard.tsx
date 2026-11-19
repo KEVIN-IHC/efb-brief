@@ -1,7 +1,7 @@
 // 앱 키보드 (D-081·D-082): 아이패드(≥768px)에서 iOS 키보드 대신 화면 아래에 뜸. FMS 칸·순항 기록 입력 창에서 사용.
 // 위 막대 = ‹ 이전 · 다음 › · 칸 이름 · OFP 값 · 완료, 아래 = QWERTY + 작은 숫자판. 블루투스 키보드는 그대로 동작.
 // 쓰는 법: input에 class `kb-in`(또는 `fms-in`) + inputMode={useAppKeyboard() ? 'none' : …} + onFocus kbFocus / onBlur kbBlur
-import { useEffect, useSyncExternalStore, type PointerEvent as RPointerEvent } from 'react';
+import { memo, useEffect, useSyncExternalStore, type SyntheticEvent } from 'react';
 
 type Active = { el: HTMLInputElement; label: string; set: (v: string) => void; hint?: string };
 
@@ -15,7 +15,23 @@ export function kbFocus(a: Active) {
   active = a;
   emit();
 }
+/** 마지막으로 앱 키보드를 누른 시각 — 빠르게 누를 때 iOS가 입력 칸 초점을 빼도 다시 돌려놓기 위해 */
+let lastPress = 0;
+
 export function kbBlur(el: HTMLInputElement) {
+  if (active?.el === el && el.isConnected && Date.now() - lastPress < 600) {
+    // 키보드를 누르다 생긴 blur = 의도한 닫기가 아님 → 같은 칸에 다시 초점
+    setTimeout(() => {
+      const ae = document.activeElement;
+      if (!ae || ae === document.body) el.isConnected && el.focus({ preventScroll: true });
+      else if (active?.el === el) {
+        // 다른 칸을 누른 것 — 그 칸의 kbFocus가 이어받음
+        active = ae instanceof HTMLInputElement && (ae.classList.contains('kb-in') || ae.classList.contains('fms-in')) ? active : null;
+        emit();
+      }
+    }, 0);
+    return;
+  }
   if (active?.el === el) {
     active = null;
     emit();
@@ -35,6 +51,7 @@ export function useAppKeyboard(): boolean {
 
 /** 화면 순서로 앞/뒤 칸 (창 안에 있으면 그 창 안에서만) */
 export function moveField(el: HTMLInputElement, dir: 1 | -1) {
+  lastPress = 0; // 일부러 옮기는 것 — 앞 칸 blur를 되돌리지 않음
   const root: ParentNode = el.closest('[role="dialog"]') ?? document;
   const all = [...root.querySelectorAll<HTMLInputElement>('input.fms-in, input.kb-in')];
   const next = all[all.indexOf(el) + dir];
@@ -63,6 +80,30 @@ function backspace(a: Active) {
 
 const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
+/** 키 하나. 손가락이 닿는 순간(pointerdown) 바로 처리 — click을 기다리지 않아 빠르게 눌러도 빠지지 않음 */
+const K = memo(function K({ t, c = '', fn, aria }: { t: string; c?: string; fn: () => void; aria?: string }) {
+  return (
+    <button
+      type="button"
+      className={`kb-k ${c}`}
+      aria-label={aria ?? t}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        lastPress = Date.now();
+        fn();
+      }}
+    >
+      {t}
+    </button>
+  );
+});
+
+/** 키보드 안에서는 초점 이동·click·확대를 모두 막음 (iOS: touchend 기본 동작을 막으면 click·mousedown 호환 이벤트가 안 생김) */
+const stop = (e: SyntheticEvent) => {
+  e.preventDefault();
+  lastPress = Date.now();
+};
+
 /** 앱에 하나만 둔다 (App.tsx). 키를 눌러도 입력 칸 초점이 빠지지 않게 pointerdown 기본 동작을 막음 */
 export function AppKeyboard() {
   const a = useSyncExternalStore(subscribe, () => active, () => null);
@@ -86,27 +127,36 @@ export function AppKeyboard() {
 
   if (!open || !a) return null;
   const ofp = a.hint ?? a.el.closest('tr')?.children[1]?.textContent?.trim();
-  const keep = (ev: RPointerEvent) => ev.preventDefault();
-  const K = ({ t, c = '', fn, aria }: { t: string; c?: string; fn?: () => void; aria?: string }) => (
-    <button type="button" className={`kb-k ${c}`} aria-label={aria ?? t} onClick={fn ?? (() => insert(a, t))}>
-      {t}
-    </button>
-  );
+  const ins = (t: string) => () => insert(a, t);
+  const nb = (fn: () => void) => ({
+    onPointerDown: (e: SyntheticEvent) => {
+      e.preventDefault();
+      lastPress = Date.now();
+      fn();
+    },
+  });
 
   return (
-      <div className="kb" role="group" aria-label="입력 키보드" onPointerDown={keep}>
+      <div className="kb" role="group" aria-label="입력 키보드" onPointerDown={stop} onMouseDown={stop} onTouchEnd={stop}>
         <div className="kb-bar">
-          <button type="button" className="kb-nb" onClick={() => moveField(a.el, -1)}>
+          <button type="button" className="kb-nb" {...nb(() => moveField(a.el, -1))}>
             ‹ 이전
           </button>
-          <button type="button" className="kb-nb" onClick={() => moveField(a.el, 1)}>
+          <button type="button" className="kb-nb" {...nb(() => moveField(a.el, 1))}>
             다음 ›
           </button>
           <span className="kb-f">
             {a.label}
             {ofp && /\d/.test(ofp) && <i className="mono">{a.hint ? ofp : `OFP ${ofp}`}</i>}
           </span>
-          <button type="button" className="kb-nb kb-done" onClick={() => a.el.blur()}>
+          <button
+            type="button"
+            className="kb-nb kb-done"
+            {...nb(() => {
+              lastPress = 0;
+              a.el.blur();
+            })}
+          >
             완료
           </button>
         </div>
@@ -114,34 +164,34 @@ export function AppKeyboard() {
           <div className="kb-qw">
             <div className="kb-r r1">
               {[...ROWS[0]].map((c) => (
-                <K key={c} t={c} />
+                <K key={c} t={c} fn={ins(c)} />
               ))}
               <K t="⌫" c="s" aria="지우기" fn={() => backspace(a)} />
             </div>
             <div className="kb-r r2">
               <span />
               {[...ROWS[1]].map((c) => (
-                <K key={c} t={c} />
+                <K key={c} t={c} fn={ins(c)} />
               ))}
               <K t="다음 ↵" c="ac" aria="다음 칸" fn={() => moveField(a.el, 1)} />
             </div>
             <div className="kb-r r3">
               {[...ROWS[2]].map((c) => (
-                <K key={c} t={c} />
+                <K key={c} t={c} fn={ins(c)} />
               ))}
-              <K t="." c="s" />
-              <K t="/" c="s" />
-              <K t=":" c="s" />
+              <K t="." c="s" fn={ins(".")} />
+              <K t="/" c="s" fn={ins("/")} />
+              <K t=":" c="s" fn={ins(":")} />
             </div>
             <div className="kb-r r4">
-              <K t="-" c="s" aria="빼기" />
-              <K t="space" c="s" aria="띄어쓰기" fn={() => insert(a, ' ')} />
+              <K t="-" c="s" aria="빼기" fn={ins('-')} />
+              <K t="space" c="s" aria="띄어쓰기" fn={ins(' ')} />
               <K t="지우기" c="s" aria="칸 비우기" fn={() => a.set('')} />
             </div>
           </div>
           <div className="kb-np">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0'].map((c) => (
-              <K key={c} t={c} c="n" />
+              <K key={c} t={c} c="n" fn={ins(c)} />
             ))}
             <K t="⌫" c="s" aria="지우기" fn={() => backspace(a)} />
           </div>

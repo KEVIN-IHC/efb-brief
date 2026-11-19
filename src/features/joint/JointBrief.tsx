@@ -6,6 +6,7 @@ import { formatZ } from '../../lib/time';
 import type { CompanyRules } from '../brief/rules';
 import { DocSection } from '../ofp/doc/ui';
 import type { OfpData } from '../ofp/types';
+import { useBrief } from '../brief/useBrief';
 import { putKey, useDraft, useKey } from '../ops/store';
 import {
   activeItems,
@@ -19,6 +20,7 @@ import {
   stateKey,
   TURB_LEVELS,
   turbParts,
+  wxValues,
   type JbItem,
   type JbState,
   type Seg,
@@ -41,7 +43,8 @@ export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpDat
   const items = saved ?? preset ?? GENERIC_ITEMS;
   const [st, set] = useDraft<JbState>(stateKey(flightId), {});
   const last = useKey<Record<string, string>>(LAST_KEY, {});
-  const auto = useMemo(() => autoValues(o), [o]);
+  const { brief } = useBrief();
+  const auto = useMemo(() => ({ ...autoValues(o), ...wxValues(brief) }), [o, brief]);
   const turb = useMemo(() => turbParts(o), [o]);
   const ctx: Ctx = { st, set, auto, turb, last };
   const active = activeItems(items, st);

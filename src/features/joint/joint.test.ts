@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDemoOfp } from '../../mock/demoOfp';
-import { activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
+import { airportWx, wxValues, activeItems, autoValues, GENERIC_ITEMS, parseTemplate, paxText, planText, renderText, turbSentence, type JbItem } from './template';
 import type { OfpData } from '../ofp/types';
 
 describe('합동 브리핑 원고 틀', () => {
@@ -58,5 +58,18 @@ describe('합동 브리핑 원고 틀', () => {
     expect(v.편명).toBeTruthy();
     expect(v.비행시간).toMatch(/시간|분/);
     expect(v.계획방식).toBeTruthy();
+  });
+
+  it('기상 문장: 목적지 ETA±1h · 교체 · ERA', () => {
+    const c = { wdir: 270, wspd: 12, wgst: null, visM: 9999, ceilFt: null, wx: '', rvr: [] };
+    const ap = (icao: string, roles: string[], taf = true) =>
+      ({ icao, roles, window: { from: Date.parse('2026-11-19T19:19:00Z'), to: Date.parse('2026-11-19T21:19:00Z'), basis: '' }, base: taf ? c : null, taf: taf ? { base: c, temp: null, basePeriods: [], tempPeriods: [], outside: false, raw: '', issueTime: '2026-11-19T17:00:00Z' } : undefined, runways: {}, closedRwys: [], impacts: [], restrictions: [], night: false, findings: [] }) as never;
+    const b = { hasRules: false, airports: [ap('RKSI', ['DEST']), ap('RKSS', ['ALTN']), ap('KSFO', ['3% ERA'], false)], flight: [], findings: [] } as never;
+    const v = wxValues(b);
+    expect(v.목적지기상).toMatch(/^도착 예정 앞뒤 1시간 1919Z~2119Z 예보 바람 270\/12kt.*\(TAF 1700Z 발표\)입니다\.$/);
+    expect(v.교체공항).toMatch(/^목적지에 내리지 못하면 RKSS\(으\)로 회항합니다\. RKSS 1919Z~2119Z 예보/);
+    expect(v.ERA).toMatch(/^항로 교체공항\(ERA\)은 KSFO입니다\. KSFO 1919Z~2119Z 기상 자료 없음/);
+    expect(airportWx(ap('RJBB', ['ALTN']), false)).toMatch(/^1919Z~2119Z/);
+    expect(wxValues(null)).toEqual({});
   });
 });

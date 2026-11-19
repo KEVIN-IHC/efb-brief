@@ -1229,3 +1229,31 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .pill.plan-3, .pill.plan-x { color: var(--warn); }
 .jb-part { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; max-width: 100%; }
 .jb-plbl { font-size: var(--fs-xs); color: var(--text-faint); }
+
+/* ---------- 매시간 점검 (D-084) ---------- */
+.hc-form { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-3); background: var(--raised); }
+.hc-form.editing { border-color: var(--accent); }
+.hc-editing { font: 700 var(--fs-xs) var(--font); color: var(--accent); margin-bottom: var(--sp-2); }
+.hc-strip { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.hc-g { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 10px 4px; min-width: 0; }
+.hc-g .fms-tl { min-height: 20px; }
+.hc-ins { display: flex; align-items: center; gap: 2px; }
+.hc-in { all: unset; box-sizing: content-box; min-height: var(--touch); text-align: center; font: 700 var(--fs-lg) var(--mono); color: var(--accent); caret-color: var(--accent); border-bottom: 1px solid var(--line-strong); }
+.hc-in::placeholder { color: var(--text-faint); opacity: 0.5; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.04em; }
+.hc-in:focus { background: var(--accent-soft); border-bottom-color: var(--accent); }
+.hc-sl { color: var(--text-faint); font: 600 var(--fs-md) var(--mono); padding: 0 1px; }
+.hc-tot { font-size: var(--fs-lg); color: var(--text); min-width: 4ch; }
+.hc-d { display: flex; flex-wrap: wrap; gap: 4px var(--sp-4); align-items: baseline; margin-top: var(--sp-2); font-size: var(--fs-xs); color: var(--text-dim); }
+.hc-d i { font-style: normal; font-size: 0.68rem; color: var(--text-faint); }
+.hc-sdrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--sp-3); }
+.hc-sdrow .fms-tl { margin-right: var(--sp-2); }
+.hc-save { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.hc-save .input { flex: 1 1 auto; min-width: 0; margin: 0; min-height: var(--touch); }
+.hc-save .btn.primary { min-width: 110px; }
+.hc-list { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
+.hc-list li { display: flex; align-items: center; gap: var(--sp-2); border-bottom: 1px solid var(--line); }
+.hc-list li.on { background: var(--accent-soft); }
+.hc-line { all: unset; flex: 1 1 auto; min-width: 0; min-height: var(--touch); padding: 6px 4px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.hc-sub { display: flex; flex-wrap: wrap; gap: 2px var(--sp-3); font-size: 0.68rem; color: var(--text-faint); }
+.hc-tools { display: flex; gap: 4px; flex: none; }
+.hc-copy { margin-top: var(--sp-2); }

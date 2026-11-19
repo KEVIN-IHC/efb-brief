@@ -344,7 +344,7 @@
 - **답 대기**: 합동 브리핑 시안 선택, 매시간 점검 목록 출처, 노크·음어 기본값, 기장 방송용 책자, FLT LOG(블록 시각·연료) 만들지
 - **다음**: 사용자 선택 → 계획 방식 배지(파서 + FLIGHT 카드, 작음) → 합동 브리핑 → 매시간 점검
 
-### 2026-11-19 (10) — 합동 브리핑 + OFP 계획 방식 배지 (D-083) (다음 세션은 여기서 시작)
+### 2026-11-19 (10) — 합동 브리핑 + OFP 계획 방식 배지 (D-083)
 - **사용자 요청**: 시안 A(체크리스트) + C의 서비스·포함할 문단 칩 + 원고는 B처럼. 원고 preset 수정·저장, 녹색 부분 변경, 체크리스트에서 추가·삭제·수정·순서 변경
 - **완료**: Ops 탭 첫 화면 "합동 브리핑"(체크리스트 + 원고, 편집·저장). 회사 preset 14문단은 비공개 기준 파일(`private/manuals/build-joint.py` → company-rules.json `jointBrief`), 코드에는 제목·OFP 값만 있는 기본 틀. OFP 파서 `aviator-1.6`: 계획 방식(3%/5% CONT·REFILE 공항·EDTO·3% ERA) → FLIGHT 카드 배지 + 원고 {계획방식}. 데모 OFP demo-5(계획 방식·승객·화물)
 - **변경 파일**: `joint/{template.ts,JointBrief.tsx,joint.test.ts}`(신규), `ops/OpsPage.tsx`, `brief/rules.ts`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts,doc/OfpDocument.tsx}`, `mock/demoOfp.ts`, `app/styles.css`, 문서(DECISIONS D-083, ARCHITECTURE §3.7r, KNOWN_ISSUES K-49, 이 문서) · 비공개: `private/manuals/{build-joint.py,company-rules.json}`
@@ -352,3 +352,20 @@
 - **확인 못 한 것**: 아이패드에서 회사 기준 파일 다시 가져오기 후 preset 표시. 승객 숫자 뜻(K-49). 커밋·배포 안 함
 - **답 대기(앞에서)**: 매시간 점검 목록 출처, 노크·음어 기본값, 기장 방송용 책자, FLT LOG
 - **다음**: 사용자 확인 → 커밋·배포(요청 시) → 매시간 System Check
+- **배포 (2026-11-19)**: 사용자 요청. 7d4e65e push 직후 예시 글에 실제 편명·등록부호가 들어간 것 발견 → 0edbec5에서 DEMO001·HL0000으로 바꾸고 승객 문구 "퍼스트 n분 … 총 n분"(사용자 요청)으로 함께 push. 7d4e65e 안에는 그 값이 이력에 남음(이력 지우기는 강제 push라 하지 않음). GitHub Actions 성공, `/private/` 404
+
+### 2026-11-19 (11) — 매시간 System Check (D-084)
+- **완료**: Inflight 화면 "Hourly check" 카드 — 손글씨 순서 칸(TIME·고도계 3·오일 4·ΔP/CAB·FU/FOB), SD 페이지 체크 8개(FCOM 순항 SOP), 메모, 기록 표·손글씨 줄 복사. 고도계 차이 ✓/⚠/Loss of Redundancy, 오일 변화, FU+FOB 합계·출발 FOB 차이, 다음 점검 시각. 📖 FOM 10.4.1.3 · FCOM SOP-150 · LIM-AIR
+- **변경 파일**: `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`(신규), `inflight/InflightPage.tsx`, `app/styles.css`, 문서(DECISIONS D-084, ARCHITECTURE §3.7s, 이 문서)
+- **테스트**: `npm test` 268/268, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모): 사용자 예시 값 기록 → "1700Z 31000/30990/31020 17.4… 8.6/5800 455+2445=2900", 두 번째 기록 F/O 31260 → 주황, 오일 −0.3, 기록 후 칸 비움, SD 연달아 체크. 375·768·1180·1440 × 주간/야간 가로 스크롤 0. 시험 값 지움. FCOM·FOM 없는 개발 브라우저라 📖 창은 못 열어 봄
+- **사용자에게 확인**: 예시 455+2445 = 2900(3000 아님) · 고도계 30090은 30990 오타로 봄 · 마지막 "1767/1828"이 무엇인지(아직 칸 없음, 메모에 적을 수 있음)
+- **확인 못 한 것**: 아이패드(📖 쪽이 맞게 열리는지). 커밋·배포 안 함
+- **다음**: 사용자 답 → 칸 추가 → 커밋·배포(요청 시)
+
+### 2026-11-19 (12) — 키보드 빠른 입력 · 원고 문장형 · 브리핑 기상 · 매시간 기록 칸 (D-085) (다음 세션은 여기서 시작)
+- **사용자 답**: 1767/1828 = 조종실·객실 산소 압력. 승객은 "총 몇 분"만(배포함)
+- **완료**: 앱 키보드 빠르게·두 번 눌러도 칸 유지(D-085 1). 합동 브리핑 기본 틀 문장형 + {목적지기상}·{교체공항}·{ERA} + "교체공항 · ERA" 문단. 매시간 기록 칸 한 줄형·시각 자동·줄 눌러 수정·↑↓·✕·산소 칸
+- **변경 파일**: `app/{AppKeyboard.tsx,styles.css}`, `joint/{template.ts,JointBrief.tsx,joint.test.ts}`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, 문서(DECISIONS D-085, 이 문서) · 비공개 build-joint.py·company-rules.json
+- **테스트**: `npm test` 269/269, `tsc -b`, `npm run build` 통과. 개발 브라우저(1180): 실제 마우스로 키 빠르게·두 번 누르기 → 31000 정확, 칸 유지. 매시간: 예시 값 기록 → "1700Z 31000/30990/31020 17.4/17.4/17.4/17.4 8.6/5800 455+2445=2900 1767/1828", 시각 자동(0456), 줄 눌러 수정(OIL 2 17.2) 저장, 위로 이동. 합동 브리핑 원고에 목적지·교체 기상 문장(데모는 TAF 기간 밖). 375·768 × 주간/야간 가로 스크롤 0. 시험 값 지움
+- **확인 못 한 것**: 실제 아이패드 터치(키보드), 실제 기상 있는 비행의 원고 길이(ERA가 많으면 길어짐). 아이패드에서 회사 기준 파일 다시 가져오기 전엔 preset 대신 기본 틀. 커밋·배포 안 함
+- **기다리는 일 (사이드 대화)**: `private/manuals/NEXT-ITEMS.md` 9번 로드시트 사진 OCR → W&B 자동 기입, 10번 비행 후 기록 PDF·자동 업로드(업로드 안정화 먼저)

@@ -246,6 +246,10 @@ IPBS/
 - 회사 preset 생성: `private/manuals/build-joint.py` → `company-rules.json`의 `jointBrief` (비공개, 기기에서 Settings → 회사 기준 파일 가져오기)
 - OFP 계획 방식 `header.plan`(contPct·refile·edto·era3) — 파서 `aviator-1.6`, FLIGHT 카드 `.flt-plan` 배지
 
+### 3.7s 매시간 System Check (D-084)
+- `features/hourly/hourly.ts` — 기록 형식·고도계 비교(`RVSM_LIMITS`)·오일 변화·FU+FOB 합계(100 단위)·다음 점검·손글씨 줄
+- `features/hourly/HourlyCheck.tsx` — Inflight 화면 카드. 초안 `hourlyDraft:<flightId>`(`useDraft`), 기록 `hourly:<flightId>`. 근거 쪽은 기기 매뉴얼에서 찾음(FOM 코드 `FOM-10.4.1.3`, FCOM `PRO-NOR-SOP-150`·`LIM-AIR`)
+
 ### 3.8 기타
 - `features/dashboard/DashboardPage.tsx` — 비행·OFP 요약·순항 요약·동기화
 - `features/settings/SettingsPage.tsx` — 테마·GAS 설정·대기 목록·저장소·고지

@@ -1,6 +1,8 @@
 // 합동 브리핑 (D-083): 항목(문단) = 제목 + FOM 위치 + 원고 틀. 원고 틀은 사용자가 고칠 수 있고 기기에 저장
 // 원고 틀 문법:  {편명} = OFP에서 자동 · [가|나|다] = 눌러서 고르기 · <음어> = 직접 쓰는 칸
 // 항목 목록 우선순위: 사용자가 고친 목록(기기) → 회사 기준 파일의 preset → 코드의 기본 틀(GENERIC_ITEMS)
+import type { AirportBrief, BriefResult } from '../brief/assess';
+import { fmtCeil, fmtVis, fmtWind, type Cond } from '../brief/wx';
 import { turbulenceZones } from '../ofp/turbulence';
 import type { OfpData } from '../ofp/types';
 
@@ -40,17 +42,23 @@ export const TURB_LEVELS = ['약한(Light)', '보통(Moderate)', '심한(Severe)
 const LEVELS = '[평시(GREEN)|관심(BLUE)|주의(YELLOW)|경계(ORANGE)|심각(RED)]';
 
 /**
- * 코드에 두는 기본 틀 = 항목 제목과 OFP 자동 값만 (공개 저장소 — 회사 매뉴얼 문장은 넣지 않음).
+ * 코드에 두는 기본 틀 = 말하기용 문장 + OFP 자동 값 (공개 저장소 — 회사 매뉴얼의 절차·신호·수치 문장은 넣지 않음).
  * FOM에 맞춘 원고 preset은 회사 기준 파일(company-rules.json `jointBrief.items`, 비공개)에서 온다.
  */
 export const GENERIC_ITEMS: JbItem[] = [
-  { id: 'greet', title: '비행 개요', group: 'a', text: '{편명} {출발}→{도착}, 비행시간 {비행시간}, 순항고도 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}. 연료 계획 {계획방식}.' },
-  { id: 'security', title: '보안', group: 'a', text: `항공보안등급 ${LEVELS}. 음어 <음어>.` },
-  { id: 'wx', title: '기상 · 난류', group: 'a', text: '목적지 {도착} 날씨 [양호|불량|확인 중]. {난류}' },
-  { id: 'service', title: '기내서비스', group: 'a', text: '<서비스 시기>' },
-  { id: 'pax', title: '승객', group: 'a', text: '예약 승객 {승객}. <특별 승객>' },
-  { id: 'cargo', title: '화물 · CIQ', group: 'a', text: '화물 {화물}. <CIQ>' },
-  { id: 'cabinlog', title: '객실 결함', group: 'b', text: '객실 관련 정비 이월 항목: {객실결함}.' },
+  {
+    id: 'greet',
+    title: '인사 · 비행 개요',
+    group: 'a',
+    text: '안녕하십니까, 오늘 {편명} 편 {출발}에서 {도착}까지 운항할 기장 <기장 이름>입니다. 비행시간은 {비행시간}, 순항고도는 {순항고도}, 출발 {출발시각}, 도착 예정 {도착시각}입니다. 연료 계획은 {계획방식}입니다.',
+  },
+  { id: 'security', title: '보안', group: 'a', text: `현재 항공보안등급은 ${LEVELS}입니다. 조종실 음어는 <음어>입니다.` },
+  { id: 'wx', title: '기상 · 난류', group: 'a', text: '목적지 {도착} 날씨는 [양호합니다|다소 좋지 않습니다|확인 중입니다]. {목적지기상} {난류}' },
+  { id: 'altn', title: '교체공항 · ERA', group: 'a', text: '{교체공항} {ERA}' },
+  { id: 'service', title: '기내서비스', group: 'a', text: '기내서비스는 [난류 구간 전에 마쳐 주십시오|10,000피트 통과 후 시작해 주십시오|사무장님과 협의해 정하겠습니다].' },
+  { id: 'pax', title: '승객', group: 'a', text: '예약 승객은 {승객}입니다. 특별 승객은 [없습니다|있습니다]. <특별 승객 메모>' },
+  { id: 'cargo', title: '화물 · CIQ', group: 'a', text: '화물은 {화물}이고, 위험물은 [없습니다|있습니다]. 특별한 CIQ 절차는 [없습니다|있습니다]. <CIQ 메모>' },
+  { id: 'cabinlog', title: '객실 결함', group: 'b', text: '객실 관련 정비 이월 항목: {객실결함}. 질문 있으십니까?' },
 ];
 
 /* ---------------- 원고 틀 나누기 ---------------- */
@@ -97,6 +105,9 @@ export const AUTO_KEYS: { key: string; label: string }[] = [
   { key: '객실결함', label: '객실 관련 MEL' },
   { key: 'MEL', label: 'MEL/CDL 번호' },
   { key: '난류', label: 'SR 구간·시각·정도' },
+  { key: '목적지기상', label: '목적지 ETA ±1h 예보 (문장)' },
+  { key: '교체공항', label: '회항할 교체공항·기상 (문장)' },
+  { key: 'ERA', label: 'ERA 공항·예상 시간대 기상 (문장)' },
 ];
 
 const nf = new Intl.NumberFormat('en-US');
@@ -168,6 +179,36 @@ export function turbParts(o: OfpData | null): TurbPart[] {
     const dur = Math.max(0, zn.to.cumMin - zn.from.cumMin);
     return { i, text: `이륙 후 약 ${hmKo(zn.from.cumMin)}(${z(zn.from.eto)})부터 ${dur ? `${hmKo(dur)}간` : '잠시'}` };
   });
+}
+
+/* ---------------- 기상 (Briefing 판정 결과에서) ---------------- */
+
+const condKo = (c: Cond) => `바람 ${fmtWind(c)}, 시정 ${fmtVis(c.visM)}, 운고 ${fmtCeil(c.ceilFt)}${c.wx ? `, ${c.wx}` : ''}`;
+const hm = (ms: number) => z(new Date(ms).toISOString());
+
+/** 공항 한 곳: "RJBB 2140~2340Z 예보 바람 …, 일시적으로 … (TAF 1700Z 발표)". icao=false면 공항 코드 없이 */
+export function airportWx(a: AirportBrief, icao = true): string {
+  const head = icao ? `${a.icao} ` : '';
+  const span = `${hm(a.window.from)}~${hm(a.window.to)}`;
+  if (!a.taf && !a.base) return `${head}${span} 기상 자료 없음(기상 갱신 필요)`;
+  const issued = a.taf?.issueTime ? ` (TAF ${z(a.taf.issueTime)} 발표)` : a.metar ? ` (METAR ${z(a.metar.obsTime)})` : '';
+  const out = a.taf?.outside ? ', TAF 유효기간 밖' : '';
+  return `${head}${span} 예보 ${a.base ? condKo(a.base) : '없음'}${a.taf?.temp ? `, 일시적으로 ${condKo(a.taf.temp)}` : ''}${out}${issued}`;
+}
+
+/** {목적지기상}·{교체공항}·{ERA}: 말하기용 문장 */
+export function wxValues(b: BriefResult | null): Record<string, string | undefined> {
+  if (!b) return {};
+  const dest = b.airports.find((a) => a.roles.includes('DEST'));
+  const altn = b.airports.filter((a) => a.roles.includes('ALTN'));
+  const era = b.airports.filter((a) => a.roles.some((r) => r === '3% ERA' || r === 'EDTO' || r === 'ERA'));
+  return {
+    목적지기상: dest ? `도착 예정 앞뒤 1시간 ${airportWx(dest, false)}입니다.` : undefined,
+    교체공항: altn.length
+      ? `목적지에 내리지 못하면 ${altn.map((a) => a.icao).join(' 또는 ')}(으)로 회항합니다. ${altn.map((a) => airportWx(a)).join('. ')}입니다.`
+      : 'OFP에 목적지 교체공항이 없습니다.',
+    ERA: era.length ? `항로 교체공항(ERA)은 ${era.map((a) => a.icao).join(', ')}입니다. ${era.map((a) => airportWx(a)).join('. ')}입니다.` : '항로 교체공항(ERA)은 없습니다.',
+  };
 }
 
 /** 원고 한 문단을 글로 (복사용) */
