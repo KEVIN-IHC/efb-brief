@@ -312,3 +312,25 @@
 - **다음**: 사용자 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안 → FLIGHT 후보 값 자리 제안
 
 - **배포 (2026-11-19)**: 사용자 요청. 커밋 전 실제 OFP 샘플 10개를 화면 그대로 그려(서버 렌더) FUEL 표 RAMP OUT·FOD 줄, WEIGHTS AGTOW 풀이, 2ND BEST, SYSTEMS 모두 있는 것 확인 — 사용자가 본 "BLOCK·FOD 없음·AGTOW 없음" 화면은 **데모 OFP**(KG, 데모에 원래 없는 값)였음. 실제 편명·등록번호 혼입 검사 통과. e193a9f push → GitHub Actions 성공, 배포 사이트에 `aviator-1.5`·새 화면 코드 있음, `/private/` 404
+
+### 2026-11-19 (6) — FMS·RVSM 표를 FLIGHT 카드에서 떼어 카드 2개로 (다음 세션은 여기서 시작)
+- **사용자 요청**: FLIGHT 카드 아래 FMS 표 + RVSM 표를 분리해 FUEL 카드처럼 따로 된 카드 2개로. 시안 `private/design/2026-11-19-fms-rvsm-split-mockup.html`(A·B·C) 보고 → "요약 배지 필요 없음, MAX FL의 OFP 값(FL400) 없어도 됨, 기존 내용 그대로 잘라서 떼어내기만"
+- **완료**: `FlightFms` → `FmsBlock`(카드 "FMS") + `RvsmBlock`(카드 "RVSM · Altimeters", 기준표 포함). 카드 순서 FLIGHT → FMS → RVSM → FUEL → … MAX FL 줄 OFP 칸 = "—"(차이 표시도 없음). 표 내용·입력·저장 값은 그대로. 안 쓰는 `.fms-cols` CSS 삭제
+- **변경 파일**: `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `app/styles.css`, 이 문서
+- **테스트**: `npm test` 255/255, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 OFP): 카드 제목 순서 확인, 375·768·1180·1440 가로 스크롤 0, 주간/야간
+- **다음**: 사용자 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안 → FLIGHT 후보 값 자리 제안
+
+### 2026-11-19 (7) — FMS 입력용 앱 키보드 (D-081)
+- **완료**: 아이패드 폭(≥768px)에서 FMS 칸을 누르면 iOS 키보드 대신 앱 키보드(시안 C): 위 막대 ‹ 이전 · 다음 › · 칸 이름 · OFP 값 · 완료, 왼쪽 QWERTY, 오른쪽 작은 숫자판. 아이폰 폭은 iOS 키보드 그대로. 앞 작업(6) FMS·RVSM 카드 분리도 D-081에 기록
+- **변경 파일**: `ofp/doc/{FmsKeyboard.tsx(신규),Fms.tsx,OfpDocument.tsx}`, `app/styles.css`, 문서(DECISIONS D-081, ARCHITECTURE §3.7q, KNOWN_ISSUES K-48, 이 문서)
+- **테스트**: `npm test` 255/255, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 OFP): 1180 가로 — DIST 칸 누르면 키보드, 키 눌러도 초점 유지·글자 들어감, 다음 → MAX FL, 이전 → DIST, 칸 비우기, 완료 → 닫힘. 768 세로·야간 — 입력 칸이 키보드 위로 올라옴, 가로 스크롤 0. 375 — 앱 키보드 안 뜸(iOS 키보드). 시험 값 지움
+- **확인 못 한 것**: 실제 아이패드(K-48). 커밋·배포 안 함
+- **사용자 답**: 순항 기록 입력 창에도 쓰기 → (8)
+- **다음**: 아이패드 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안
+
+### 2026-11-19 (8) — 순항 기록 창에도 앱 키보드 (D-082) (다음 세션은 여기서 시작)
+- **완료**: 키보드를 `app/AppKeyboard.tsx`로 옮겨 앱에 하나만 둠. 순항 통과 기록 창(ATA·FUEL)에서도 아이패드 폭이면 앱 키보드 — 막대에 ATA = ETO, FUEL = PLAN 잔량, 이전/다음은 창 안 두 칸끼리. 키보드가 뜨면 창이 그 위로 올라감. 창을 닫거나 탭을 옮기면 키보드도 닫힘
+- **변경 파일**: `app/{AppKeyboard.tsx,App.tsx,styles.css}`, `inflight/EntrySheet.tsx`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, 문서(DECISIONS D-082, ARCHITECTURE §3.7q, 이 문서)
+- **테스트**: `npm test` 255/255, `tsc -b`, `npm run build` 통과. 개발 브라우저(데모 비행): 1180 가로 — FUEL 칸 누르면 키보드, 화면에서 창이 키보드 위로 올라간 것 확인, 숫자 입력 → "= 105 KG", 이전 → ATA, ⌫ 두 번·숫자 → 0350 → 03 → 0312, 닫기 → 키보드 닫힘. 768 세로·야간 — 창 아래 576 < 키보드 위 765, 가로 스크롤 0. 저장은 안 눌러 기록 안 남김
+- **확인 못 한 것**: 실제 아이패드(K-48). 커밋·배포 안 함
+- **다음**: 아이패드 확인 → 커밋·배포(요청 시) → Ops 체크리스트 디자인 시안

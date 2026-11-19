@@ -10,7 +10,7 @@ import { manualEvents } from '../../manual/store';
 import type { FuelRow, OfpData } from '../types';
 import { Cell, DocSection, LevelPill } from './ui';
 import { TurbulenceBlock } from './Turbulence';
-import { Dlt, FlightFms, FmsCell, FmsInput, showHm, showKilo, SystemsBlock, type Fms } from './Fms';
+import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, SystemsBlock, RvsmBlock, type Fms } from './Fms';
 import { fmsKey, ofpRefs, parseHm, parseKilo, type FmsEntry } from '../../checks/checks';
 import { useDraft } from '../../ops/store';
 import { flightIdFor } from '../../flight/activeFlight';
@@ -69,10 +69,9 @@ function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void
   );
 }
 
-export function FlightBlock({ o, onLine, fms }: { o: OfpData; onLine?: (n: number) => void; fms?: Fms }) {
+export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
   const h = o.header;
   const sp = h.speedPlan;
-  const ref = ofpRefs(o);
   const altn = o.alternates.filter((a) => a.role.startsWith('DEST')).map((a) => a.icao);
   return (
     <DocSection title="Flight" meta={[h.planNo && `PLAN ${h.planNo}`, h.computedAt && `COMPUTED ${h.computedAt}`].filter(Boolean).join(' · ')} className="span-all">
@@ -110,7 +109,6 @@ export function FlightBlock({ o, onLine, fms }: { o: OfpData; onLine?: (n: numbe
         </div>
       )}
       <RouteCheckRow o={o} onLine={onLine} />
-      {fms && <FlightFms fms={fms} dist={ref.dist} maxFl={ref.maxFl} />}
     </DocSection>
   );
 }
@@ -517,7 +515,9 @@ export function OfpDocument({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
   const fms = useDraft<FmsEntry>(fmsKey(flightIdFor(o)), {});
   return (
     <div className="page-grid doc">
-      <FlightBlock o={o} onLine={onLine} fms={fms} />
+      <FlightBlock o={o} onLine={onLine} />
+      <FmsBlock fms={fms} dist={ofpRefs(o).dist} />
+      <RvsmBlock fms={fms} />
       <FuelBlock o={o} fms={fms} />
       <WeightBlock o={o} />
       <SystemsBlock fms={fms} flightMin={ofpRefs(o).flightMin} />

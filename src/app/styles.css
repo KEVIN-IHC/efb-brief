@@ -24,6 +24,10 @@
   --hyd-green: #3fb67a; /* 유압 계통 색 표시 (D-079) */
   --hyd-yellow: #e2c43a;
   --bad-soft: rgba(226, 87, 76, 0.12);
+  --kb-bg: #0d1318; /* 앱 키보드 (D-081) */
+  --kb-h: calc(262px + var(--safe-b));
+  --kb-key: #26313c;
+  --kb-key2: #18212a;
 
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
@@ -85,6 +89,9 @@
   --hyd-green: #2e9d4f;
   --hyd-yellow: #c9a200;
   --bad-soft: rgba(192, 51, 42, 0.09);
+  --kb-bg: #d3d9e0;
+  --kb-key: #ffffff;
+  --kb-key2: #b9c2cd;
   --cdl: #5b4fc4;
   --seg-1: #8d98a5;
   --seg-2: #2477a0;
@@ -758,7 +765,6 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .fms-d { font: 600 0.64rem var(--mono); white-space: nowrap; }
 .fms-dl { font-size: 0.7rem; color: var(--warn); margin-left: 3px; }
 .fms-hemi { all: unset; cursor: pointer; font: 700 var(--fs-xs) var(--mono); color: var(--accent); padding: 0 2px; border-bottom: 1px dashed var(--line-strong); }
-.fms-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--sp-2) var(--sp-5); margin-top: var(--sp-3); align-items: start; }
 .doc-sec .dt.fms-t2 th, .doc-sec .dt.fms-t2 td, .doc-sec .dt.fms-fuel th, .doc-sec .dt.fms-fuel td { padding-left: 4px; padding-right: 4px; }
 /* RVSM 기준표 (D-080) */
 .dt.fms-t2, .dt.fms-fuel { table-layout: fixed; }
@@ -1147,3 +1153,29 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .pimg figure { margin: 0; }
 .pimg img { display: block; width: 100%; height: auto; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: #fff; }
 .manual-list .linkish { background: none; border: 0; padding: 0 2px; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; min-height: 32px; }
+
+/* ---------- 앱 키보드 (D-081·D-082, 아이패드 ≥768px에서만 뜸) ---------- */
+/* 열려 있는 동안 본문·창 아래 여백 = 키보드 높이 (가리지 않게) */
+.kb-open .content { padding-bottom: calc(var(--kb-h) + var(--sp-5)); }
+.kb-open .modal-backdrop { padding-bottom: calc(var(--kb-h) + var(--sp-3)); }
+.kb-open .modal.entry { max-height: calc(100dvh - var(--kb-h) - var(--sp-6)); }
+.kb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; /* 창(50) 위 */ background: var(--kb-bg); border-top: 1px solid var(--line-strong); padding: 6px calc(8px + var(--safe-r)) calc(8px + var(--safe-b)) calc(8px + var(--safe-l)); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.kb-bar { display: flex; align-items: center; gap: var(--sp-2); padding-bottom: 6px; }
+.kb-nb { min-height: var(--touch); padding: 0 var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--kb-key); color: var(--accent); font: 700 var(--fs-sm) var(--font); cursor: pointer; }
+.kb-nb.kb-done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.kb-f { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 700 var(--fs-xs) var(--font); letter-spacing: 0.1em; color: var(--text-dim); }
+.kb-f i { font-style: normal; font-weight: 600; letter-spacing: 0; color: var(--text-faint); margin-left: var(--sp-2); }
+.kb-keys { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: var(--sp-3); }
+.kb-qw { display: grid; gap: 6px; }
+.kb-r { display: grid; gap: 6px; }
+.kb-r.r1 { grid-template-columns: repeat(10, minmax(0, 1fr)) minmax(0, 1.3fr); }
+.kb-r.r2 { grid-template-columns: minmax(0, 0.4fr) repeat(9, minmax(0, 1fr)) minmax(0, 1.9fr); }
+.kb-r.r3 { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.kb-r.r4 { grid-template-columns: minmax(0, 1fr) minmax(0, 7fr) minmax(0, 2fr); }
+.kb-np { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.kb-k { min-width: 0; height: var(--touch); border: 0; border-radius: var(--radius-sm); background: var(--kb-key); color: var(--text); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); font: 500 var(--fs-lg) var(--font); cursor: pointer; padding: 0; }
+.kb-k:active { background: var(--accent-soft); }
+.kb-k.s { background: var(--kb-key2); font-size: var(--fs-sm); font-weight: 700; color: var(--text-dim); }
+.kb-k.n { font-family: var(--mono); font-weight: 600; }
+.kb-k.ac { background: var(--accent); color: var(--accent-ink); font-size: var(--fs-sm); font-weight: 700; }
+.fms-in:focus { background: var(--accent-soft); border-radius: 3px; }

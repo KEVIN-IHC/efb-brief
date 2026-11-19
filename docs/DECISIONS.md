@@ -582,3 +582,17 @@
   6. RVSM: QNH · **ELEV(공항 표고, 직접 입력)** · CAPT PFD(vs ELEV) · F/O PFD(vs CAPT) · STBY ISIS(vs CAPT). ✓/⚠ = GND 기준. 아래 기준표 — 행 GND(QNH)·CRZ(약 1시간마다)·FL300+(M.85), 열 PFD↔표고(각 PFD vs ELEV)·PFD↔PFD(기장 vs 부기장)·PFD↔ISIS: GND 75 FOM / 20 FCOM / 30 FCOM, CRZ PFD↔PFD 200 FOM, FL300+ 150 / 320 FCOM(FL410 ISIS 360). 근거 FOM 10.4.1.3 b)·d), FCOM PRO-SPO-RVSM. FCOM 큰 표는 뺌
 - **영향** `checks/checks.ts`(`minOil`·`RVSM_LIMITS`·`altChecks` ELEV, `ofpRefs.flightMin`, `FmsEntry.elev`; `RVSM_MAX_DIFF` 삭제), `ofp/doc/Fms.tsx`, `ofp/doc/OfpDocument.tsx`, `app/styles.css`
 
+
+### D-081 FMS·RVSM 카드 분리 · FMS 입력용 앱 키보드
+- **날짜** 2026-11-19 (사용자: "위에랑 분리하고 2개로 나눠서 FUEL 카드 포맷처럼", "요약 배지 필요 없음, MAX FL OFP 값 없어도 됨, 기존 내용 그대로 잘라서 떼어내기만". 키보드: 다른 EFB 앱 사진처럼 "가로세로일 때 이 키보드로 + 다음칸·이전칸 버튼", 시안 C 선택, "숫자 좀 더 줄여도 돼". 시안 `private/design/2026-11-19-fms-rvsm-split-mockup.html`·`2026-11-19-keyboard-mockup.html`)
+- **결정**
+  1. FLIGHT 카드 아래 FMS 표·RVSM 표를 따로 된 카드 **FMS**, **RVSM · ALTIMETERS**로 분리(FLIGHT 바로 다음). 내용·입력은 그대로, 머리줄 배지 없음. MAX FL의 OFP 값·차이 표시 뺌(D-079 일부 대체)
+  2. iOS 시스템 키보드 배치는 웹앱이 바꿀 수 없음 → **앱이 직접 그린 키보드**. 화면 폭 768px 이상(아이패드 가로·세로)에서만, FMS 입력 칸(FMS·RVSM·FUEL·SYSTEMS)에만. 아이폰 폭은 지금처럼 iOS 키보드
+  3. 배치 = 시안 C: 위 막대(‹ 이전 · 다음 › · 칸 이름 · OFP 값 · 완료) + 왼쪽 QWERTY(⌫, 다음 ↵, . / :, -, space, 칸 비우기) + 오른쪽 작은 숫자판(1-2-3 위, . 0 ⌫). 숫자판 폭 = 전체의 약 1/4
+  4. 블루투스 키보드·Enter=다음 칸은 그대로. 순항 기록 입력 창도 같은 키보드 → D-082
+- **영향** `ofp/doc/{Fms.tsx,FmsKeyboard.tsx(신규),OfpDocument.tsx}`, `app/styles.css`(`--kb-*` 토큰, `.kb*`)
+
+### D-082 순항 기록 입력 창에도 앱 키보드
+- **날짜** 2026-11-19 (사용자: "순항에도 쓰기")
+- **결정** D-081 키보드를 앱 전체 하나(`app/AppKeyboard.tsx`, `App.tsx`에 둠)로 옮기고 순항 통과 기록 창(ATA·FUEL)에도 연결. 위 막대 힌트 = ATA는 ETO(수정값), FUEL은 PLAN 잔량. 이전/다음은 창 안 칸끼리만. 키보드가 열려 있으면 본문·창 아래에 키보드 높이(`--kb-h`)만큼 여백(`.kb-open`) → 창이 위로 올라가 가리지 않음. 입력 칸이 사라지면(창 닫힘·탭 이동) 키보드도 닫힘
+- **영향** `app/{AppKeyboard.tsx(ofp/doc/FmsKeyboard.tsx에서 옮김),App.tsx,styles.css}`, `inflight/EntrySheet.tsx`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`

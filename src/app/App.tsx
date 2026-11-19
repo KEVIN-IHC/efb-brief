@@ -18,6 +18,7 @@ import { ManualPage } from '../features/manual/ManualPage';
 import { MelPage } from '../features/manual/MelPage';
 import { ManualPopup } from '../features/manual/ManualInline';
 import { TurbPopup } from '../features/ofp/doc/TurbPopup';
+import { AppKeyboard } from './AppKeyboard';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
 const readHash = (): TabId => {
@@ -142,6 +143,7 @@ export function App() {
 
       <ManualPopup />
       <TurbPopup />
+      <AppKeyboard />
       <Disclaimer />
     </div>
   );

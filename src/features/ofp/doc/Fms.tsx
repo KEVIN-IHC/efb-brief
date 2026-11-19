@@ -6,6 +6,7 @@ import { formatZ } from '../../../lib/time';
 import { altChecks, fmtCoord, minOil, parseFl, parseHm, parseKilo, parseNum, parseOil, parseQnh, RVSM_LIMITS, type FmsEntry } from '../../checks/checks';
 import { docPages, openManualPage, type ManualTarget } from '../../manual/lookup';
 import { listManuals, manualEvents } from '../../manual/store';
+import { kbBlur, kbFocus, moveField, useAppKeyboard } from '../../../app/AppKeyboard';
 import { DocSection } from './ui';
 
 export type Fms = [FmsEntry, (patch: Partial<FmsEntry>) => void];
@@ -13,24 +14,17 @@ type K = Exclude<keyof FmsEntry, 'latH' | 'lonH' | 'updatedAt'>;
 
 const nf = new Intl.NumberFormat('en-US');
 
-/** Enter = 다음 FMS 칸 (화면 순서) */
-function nextField(el: HTMLInputElement) {
-  const all = [...document.querySelectorAll<HTMLInputElement>('input.fms-in')];
-  const i = all.indexOf(el);
-  if (all[i + 1]) all[i + 1].focus();
-  else el.blur();
-}
-
 /** 테두리 없는 입력 칸. 누르고 있는 동안은 입력한 글자, 떠나면 다듬은 표시 */
 export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { fms: Fms; k: K; ph: string; show?: (raw: string) => string | undefined; mode?: 'decimal' | 'numeric' | 'text'; label: string; warn?: boolean }) {
   const [e, set] = fms;
   const [focus, setFocus] = useState(false);
+  const appKb = useAppKeyboard(); // 아이패드: 앱 키보드 (D-081)
   const raw = e[k] ?? '';
   const shown = !focus && raw ? (show?.(raw) ?? raw) : raw;
   return (
     <input
       className={`fms-in mono ${warn ? 'c-warn' : ''}`}
-      inputMode={mode}
+      inputMode={appKb ? 'none' : mode}
       autoCapitalize="characters"
       autoCorrect="off"
       autoComplete="off"
@@ -39,13 +33,20 @@ export function FmsInput({ fms, k, ph, show, mode = 'decimal', label, warn }: { 
       aria-label={`${label} FMS 입력`}
       placeholder={ph}
       value={shown}
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
+      onFocus={(ev) => {
+        setFocus(true);
+        const el = ev.currentTarget;
+        kbFocus({ el, label, set: (v) => set({ [k]: v }) });
+      }}
+      onBlur={(ev) => {
+        setFocus(false);
+        kbBlur(ev.currentTarget);
+      }}
       onChange={(ev) => set({ [k]: ev.target.value })}
       onKeyDown={(ev) => {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          nextField(ev.currentTarget);
+          moveField(ev.currentTarget, 1);
         }
       }}
     />
@@ -109,14 +110,12 @@ function Hemi({ fms, k, a, b }: { fms: Fms; k: 'latH' | 'lonH'; a: string; b: st
   );
 }
 
-/** FLIGHT 카드 아래: FMS 표 (DIST·FL·GATE·COORD) + RVSM 고도계 */
-export function FlightFms({ fms, dist, maxFl }: { fms: Fms; dist?: number; maxFl?: number }) {
+/** FMS 카드 (FLIGHT 카드에서 분리): DIST·FL·GATE·COORD */
+export function FmsBlock({ fms, dist }: { fms: Fms; dist?: number }) {
   const [e] = fms;
-  const q = parseQnh(e.qnh);
-  const alt = altChecks(e);
   const dd = (v: number | undefined, ref: number | undefined) => (v === undefined || ref === undefined ? undefined : v - ref);
   return (
-    <div className="fms-cols">
+    <DocSection title="FMS">
       <table className="dt fms-t2">
         <colgroup>
           <col style={{ width: '30%' }} />
@@ -140,8 +139,8 @@ export function FlightFms({ fms, dist, maxFl }: { fms: Fms; dist?: number; maxFl
           </tr>
           <tr>
             <td>MAX FL</td>
-            <td className="r mono">{maxFl ? `FL${maxFl}` : '—'}</td>
-            <FmsCell d={<Dlt d={dd(parseFl(e.maxFl), maxFl)} />}>
+            <td className="r mono muted">—</td>
+            <FmsCell>
               <FmsInput fms={fms} k="maxFl" ph="FL" mode="numeric" show={showFl} label="MAX FL" />
             </FmsCell>
           </tr>
@@ -182,61 +181,70 @@ export function FlightFms({ fms, dist, maxFl }: { fms: Fms; dist?: number; maxFl
           </tr>
         </tbody>
       </table>
-      <div>
-        <table className="dt fms-t2">
-          <colgroup>
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '40%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>RVSM · ALTIMETERS</th>
-              <th className="r" />
-              <th className="r fms-h">FMS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>QNH</td>
-              <td className="r mono muted">{q ? (q.unit === 'hPa' ? `${q.inhg.toFixed(2)} inHg` : `${q.hpa} hPa`) : '—'}</td>
-              <FmsCell d={q === null ? <span className="fms-d c-warn">범위 밖</span> : q?.high ? <span className="fms-d c-warn">&gt;1050 SUPP</span> : undefined}>
-                <FmsInput fms={fms} k="qnh" ph="hPa·inHg" show={showQnh} label="QNH" />
-              </FmsCell>
-            </tr>
-            <tr>
-              <td>ELEV</td>
-              <td className="r mono muted">FT</td>
-              <FmsCell>
-                <FmsInput fms={fms} k="elev" ph="FT" mode="numeric" show={showNum} label="ELEV 공항 표고" />
-              </FmsCell>
-            </tr>
-            <tr>
-              <td>CAPT PFD</td>
-              <td className="r fms-vs">vs ELEV</td>
-              <FmsCell d={alt.capt && <Dlt d={alt.capt.d} ok={alt.capt.ok} tol />}>
-                <FmsInput fms={fms} k="altC" ph="FT" mode="numeric" show={showNum} label="CAPT PFD 고도" />
-              </FmsCell>
-            </tr>
-            <tr>
-              <td>F/O PFD</td>
-              <td className="r fms-vs">vs CAPT</td>
-              <FmsCell d={alt.fo && <Dlt d={alt.fo.d} ok={alt.fo.ok} tol />}>
-                <FmsInput fms={fms} k="altF" ph="FT" mode="numeric" show={showNum} label="F/O PFD 고도" />
-              </FmsCell>
-            </tr>
-            <tr>
-              <td>STBY ISIS</td>
-              <td className="r fms-vs">vs CAPT</td>
-              <FmsCell d={alt.stby && <Dlt d={alt.stby.d} ok={alt.stby.ok} tol />}>
-                <FmsInput fms={fms} k="altS" ph="FT" mode="numeric" show={showNum} label="STBY ISIS 고도" />
-              </FmsCell>
-            </tr>
-          </tbody>
-        </table>
-        <RvsmLimits />
-      </div>
-    </div>
+    </DocSection>
+  );
+}
+
+/** RVSM · ALTIMETERS 카드 (FLIGHT 카드에서 분리): QNH·표고·PFD 3개 + 기준표 */
+export function RvsmBlock({ fms }: { fms: Fms }) {
+  const [e] = fms;
+  const q = parseQnh(e.qnh);
+  const alt = altChecks(e);
+  return (
+    <DocSection title="RVSM · Altimeters">
+      <table className="dt fms-t2">
+        <colgroup>
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '40%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th />
+            <th className="r" />
+            <th className="r fms-h">FMS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>QNH</td>
+            <td className="r mono muted">{q ? (q.unit === 'hPa' ? `${q.inhg.toFixed(2)} inHg` : `${q.hpa} hPa`) : '—'}</td>
+            <FmsCell d={q === null ? <span className="fms-d c-warn">범위 밖</span> : q?.high ? <span className="fms-d c-warn">&gt;1050 SUPP</span> : undefined}>
+              <FmsInput fms={fms} k="qnh" ph="hPa·inHg" show={showQnh} label="QNH" />
+            </FmsCell>
+          </tr>
+          <tr>
+            <td>ELEV</td>
+            <td className="r mono muted">FT</td>
+            <FmsCell>
+              <FmsInput fms={fms} k="elev" ph="FT" mode="numeric" show={showNum} label="ELEV 공항 표고" />
+            </FmsCell>
+          </tr>
+          <tr>
+            <td>CAPT PFD</td>
+            <td className="r fms-vs">vs ELEV</td>
+            <FmsCell d={alt.capt && <Dlt d={alt.capt.d} ok={alt.capt.ok} tol />}>
+              <FmsInput fms={fms} k="altC" ph="FT" mode="numeric" show={showNum} label="CAPT PFD 고도" />
+            </FmsCell>
+          </tr>
+          <tr>
+            <td>F/O PFD</td>
+            <td className="r fms-vs">vs CAPT</td>
+            <FmsCell d={alt.fo && <Dlt d={alt.fo.d} ok={alt.fo.ok} tol />}>
+              <FmsInput fms={fms} k="altF" ph="FT" mode="numeric" show={showNum} label="F/O PFD 고도" />
+            </FmsCell>
+          </tr>
+          <tr>
+            <td>STBY ISIS</td>
+            <td className="r fms-vs">vs CAPT</td>
+            <FmsCell d={alt.stby && <Dlt d={alt.stby.d} ok={alt.stby.ok} tol />}>
+              <FmsInput fms={fms} k="altS" ph="FT" mode="numeric" show={showNum} label="STBY ISIS 고도" />
+            </FmsCell>
+          </tr>
+        </tbody>
+      </table>
+      <RvsmLimits />
+    </DocSection>
   );
 }
 

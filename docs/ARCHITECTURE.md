@@ -235,6 +235,8 @@ IPBS/
 ### 3.7q FMS 입력 · 정상 절차 체크 (D-078 · D-079)
 - 계산: `features/checks/checks.ts` (`ofpRefs`·`parseKilo`·`parseHm`·`parseFl`·`fmtCoord`·`parseQnh`·`altChecks`·`RVSM_LIMITS`·`parseOil`·`minOil`·`DEFAULT_CHECKLIST`·`progress`)
 - 화면: `ofp/doc/Fms.tsx`(FUEL·FLIGHT 카드 안 FMS 열, SYSTEMS·PRE-FLIGHT 카드 — 칸 제목 → FCOM LIM-ENG·LIM-OXY·SOP HYD 쪽 창(D-080)). `OfpDocument`가 `useDraft` 하나를 세 카드에 나눠 줌. `ops/Checklist.tsx`(Ops "정상 절차" 탭: 체크·HAA)
+- 카드 순서(D-081): FLIGHT → FMS(`FmsBlock`) → RVSM · ALTIMETERS(`RvsmBlock`) → FUEL → WEIGHTS → SYSTEMS … (FMS·RVSM 표는 FLIGHT 카드에서 분리)
+- 앱 키보드(D-081·D-082): `app/AppKeyboard.tsx`(`App.tsx`에 하나) — `.fms-in`·`.kb-in` 칸(FMS 카드들 + 순항 `EntrySheet`)에 초점이 오면 화면 아래 고정 키보드(≥768px만, `inputMode="none"`로 iOS 키보드 숨김). 모듈 상태 `kbFocus`/`kbBlur` + `useSyncExternalStore`, 키 누름은 `pointerdown` 기본 동작 막아 초점 유지, 이전/다음 = `moveField`(화면 순서, 창 안이면 창 안에서만), 열려 있으면 `html.kb-open`(본문·창 아래 `--kb-h` 여백)
 - 파서: SPEED SKD·2ND-$ → `header.speedPlan`·`header.secondBest` (`aviator-1.5`)
 - 저장: `ops/store.ts` `useKey`·`putKey`·`useDraft`(입력 칸, 0.4초 뒤 저장) → IndexedDB `settings`
 
