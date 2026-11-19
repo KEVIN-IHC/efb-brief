@@ -2,7 +2,7 @@
 
 > **새 세션은 이 문서부터 읽는다.** 작업이 끝날 때마다 맨 아래 "세션 인계"와 관련 표를 갱신한다.
 > 상태 표기: ✅ 완료 · 🔄 진행 중 · ⏳ 대기 · ❓ 미확인 · ❌ 오류 발생
-> 마지막 갱신: 2026-11-19 (D-086 커밋 전 — 맨 아래 "다음 세션은 여기서 시작")
+> 마지막 갱신: 2026-11-19 (D-086 배포 9250fb6 — 맨 아래 "다음 세션은 여기서 시작")
 
 ## 1. 한눈에
 
@@ -381,6 +381,7 @@
 - **완료**: D-086 — 아이패드는 초점 없이 "지금 칸"으로 입력(키보드가 글자를 직접 들고 있음, 첫 키 덮어씀, 완료·밖 누르기로 닫힘, 블루투스 키보드 keydown). 매시간 오일·ΔP 자동 소수점(174→17.4, 86→8.6)·FCOM 단위 표시. 원고 {출발도시}·{도착도시}·{도착시각}(현지) — 파서 `aviator-1.7`(HRS UTC±). 예전 기본 틀만 저장된 목록은 새 틀로. 로드시트 결정·추천 → `private/manuals/NEXT-ITEMS.md` 9번
 - **변경 파일**: `app/{AppKeyboard.tsx,styles.css}`, `ofp/doc/Fms.tsx`, `inflight/EntrySheet.tsx`, `hourly/{hourly.ts,HourlyCheck.tsx,hourly.test.ts}`, `joint/{template.ts,JointBrief.tsx,cities.ts,joint.test.ts}`, `ofp/{types.ts,parser/aviator.ts,parser/index.ts}`, 문서(DECISIONS D-086, KNOWN_ISSUES K-48, ARCHITECTURE, 이 문서) · 비공개 build-joint.py·company-rules.json·NEXT-ITEMS.md
 - **테스트**: `npm test` 271/271(실제 OFP 10개 재파싱 — 도착지 시간대 LAX −7·인천 +9·시드니 +11), `tsc -b`, `npm run build` 통과. 개발 브라우저(1180): 키 연속 4번(같은 순간) → 5555, ⌫·9 → 5559, 다음 칸 → MAX FL 380, 다시 누르면 첫 키 덮어씀, 완료·밖 누르기 닫힘. 매시간 오일 174 → 칸 나오면 17.4, ΔP 86 → 8.6. 원고 "DEMO001 편 인천에서 로스앤젤레스까지". 시험 값 지움
-- **확인 못 한 것**: **실제 iPad Safari 터치**(이번 수정의 핵심, K-48). 실제 OFP의 현지 시각 문장. 커밋·배포 안 함
+- **확인 못 한 것**: **실제 iPad Safari 터치**(이번 수정의 핵심, K-48). 실제 OFP의 현지 시각 문장
+- **배포 (2026-11-19)**: 사용자 요청. 9250fb6 push → GitHub Actions 성공, 배포 사이트에 `aviator-1.7` 코드 있음, `/private/` 404
 - **아이패드에서 확인 순서**: ① Settings 맨 아래 build 시각이 새 배포인지(아니면 홈 화면 앱 완전히 닫았다 열기) ② OFP FMS 칸·Inflight Hourly check에서 키 빠르게 연타 ③ Ops → 합동 브리핑 원고가 "○○에서 ○○까지 … (현지 HH:MM)" 문장인지 — 그래도 예전 틀이면 "항목 편집 → 되돌리기" ④ Settings → 회사 기준 파일에 `private/manuals/company-rules.json` 다시 가져오기(합동 브리핑 15문단)
-- **다음 (우선순위)**: 1) 커밋·배포(요청 시) → 아이패드 확인 2) 로드시트 OCR(NEXT-ITEMS 9) — 사용자가 실제 로드시트 사진을 `private/samples/loadsheet/`에 넣으면 시작(결정: C 확인 창 + OFP 값, 확인하면 WEIGHTS L/S 열) 3) 비행 후 기록 PDF(NEXT-ITEMS 10) — 자동 업로드 안정화가 먼저 4) Ops 체크리스트 디자인 시안 · FLIGHT 후보 값
+- **다음 (우선순위)**: 1) 아이패드 확인(위 순서) 2) 로드시트 OCR(NEXT-ITEMS 9) — 사용자가 실제 로드시트 사진을 `private/samples/loadsheet/`에 넣으면 시작(결정: C 확인 창 + OFP 값, 확인하면 WEIGHTS L/S 열) 3) 비행 후 기록 PDF(NEXT-ITEMS 10) — 자동 업로드 안정화가 먼저 4) Ops 체크리스트 디자인 시안 · FLIGHT 후보 값
