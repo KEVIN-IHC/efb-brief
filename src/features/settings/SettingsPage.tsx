@@ -257,8 +257,56 @@ export function SettingsPage() {
           <h3>고지</h3>
         </div>
         <p className="small">{DISCLAIMER_TEXT}</p>
-        <p className="muted small">build {__BUILD_TIME__}</p>
+        <AppFiles />
       </section>
     </div>
   );
 }
+
+/**
+ * 앱 파일(서비스 워커·저장된 화면 파일) 새로 받기 (D-091). 아이패드 Safari가 예전 앱을 붙잡을 때.
+ * 지우는 것: 서비스 워커 등록 + Cache Storage(앱 파일)뿐. 비행·기록·OUTBOX·설정(IndexedDB)은 그대로.
+ */
+function AppFiles() {
+  const [msg, setMsg] = useState('');
+  const check = async () => {
+    if (!navigator.onLine) return setMsg('오프라인 — 인터넷 연결 후 다시 눌러 주세요');
+    setMsg('확인 중…');
+    try {
+      const r = await navigator.serviceWorker?.getRegistration();
+      await r?.update();
+      setMsg(r?.installing || r?.waiting ? '새 버전 받는 중 — 곧 다시 불러옵니다' : '서버 확인 완료. 화면이 그대로면 "앱 파일 새로 받기"를 눌러 주세요');
+    } catch {
+      setMsg('확인 실패 — 인터넷 연결을 확인해 주세요');
+    }
+  };
+  const refetch = async () => {
+    if (!navigator.onLine) return setMsg('오프라인에서는 하지 마세요 — 앱 파일이 없어져 화면이 안 열릴 수 있습니다');
+    if (!confirm('앱 파일을 새로 받고 다시 불러올까요?\n비행·순항 기록·OUTBOX·설정은 지워지지 않습니다.')) return;
+    setMsg('새로 받는 중…');
+    try {
+      for (const r of (await navigator.serviceWorker?.getRegistrations()) ?? []) await r.unregister();
+      if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
+    } finally {
+      location.reload();
+    }
+  };
+  return (
+    <>
+      <p className="small">
+        지금 앱 버전 <b className="mono">build {__BUILD_TIME__}</b>
+      </p>
+      <div className="row">
+        <button className="btn" onClick={() => void check()}>
+          새 버전 확인
+        </button>
+        <button className="btn" onClick={() => void refetch()}>
+          앱 파일 새로 받기
+        </button>
+      </div>
+      {msg && <p className="small muted">{msg}</p>}
+      <p className="muted small">새 배포는 앱을 열 때·다시 볼 때·30분마다 자동으로 받습니다. "앱 파일 새로 받기"는 화면 파일만 지우고 비행·기록·OUTBOX는 그대로 둡니다(인터넷 연결 필요).</p>
+    </>
+  );
+}
+

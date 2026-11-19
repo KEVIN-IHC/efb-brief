@@ -1,4 +1,4 @@
-// Lido식 OFP 요약 문서: FLIGHT(+ALTERNATES) → FUEL → WEIGHTS → RVSM·SYSTEMS PRE-FLIGHT → FMS → EDTO/ETP → MEL/CDL → NOTES
+// Lido식 OFP 요약 문서: FLIGHT(+ALTERNATES) → FUEL → WEIGHTS → RVSM → SYSTEMS PRE-FLIGHT → FMS → EDTO/ETP → MEL/CDL → NOTES
 import { useEffect, useState } from 'react';
 import { fmtFl, fmtHm, fmtKg, fmtSigned } from '../../../lib/format';
 import { formatLatLon } from '../../../lib/geo';
@@ -10,7 +10,7 @@ import { manualEvents } from '../../manual/store';
 import type { FuelRow, OfpData } from '../types';
 import { Cell, DocSection, LevelPill } from './ui';
 import { TurbulenceBlock } from './Turbulence';
-import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, PreflightBlock, type Fms } from './Fms';
+import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, RvsmBlock, SystemsBlock, type Fms } from './Fms';
 import { fmsKey, ofpRefs, parseHm, parseKilo, type FmsEntry } from '../../checks/checks';
 import { useDraft } from '../../ops/store';
 import { flightIdFor } from '../../flight/activeFlight';
@@ -539,11 +539,12 @@ export function OfpDocument({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
   const fms = useDraft<FmsEntry>(fmsKey(flightIdFor(o)), {});
   return (
     <div className="page-grid doc">
-      {/* 순서 (D-088): FLIGHT(+ALTERNATES) → FUEL · WEIGHTS → RVSM·SYSTEMS PRE-FLIGHT · FMS */}
+      {/* 순서 (D-088·D-090): FLIGHT(+ALTERNATES) → FUEL · WEIGHTS → RVSM · SYSTEMS → FMS */}
       <FlightBlock o={o} onLine={onLine} />
       <FuelBlock o={o} fms={fms} />
       <WeightBlock o={o} />
-      <PreflightBlock fms={fms} flightMin={ofpRefs(o).flightMin} />
+      <RvsmBlock fms={fms} />
+      <SystemsBlock fms={fms} flightMin={ofpRefs(o).flightMin} />
       <FmsBlock fms={fms} dist={ofpRefs(o).dist} maxFl={ofpRefs(o).maxFl} />
       <EtpBlock o={o} />
       <TurbulenceBlock o={o} onZone={(z) => focusTurbZone(z, 'popup')} />

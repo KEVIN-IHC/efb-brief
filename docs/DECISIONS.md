@@ -664,3 +664,17 @@
   3. 칸별 계획 값: FMS DIST = OFP 거리 · MAX FL = OFP 순항고도 · OPT FL = MAX FL 칸 · TRIP TIME = OFP 시간(1분) · FOB/FOD = OFP 연료(천 단위, 한 번 0.1 = 100) · CAPT PFD = ELEV 칸 · F/O·STBY = CAPT 칸 · 오일 2~4 = 1번 칸 · CABIN 산소 = CREW 칸. 매시간 점검 = 앞 기록(첫 기록 오일 = 출발 전 SYSTEMS 칸, F/O·STBY = CAPT, 오일 2~4 = 1번). 순항 기록 ATA = ETO(HHMM, 자정 넘김), FUEL = 계획 잔량(한 번 100)
   4. 소수 칸(오일·ΔP)은 한 번 0.1, 열 번 1.0 — 키 글자가 +0.1 / +1로 바뀜 (사용자 미답 → 이렇게 정함)
 - **영향** `app/{kbStep.ts,kbStep.test.ts,AppKeyboard.tsx,styles.css}`, `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `hourly/HourlyCheck.tsx`, `inflight/EntrySheet.tsx`
+
+### D-090 RVSM · SYSTEMS 카드 다시 나눔 (D-088 2 수정)
+- **날짜** 2026-11-19 (사용자: "rvsm altimeter랑 system preflight 분리해줘. 순서는 지금 이대로")
+- **결정** RVSM · ALTIMETERS와 SYSTEMS · PRE-FLIGHT를 각각 카드로. 순서 FLIGHT(+ALTERNATES) → FUEL → WEIGHTS → RVSM → SYSTEMS → FMS → EDTO·ETP … 그대로. 아이패드 가로에서 RVSM | SYSTEMS가 한 줄(데모 484 · 475px)
+- **영향** `ofp/doc/{Fms.tsx,OfpDocument.tsx}`, `app/styles.css`(`.pf-two` 지움)
+
+### D-091 앱 버전 표시 · 앱 파일 새로 받기 · 합동 브리핑 저장 원고 안내
+- **날짜** 2026-11-19 (사용자 아이패드 사진 15:34: 배포 뒤 새로 고침 여러 번에도 합동 브리핑이 첫 배포(D-083) 원고. "확인좀")
+- **확인한 것**: 배포 서비스 워커 미리 받기 파일 22개 모두 200(설치 실패 아님). 첫 배포 원고 틀은 지금 코드가 "예전 틀"로 알아봄 → 원인은 ① 아이패드가 아직 예전 앱 ② 예전에 "항목 편집"으로 고친 원고가 기기에 저장돼 있음 중 하나. 멀리서 구분 불가 → 화면에서 바로 보이게 함
+- **결정**
+  1. 사이드바 맨 아래 `BUILD MM/DD HHMMZ` (누르면 Settings)
+  2. Settings 고지 카드: 지금 앱 버전 · [새 버전 확인](서비스 워커 update) · [앱 파일 새로 받기](서비스 워커 등록 해제 + Cache Storage 삭제 + 다시 불러오기. IndexedDB의 비행·기록·OUTBOX·설정은 그대로, 오프라인이면 막음)
+  3. 합동 브리핑: 저장된 고친 원고를 쓰는 중이면 맨 위 주황 상자 "기기에 저장된 고친 원고 사용 중 · 기준 원고에 새 문단 n개" + [새 문단 넣기] [최신 원고로 바꾸기](체크·고른 값은 그대로)
+- **영향** `app/{App.tsx,styles.css}`, `settings/SettingsPage.tsx`, `joint/JointBrief.tsx`

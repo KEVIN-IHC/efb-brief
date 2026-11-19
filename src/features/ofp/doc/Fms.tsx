@@ -184,14 +184,20 @@ export function FmsBlock({ fms, dist, maxFl }: { fms: Fms; dist?: number; /** OF
 }
 
 /** RVSM · ALTIMETERS 카드 (FLIGHT 카드에서 분리): QNH·표고·PFD 3개 + 기준표 */
-/** RVSM · SYSTEMS PRE-FLIGHT 한 카드 (D-088) — 위 RVSM 고도계, 아래 오일·유압·산소 */
-export function PreflightBlock({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
+/** RVSM · ALTIMETERS 카드 (D-090: D-088에서 합쳤다가 다시 나눔) */
+export function RvsmBlock({ fms }: { fms: Fms }) {
   return (
-    <DocSection title="RVSM · Systems pre-flight" meta="FOM · FCOM" className="span-all">
-      <div className="pf-two">
-        <RvsmPart fms={fms} />
-        <SystemsPart fms={fms} flightMin={flightMin} />
-      </div>
+    <DocSection title="RVSM · Altimeters" meta="FOM · FCOM">
+      <RvsmPart fms={fms} />
+    </DocSection>
+  );
+}
+
+/** SYSTEMS · PRE-FLIGHT 카드 */
+export function SystemsBlock({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
+  return (
+    <DocSection title="Systems · Pre-flight" meta="FCOM">
+      <SystemsPart fms={fms} flightMin={flightMin} />
     </DocSection>
   );
 }
@@ -201,8 +207,7 @@ function RvsmPart({ fms }: { fms: Fms }) {
   const q = parseQnh(e.qnh);
   const alt = altChecks(e);
   return (
-    <div className="sub-sec first">
-      <div className="sub-h">RVSM · ALTIMETERS</div>
+    <div>
       <table className="dt fms-t2">
         <colgroup>
           <col style={{ width: '30%' }} />
@@ -424,8 +429,7 @@ function SystemsPart({ fms, flightMin }: { fms: Fms; flightMin?: number }) {
     return v !== undefined && mo !== undefined && v < mo.max;
   };
   return (
-    <div className="sub-sec">
-      <div className="sub-h">SYSTEMS · PRE-FLIGHT</div>
+    <div>
       <div className="fms-lbl">
         <SysTitle label="ENG OIL · QT" src="LIM-ENG" to={refs && (refs.oil ?? null)} />
       </div>

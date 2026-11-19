@@ -465,18 +465,13 @@ a.card-link:hover { border-color: var(--line-strong); }
 .doc-h h3 { font: 800 0.72rem/1.2 var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
 .doc-meta { font: 600 var(--fs-xs) var(--mono); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .doc-b { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
-/* 한 카드 안 묶음 (D-088: FLIGHT+ALTERNATES, RVSM+SYSTEMS) */
+/* 한 카드 안 묶음 (D-088: FLIGHT+ALTERNATES) */
 .sub-sec { margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line-strong); }
 .sub-sec.first { margin-top: 0; padding-top: 0; border-top: 0; }
 .sub-h { font: 800 0.66rem/1.2 var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
 /* OFP 카드: 같은 줄 카드 높이 맞춤 */
 .page-grid.doc { align-items: stretch; }
-/* RVSM·SYSTEMS 한 카드: 넓으면 좌우 두 칸(가운데 세로줄), 좁으면 위아래 */
-@media (min-width: 1024px) {
-  .pf-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-5, 24px); }
-  .pf-two > .sub-sec { margin-top: 0; padding-top: 0; border-top: 0; }
-  .pf-two > .sub-sec + .sub-sec { border-left: 1px solid var(--line-strong); padding-left: var(--sp-5, 24px); }
-}
+
 .doc-foot { margin: var(--sp-3) 0 0; font-size: var(--fs-sm); color: var(--text-dim); line-height: 1.5; word-break: break-word; }
 .flush-doc .doc-b { padding: 0; }
 .flush-doc .doc-foot { padding: 0 var(--sp-4) var(--sp-3); }
@@ -1285,3 +1280,8 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 /* 앱 키보드 "지금 칸" (D-086: 아이패드는 초점 대신 이 표시) */
 input.kb-on { background: var(--accent-soft) !important; box-shadow: inset 0 -2px 0 var(--accent); border-radius: 3px; }
 input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-select: none; user-select: none; }
+/* D-091: 앱 버전 표시 · 합동 브리핑 저장 원고 안내 */
+.build-tag { display: block; margin-top: auto; padding: var(--sp-3) var(--sp-4); font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-faint); text-decoration: none; }
+.jb-saved { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); padding: 8px 10px; border: 1px solid var(--warn); border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--text); }
+.jb-saved > span { flex: 1 1 260px; }
+

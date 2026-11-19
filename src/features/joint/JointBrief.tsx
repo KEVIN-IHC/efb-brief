@@ -70,6 +70,21 @@ export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpDat
   return (
     <div className="jb-two span-all">
       <DocSection title="Joint Briefing" meta={<span className={`mono ${done === active.length && active.length ? 'c-ok' : ''}`}>{done}/{active.length}</span>}>
+        {saved && (
+          <div className="jb-saved">
+            <span>
+              기기에 저장된 <b>고친 원고</b>를 쓰는 중입니다{missing.length > 0 ? ` · 기준 원고에 새 문단 ${missing.length}개(${missing.map((x) => x.title).join(' · ')})` : ''}.
+            </span>
+            {missing.length > 0 && (
+              <button className="btn small" onClick={() => saveItems([...items, ...missing])}>
+                새 문단 넣기
+              </button>
+            )}
+            <button className="btn small primary" onClick={() => confirm(`저장된 원고를 지우고 ${preset ? '회사 preset' : '최신 기본 원고'}로 바꿀까요? (고친 문장은 없어짐, 체크·고른 값은 그대로)`) && void putKey(ITEMS_KEY, null)}>
+              최신 원고로 바꾸기
+            </button>
+          </div>
+        )}
         <div className="chk-bar">
           <div className="segmented jb-seg" role="group" aria-label="첫 비행·승무원 교체">
             <button className={first ? 'on' : ''} onClick={() => set({ firstFlight: true })}>
@@ -144,14 +159,6 @@ export function JointBrief({ flightId, o, rules }: { flightId: string; o: OfpDat
               onClick={() => confirm(`항목·원고를 ${preset ? '회사 기준 파일 preset' : '기본 틀'}으로 되돌릴까요? (고친 내용은 없어짐)`) && void putKey(ITEMS_KEY, null)}
             >
               {preset ? '회사 preset으로 되돌리기' : '기본 틀로 되돌리기'}
-            </button>
-          </div>
-        )}
-        {missing.length > 0 && (
-          <div className="chk-bar jb-reset">
-            <span className="small c-warn">기준 원고에 새 문단 {missing.length}개: {missing.map((x) => x.title).join(' · ')}</span>
-            <button className="btn small" onClick={() => saveItems([...items, ...missing])}>
-              넣기
             </button>
           </div>
         )}

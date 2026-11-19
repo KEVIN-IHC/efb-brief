@@ -79,6 +79,11 @@ export function App() {
             </a>
           ))}
         </nav>
+        {/* 지금 쓰는 앱 버전 — 아이패드가 새 배포를 받았는지 바로 보이게 (D-091) */}
+        <a className="build-tag mono" href="#settings">
+          BUILD {__BUILD_TIME__.slice(5, 7)}/{__BUILD_TIME__.slice(8, 10)} {__BUILD_TIME__.slice(11, 13)}
+          {__BUILD_TIME__.slice(14, 16)}Z
+        </a>
       </aside>
 
       <div className="main-col">
