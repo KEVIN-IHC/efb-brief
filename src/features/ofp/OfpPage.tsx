@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSourceJump } from './sourceJump';
-import { latestActuals, useFlightLogs } from '../inflight/actuals';
+import { useState } from 'react';
+import { jumpToOfpSource } from './sourceJump';
 import { useActiveFlight } from '../flight/activeFlight';
 import { NavLog } from './doc/NavLog';
 import { OfpDocument } from './doc/OfpDocument';
 import { CrzWind } from './doc/CrzWind';
-import { RawPdfView } from './RawPdfView';
 import { useOfpImport } from './OfpOpenButton';
 
 function ImportStatus() {
@@ -15,12 +13,11 @@ function ImportStatus() {
   return <p className={`small import-status ${msg.tone === 'ok' ? 'c-ok' : 'c-bad'}`}>{msg.text}</p>;
 }
 
-type Sub = 'doc' | 'nav' | 'wind' | 'raw';
+type Sub = 'doc' | 'nav' | 'wind';
 const SUBS: { id: Sub; label: string }[] = [
   { id: 'doc', label: 'OFP' },
   { id: 'nav', label: 'NAV LOG' },
   { id: 'wind', label: 'CRZ WIND' },
-  { id: 'raw', label: 'PDF · 추출' },
 ];
 const KEY = 'efb.ofp.sub2';
 
@@ -35,11 +32,8 @@ function readSub(): Sub {
 }
 
 export function OfpPage() {
-  const { ofp, loaded, flight } = useActiveFlight();
-  const logs = useFlightLogs(flight.flightId);
-  const actuals = useMemo(() => latestActuals(logs), [logs]);
+  const { ofp, loaded } = useActiveFlight();
   const [sub, setSubState] = useState<Sub>(readSub);
-  const [focus, setFocus] = useState<{ n: number; t: number } | null>(null);
   const setSub = (s: Sub) => {
     setSubState(s);
     try {
@@ -48,21 +42,9 @@ export function OfpPage() {
       /* ignore */
     }
   };
-  // 다른 탭(NOTAM)에서 원문 위치 요청 → PDF·추출 원문 뷰어로
-  const pending = useSourceJump((s) => s.pending);
-  useEffect(() => {
-    if (!pending) return;
-    setSub('raw');
-    setFocus(pending);
-    useSourceJump.setState({ pending: null });
-  }, [pending]);
   const o = ofp?.parsed;
-  const jumpToSource = ofp?.rawText
-    ? (n: number) => {
-        setSub('raw');
-        setFocus({ n, t: Date.now() });
-      }
-    : undefined;
+  // OFP 카드의 원문 줄 → OFP PDF 탭 원문 뷰어 (NAV LOG는 원문으로 가지 않음)
+  const jumpToSource = ofp?.rawText ? jumpToOfpSource : undefined;
 
   return (
     <>
@@ -88,8 +70,7 @@ export function OfpPage() {
         ))}
       </div>
 
-      {sub === 'raw' && <RawPdfView focus={focus} />}
-      {sub !== 'raw' && loaded && !o && (
+      {loaded && !o && (
         <section className="card placeholder">
           <p>현재 비행의 OFP가 없습니다.</p>
           <p className="muted small">맨 위 줄의 <b>OFP 열기</b> 버튼으로 회사 OFP PDF를 여세요.</p>
@@ -103,7 +84,7 @@ export function OfpPage() {
       )}
       {o && sub === 'nav' && (
         <div className="page-grid">
-          <NavLog o={o} onLine={jumpToSource} actuals={actuals} />
+          <NavLog o={o} />
         </div>
       )}
     </>

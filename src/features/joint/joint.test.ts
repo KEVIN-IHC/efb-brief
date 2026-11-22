@@ -38,8 +38,8 @@ describe('합동 브리핑 원고 틀', () => {
     const base = buildDemoOfp();
     const mk = (plan: OfpData['header']['plan'], edtoRule?: string) => ({ ...base, header: { ...base.header, plan, edtoRule } }) as OfpData;
     expect(planText(mk({ contPct: 3, era3: ['KSFO'] }))).toBe('3% Contingency(3% ERA KSFO)');
-    expect(planText(mk({ contPct: 5, refile: ['RJAA', 'RJBB'] }))).toBe('5% Contingency · REFILE(RJAA·RJBB)');
-    expect(planText(mk({ contPct: 5, refile: ['YBBN'], edto: true }, 'EDTO 180'))).toBe('5% Contingency · REFILE(YBBN) · EDTO 180');
+    expect(planText(mk({ contPct: 5, refile: ['RJAA', 'RJBB'] }))).toBe('REFILE(RJAA·RJBB)');
+    expect(planText(mk({ contPct: 5, refile: ['YBBN'], edto: true }, 'EDTO 180'))).toBe('REFILE(YBBN) · EDTO 180');
   });
 
   it('난류 문장: 구간 없음 / 구간별 정도', () => {
@@ -106,9 +106,9 @@ describe('합동 브리핑 원고 틀', () => {
   it('OFP OPS PLAN 칸: EDTO · REFILE · CONT', () => {
     const base = buildDemoOfp();
     const mk = (plan: OfpData['header']['plan'], edtoRule?: string) => ({ ...base, header: { ...base.header, plan, edtoRule } }) as OfpData;
-    expect(opsPlan(mk({ contPct: 5, refile: ['RJBB', 'RJGG'] }))).toBe('REFILE · 5% CONT');
+    expect(opsPlan(mk({ contPct: 5, refile: ['RJBB', 'RJGG'] }))).toBe('REFILE');
     expect(opsPlan(mk({ contPct: 3, era3: ['KSFO'] }))).toBe('3% CONT');
-    expect(opsPlan(mk({ contPct: 5, refile: ['YBBN'], edto: true }, 'EDTO 180'))).toBe('EDTO 180 · REFILE · 5% CONT');
+    expect(opsPlan(mk({ contPct: 5, refile: ['YBBN'], edto: true }, 'EDTO 180'))).toBe('EDTO 180 · REFILE');
     expect(opsPlan(mk(undefined))).toBe('—');
   });
 });

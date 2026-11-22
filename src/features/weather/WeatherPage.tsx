@@ -4,7 +4,7 @@ import { fmtFl, fmtTemp, fmtWind } from '../../lib/format';
 import { formatDayZ, formatZ } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { useActiveFlight } from '../flight/activeFlight';
-import { ceilingFt, visibSm } from './decode';
+import { ceilingFt, rawLines, visibSm } from './decode';
 import { sigmetNearRoute } from './route';
 import { flightStations, useWx, type Station } from './store';
 import type { Cloud, Metar, Sigmet, Taf, TafPeriod } from './types';
@@ -27,7 +27,7 @@ function MetarBlock({ m, now }: { m: Metar; now: number }) {
       <div className="wx-head">
         <FreshTag kind="metar" label={`${m.icao} METAR`} refIso={m.obsTime} now={now} />
       </div>
-      <pre className="raw mono">{m.raw}</pre>
+      <pre className="raw mono">{rawLines(m.raw, 'metar')}</pre>
       <ul className="wx-decode small">
         <li>
           <span>바람</span>
@@ -72,7 +72,7 @@ function TafBlock({ t, now, focus }: { t: Taf; now: number; focus: { label: stri
       <div className="wx-head">
         <FreshTag kind="taf" label={`${t.icao} TAF`} refIso={t.issueTime} validTo={t.validTo} now={now} />
       </div>
-      <pre className="raw mono">{t.raw}</pre>
+      <pre className="raw mono">{rawLines(t.raw, 'taf')}</pre>
       <div className="table-wrap">
         <table className="tbl small">
           <thead>
@@ -119,14 +119,30 @@ function TafBlock({ t, now, focus }: { t: Taf; now: number; focus: { label: stri
 
 const ROLE_LABEL: Record<string, string> = { DEP: '출발', DEST: '도착', ALTN: '교체', EDTO: 'EDTO' };
 
+const addMin = (iso: string, min: number) => new Date(Date.parse(iso) + min * 60000).toISOString();
+
+/** 공항 옆 시각: 출발 STD · 도착 ETA · 교체 = 도착 ETA와 도착 ETA + 교체까지 시간(회항 시 ETA) */
+function stationTimes(st: Station, flight: { std: string; sta: string }, ofp: ReturnType<typeof useActiveFlight.getState>['ofp']) {
+  const o = ofp?.parsed;
+  const eta = o?.header.sta ?? flight.sta;
+  const out: { label: string; iso: string }[] = [];
+  if (st.roles.includes('DEP')) out.push({ label: 'STD', iso: o?.header.std ?? flight.std });
+  if (st.roles.includes('DEST')) out.push({ label: 'ETA', iso: eta });
+  if (st.roles.includes('ALTN') && !st.roles.includes('DEST')) {
+    const a = o?.alternates.find((x) => x.icao === st.icao && x.role.startsWith('DEST'));
+    out.push({ label: 'DEST ETA', iso: eta });
+    if (a?.timeMin) out.push({ label: `ALTN ETA (+${Math.floor(a.timeMin / 60)}:${String(a.timeMin % 60).padStart(2, '0')})`, iso: addMin(eta, a.timeMin) });
+  }
+  return out;
+}
+
 function AirportCard({ st, now }: { st: Station; now: number }) {
   const m = useWx((s) => s.metars[st.icao]);
   const t = useWx((s) => s.tafs[st.icao]);
   const flight = useActiveFlight((s) => s.flight);
-  const focus = [
-    ...(st.roles.includes('DEP') ? [{ label: 'ETD', iso: flight.std }] : []),
-    ...(st.roles.includes('DEST') || st.roles.includes('ALTN') ? [{ label: 'ETA', iso: flight.sta }] : []),
-  ];
+  const ofp = useActiveFlight((s) => s.ofp);
+  const times = stationTimes(st, flight, ofp);
+  const focus = times.map((x) => ({ label: x.label.replace(/ \(.*\)$/, ''), iso: x.iso }));
   return (
     <section className="card wx-airport">
       <div className="card-title">
@@ -141,6 +157,15 @@ function AirportCard({ st, now }: { st: Station; now: number }) {
           ))}
         </span>
       </div>
+      {times.length > 0 && (
+        <p className="wx-times mono small">
+          {times.map((x) => (
+            <span key={x.label}>
+              {x.label} <b>{formatDayZ(x.iso)}</b>
+            </span>
+          ))}
+        </p>
+      )}
       {m?.data.name && <p className="muted small">{m.data.name}</p>}
       {m ? <MetarBlock m={m.data} now={now} /> : <p className="muted small">METAR 없음 (아직 받지 않았거나 발표 없음)</p>}
       {t ? <TafBlock t={t.data} now={now} focus={focus} /> : <p className="muted small">TAF 없음</p>}

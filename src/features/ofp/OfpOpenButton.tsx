@@ -25,7 +25,7 @@ export async function importOfpFile(file: File): Promise<void> {
       lastId: rec.flightId,
       msg: activated
         ? { text: `✓ ${h!.flightNo} ${h!.dep}→${h!.arr} (${h!.date}) 열림`, tone: 'ok' }
-        : { text: '일부 항목을 읽지 못했습니다. OFP › PDF·추출에서 결과를 확인하세요.', tone: 'bad' },
+        : { text: '일부 항목을 읽지 못했습니다. OFP PDF 탭에서 결과를 확인하세요.', tone: 'bad' },
     });
     location.hash = 'ofp';
   } catch (e) {

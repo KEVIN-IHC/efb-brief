@@ -4,7 +4,8 @@ import { splitSections } from '../ofp/parser/sections';
 import { toDocLines } from '../ofp/parser/lines';
 import type { OfpData } from '../ofp/types';
 import { classifyNotam } from './classify';
-import { firWindows, flightWindow, timeStatus } from './relevance';
+import { firWindows, flightWindow, timeNote, timeStatus } from './relevance';
+import { notamAbbrs } from './abbr';
 
 // ⚠ 가짜 데이터. Aviator NOTAM 패키지의 구조만 흉내 냄 (실제 NOTAM 아님 — 위치·번호 모두 가상)
 const TEXT = [
@@ -189,5 +190,20 @@ describe('비행 관련성', () => {
     expect(f.get('ZZZB')![0]).toMatchObject({ from: Date.parse('2026-11-05T12:00:00Z'), to: Date.parse('2026-11-05T18:00:00Z') });
     expect(f.has('ADIZ')).toBe(false);
     expect(timeStatus(byId('D0004/26'), f.get('ZZZB')!)).toBe('overlap');
+  });
+});
+
+describe('NOTAM 시간창 관계·약어 (D-093)', () => {
+  const it0 = (from: string, to?: string) => ({ kind: 'notam', category: 'RWY', text: '', line: 1, lines: [], from, to }) as unknown as import('../ofp/types').OfpNotamItem;
+  const w = [{ from: Date.parse('2026-11-05T10:00:00Z'), to: Date.parse('2026-11-05T12:00:00Z'), basis: 't' }];
+  it('시간창과의 관계를 한 줄로', () => {
+    expect(timeNote(it0('2026-11-05T08:00:00Z', '2026-11-05T09:00:00Z'), w)).toBe('05 0900Z 종료 — 시간창 시작 1:00 전');
+    expect(timeNote(it0('2026-11-05T11:00:00Z', '2026-11-06T09:00:00Z'), w)).toBe('시간창 중 05 1100Z 시작');
+    expect(timeNote(it0('2026-11-04T11:00:00Z', '2026-11-05T11:30:00Z'), w)).toBe('시간창 중 05 1130Z 종료');
+    expect(timeNote(it0('2026-11-04T11:00:00Z'), w)).toBe('시간창 내내 유효 (끝 시각 없음)');
+    expect(timeNote(it0('2026-11-05T13:30:00Z', '2026-11-06T09:00:00Z'), w)).toBe('05 1330Z 시작 — 시간창 끝 1:30 후');
+  });
+  it('약어는 낱말 단위로만', () => {
+    expect(notamAbbrs('TWY A CLSD DUE WIP. RWY15L ILS U/S AVAILABLE').map((a) => a.k)).toEqual(['TWY', 'CLSD', 'WIP', 'RWY', 'U/S']);
   });
 });

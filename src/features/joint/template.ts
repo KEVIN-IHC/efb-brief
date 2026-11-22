@@ -162,11 +162,11 @@ const hmKo = (min: number) => {
 /** 객실에 영향 주는 MEL 장(ATA): 25 객실 설비 · 33 조명 · 35 산소 · 38 물·화장실 · 44 객실 시스템 */
 const CABIN_ATA = /^(25|33|35|38|44)-/;
 
-/** 계획 방식 글: 3% CONT · ERA KSFO / 5% CONT · REFILE RJAA·RJBB · EDTO 180 */
+/** 계획 방식 글: 3% CONT · ERA KSFO / 5% CONT / REFILE RJAA·RJBB (REFILE이면 5%는 생략) · EDTO 180 */
 export function planText(o: OfpData): string {
   const p = o.header.plan;
   const parts: string[] = [];
-  if (p?.contPct) parts.push(`${p.contPct}% Contingency${p.contPct === 3 && p.era3?.length ? `(3% ERA ${p.era3.join('·')})` : ''}`);
+  if (p?.contPct && !(p.contPct === 5 && p.refile?.length)) parts.push(`${p.contPct}% Contingency${p.contPct === 3 && p.era3?.length ? `(3% ERA ${p.era3.join('·')})` : ''}`);
   if (p?.refile?.length) parts.push(`REFILE(${p.refile.join('·')})`);
   if (o.header.edtoRule || p?.edto) parts.push(o.header.edtoRule ?? 'EDTO');
   return parts.join(' · ') || '기본 계획';

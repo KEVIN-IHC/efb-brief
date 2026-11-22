@@ -139,7 +139,7 @@ export function FirCommSection({ o, checks, timeDevMin, now, compact }: Props) {
   );
 }
 
-function FirCommSheet({ icao, name, value, onClose }: { icao: string; name: string; value?: FirComm; onClose: () => void }) {
+export function FirCommSheet({ icao, name, value, onClose }: { icao: string; name: string; value?: FirComm; onClose: () => void }) {
   const [v, setV] = useState<FirComm>(value ?? {});
   const [busy, setBusy] = useState(false);
   useEffect(() => {

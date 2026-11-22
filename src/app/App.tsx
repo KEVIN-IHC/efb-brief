@@ -16,8 +16,10 @@ import { MapPage } from '../features/map/MapPage';
 import { NotamPage } from '../features/notam/NotamPage';
 import { ManualPage } from '../features/manual/ManualPage';
 import { MelPage } from '../features/manual/MelPage';
+import { PdfPage } from '../features/ofp/PdfPage';
 import { ManualPopup } from '../features/manual/ManualInline';
 import { TurbPopup } from '../features/ofp/doc/TurbPopup';
+import { FirPopup } from '../features/fir/FirPopup';
 import { AppKeyboard } from './AppKeyboard';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
@@ -110,6 +112,7 @@ export function App() {
           {tab === 'notam' && <NotamPage />}
           {tab === 'mel' && <MelPage />}
           {tab === 'manual' && <ManualPage />}
+          {tab === 'pdf' && <PdfPage />}
           {current.phase && (
             <section className="card placeholder">
               {current.icon}
@@ -146,6 +149,7 @@ export function App() {
         </div>
       )}
 
+      <FirPopup />
       <ManualPopup />
       <TurbPopup />
       <AppKeyboard />

@@ -1,4 +1,4 @@
-// 매시간 System Check 카드 (D-084) — 순항 화면. 칸 = 손글씨 한 줄 순서, 아래 = 기록 표, SD 페이지 체크, 📖 근거
+// 매시간 System Check 카드 (D-084) — 순항 화면. 칸 = 손글씨 한 줄 순서(연료가 맨 끝), 아래 = NAV LOG 같은 기록 표, SD 페이지 체크, 📖 근거
 import { useEffect, useRef, useState } from 'react';
 import { kbProps, moveField, useAppKeyboard, useKbActive } from '../../app/AppKeyboard';
 import { fmtSigned } from '../../lib/format';
@@ -240,6 +240,14 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
             </div>
           </div>
           <div className="hc-g">
+            <Ref to={refs && (refs.oxy ?? null)} label="OXY CKPT / CABIN · PSI" src="LIM-OXY" />
+            <div className="hc-ins">
+              {f('oxyC', 'OXY CKPT PSI', 'CKPT', 5)}
+              {sl}
+              {f('oxyCab', 'OXY CABIN PSI', 'CABIN', 5)}
+            </div>
+          </div>
+          <div className="hc-g">
             <Ref to={refs && (refs.fuel ?? null)} label="FU + FOB (×100)" src="FCOM SOP-150" />
             <div className="hc-ins">
               {f('fu', 'FU', 'FU', 5)}
@@ -247,14 +255,6 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
               {f('fob', 'FOB', 'FOB', 5)}
               <span className="hc-sl">=</span>
               <b className="mono hc-tot">{tot ?? '—'}</b>
-            </div>
-          </div>
-          <div className="hc-g">
-            <Ref to={refs && (refs.oxy ?? null)} label="OXY CKPT / CABIN · PSI" src="LIM-OXY" />
-            <div className="hc-ins">
-              {f('oxyC', 'OXY CKPT PSI', 'CKPT', 5)}
-              {sl}
-              {f('oxyCab', 'OXY CABIN PSI', 'CABIN', 5)}
             </div>
           </div>
         </div>
@@ -332,45 +332,92 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
       </div>
 
       {recs.length > 0 && (
-        <ol className="hc-list">
-          {recs.map((r, i) => {
-            const a = altCheck(r);
-            const t = fuelTotal(r);
-            const ok = (!a.pfd || a.pfd.ok) && (!a.isis || a.isis.ok);
-            const odr = ob ? oilDelta(r, ob.base) : oilDelta(r, recs[i - 1]);
-            return (
-              <li key={r.id} className={r.id === editId ? 'on' : ''}>
-                <button type="button" className="hc-line mono" onClick={() => startEdit(r)} aria-label={`${r.time}Z 기록 수정`}>
-                  <span className={ok ? '' : 'c-warn'}>{lineText(r)}</span>
-                  <span className="hc-sub">
-                    {t !== undefined && dep100 !== undefined && <span className={t - dep100 < 0 ? 'c-warn' : ''}>RAMP {sgn(t - dep100)}</span>}
-                    {odr.some((x) => x !== undefined && x !== 0) && <span>OIL {odr.map(sgn1).join('/')}</span>}
-                    <span>SD {r.sd?.length ?? 0}/{SD_PAGES.length}</span>
-                  </span>
-                </button>
-                <span className="hc-tools">
-                  <button className="btn small" aria-label={`${r.time}Z 위로`} disabled={i === 0} onClick={() => move(i, -1)}>
-                    ↑
-                  </button>
-                  <button className="btn small" aria-label={`${r.time}Z 아래로`} disabled={i === recs.length - 1} onClick={() => move(i, 1)}>
-                    ↓
-                  </button>
-                  <button
-                    className="btn small"
-                    aria-label={`${r.time}Z 기록 지우기`}
-                    onClick={() => {
-                      if (!confirm(`${r.time}Z 기록을 지울까요?`)) return;
-                      if (r.id === editId) clear();
-                      void putKey(recsKey(flightId), recs.filter((x) => x.id !== r.id));
-                    }}
-                  >
-                    ✕
-                  </button>
-                </span>
+        <div className="table-wrap navwrap hc-tablewrap">
+          <table className="dt nav hc-table">
+            <thead>
+              <tr>
+                <th className="sticky">TIME</th>
+                <th className="r">ALT C / S / F</th>
+                <th className="r">OIL 1/2/3/4</th>
+                <th className="r">ΔP / CAB</th>
+                <th className="r">OXY C / CAB</th>
+                <th className="r">FU + FOB</th>
+                <th className="r">TOTAL</th>
+                <th className="r hide-xs">SD</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {recs.map((r, i) => {
+                const a = altCheck(r);
+                const t = fuelTotal(r);
+                const ok = (!a.pfd || a.pfd.ok) && (!a.isis || a.isis.ok);
+                const odr = ob ? oilDelta(r, ob.base) : oilDelta(r, recs[i - 1]);
+                const n = normEntry(r);
+                const j = (xs: (string | undefined)[]) => (xs.some(Boolean) ? xs.map((x) => x || '—').join('/') : '—');
+                return (
+                  <tr key={r.id} className={r.id === editId ? 'row-sel' : ''} onClick={() => startEdit(r)} aria-label={`${r.time}Z 기록 수정`}>
+                    <td className="sticky mono strong">{n.time ? `${n.time}Z` : '—'}</td>
+                    <td className={`r mono ${ok ? '' : 'c-warn'}`}>
+                      {j([n.altC, n.altS, n.altF])}
+                      {(a.pfd || a.isis) && (
+                        <div className="wpt-sub">
+                          {a.pfd && `F/O ${sgn(a.pfd.d)}`}
+                          {a.pfd && a.isis && ' · '}
+                          {a.isis && `STBY ${sgn(a.isis.d)}`}
+                        </div>
+                      )}
+                    </td>
+                    <td className="r mono">
+                      {j([n.oil1, n.oil2, n.oil3, n.oil4])}
+                      {odr.some((x) => x !== undefined && x !== 0) && <div className="wpt-sub">{odr.map(sgn1).join('/')}</div>}
+                    </td>
+                    <td className="r mono">{j([n.dp, n.cab])}</td>
+                    <td className="r mono">{j([n.oxyC, n.oxyCab])}</td>
+                    <td className="r mono">{n.fu || n.fob ? `${n.fu || '—'}+${n.fob || '—'}` : '—'}</td>
+                    <td className="r mono strong">
+                      {t ?? '—'}
+                      {t !== undefined && dep100 !== undefined && <div className={`wpt-sub ${t - dep100 < 0 ? 'c-warn' : ''}`}>RAMP {sgn(t - dep100)}</div>}
+                    </td>
+                    <td className="r mono hide-xs">
+                      {r.sd?.length ?? 0}/{SD_PAGES.length}
+                    </td>
+                    <td className="hc-tools" onClick={(ev) => ev.stopPropagation()}>
+                      <button className="btn small" aria-label={`${r.time}Z 위로`} disabled={i === 0} onClick={() => move(i, -1)}>
+                        ↑
+                      </button>
+                      <button className="btn small" aria-label={`${r.time}Z 아래로`} disabled={i === recs.length - 1} onClick={() => move(i, 1)}>
+                        ↓
+                      </button>
+                      <button
+                        className="btn small"
+                        aria-label={`${r.time}Z 기록 지우기`}
+                        onClick={() => {
+                          if (!confirm(`${r.time}Z 기록을 지울까요?`)) return;
+                          if (r.id === editId) clear();
+                          void putKey(recsKey(flightId), recs.filter((x) => x.id !== r.id));
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {recs.some((r) => r.memo?.trim()) && (
+        <ul className="hc-memos small">
+          {recs
+            .filter((r) => r.memo?.trim())
+            .map((r) => (
+              <li key={r.id}>
+                <span className="mono">{r.time}Z</span> {r.memo}
               </li>
-            );
-          })}
-        </ol>
+            ))}
+        </ul>
       )}
       {recs.length > 0 && (
         <button className="btn small hc-copy" onClick={() => void navigator.clipboard?.writeText(recs.map(lineText).join('\n')).catch(() => alert('복사 실패'))}>
@@ -378,7 +425,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
         </button>
       )}
       <p className="small muted">
-        줄을 누르면 위 칸에서 고칠 수 있습니다. 시각은 지금 시각이 자동으로 들어가고 고칠 수 있습니다. 연료는 100 단위(2445 = 244,500). 고도계 ✓/⚠ = FL300 이상 FCOM 표(PFD 150 · ISIS 320), 아래는 FOM 순항 200 · 200 초과 = Loss of Redundancy. FUEL vs RAMP = FU+FOB − 출발 연료(FMS FOB 칸 → 없으면 OFP RAMP OUT), 마이너스면 누유 의심(주황). OIL 사용 = 출발 전 SYSTEMS 오일 칸(없으면 첫 기록) 대비. 오일·여압·산소는 숫자만(판정 안 함). 기기 안에만 저장.
+        표의 줄을 누르면 위 칸에서 고칠 수 있습니다(고치는 줄은 색 표시). 작은 글 = 고도계 차이 · 오일 사용 · RAMP 대비. 시각은 지금 시각이 자동으로 들어가고 고칠 수 있습니다. 연료는 100 단위(2445 = 244,500). 고도계 ✓/⚠ = FL300 이상 FCOM 표(PFD 150 · ISIS 320), 아래는 FOM 순항 200 · 200 초과 = Loss of Redundancy. FUEL vs RAMP = FU+FOB − 출발 연료(FMS FOB 칸 → 없으면 OFP RAMP OUT), 마이너스면 누유 의심(주황). OIL 사용 = 출발 전 SYSTEMS 오일 칸(없으면 첫 기록) 대비. 오일·여압·산소는 숫자만(판정 안 함). 기기 안에만 저장.
       </p>
     </DocSection>
   );

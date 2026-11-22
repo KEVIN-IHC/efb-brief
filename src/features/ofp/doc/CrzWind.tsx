@@ -1,4 +1,5 @@
 // CRZ WIND: 지점 × FL 바람·기온 표 (OFP "WIND AND TEMPERATURE SUMMARY")
+// 열 순서 = 왼쪽 낮은 FL → 오른쪽 높은 FL
 // 계획 FL 칸 = 테두리, 그 지점에서 성분이 가장 좋은(배풍 최대) FL = 초록
 import { Fragment } from 'react';
 import { formatZ } from '../../../lib/time';
@@ -17,15 +18,16 @@ export function CrzWind({ o }: { o: OfpData }) {
       </DocSection>
     );
   }
+  const fls = [...w.fls].sort((a, b) => a - b);
   const routeBy = new Map(o.route.map((r) => [r.name, r]));
   return (
-    <DocSection title="CRZ WIND · 바람/기온" meta={`${w.points.length} PTS · FL${w.fls[w.fls.length - 1]}–${w.fls[0]}`} className="span-all flush-doc">
+    <DocSection title="CRZ WIND · 바람/기온" meta={`${w.points.length} PTS · FL${fls[0]}–${fls[fls.length - 1]}`} className="span-all flush-doc">
       <div className="table-wrap navwrap">
         <table className="dt nav crzw">
           <thead>
             <tr>
               <th className="sticky">WPT</th>
-              {w.fls.map((fl) => (
+              {fls.map((fl) => (
                 <th key={fl} className="c">
                   FL{fl}
                   <div className="isa">ISA {w.isa[fl]}</div>
@@ -45,7 +47,7 @@ export function CrzWind({ o }: { o: OfpData }) {
                       <div className="mono strong">{p.name}</div>
                       <div className="wpt-sub">{r ? `${formatZ(r.eto)} · ${r.flText && !/^\d+$/.test(r.flText) ? r.flText : `FL${r.fl}`}` : ''}</div>
                     </td>
-                    {w.fls.map((fl) => {
+                    {fls.map((fl) => {
                       const c = p.byFl[fl];
                       if (!c) return <td key={fl} className="c muted">·</td>;
                       const planned = r?.fl === fl;

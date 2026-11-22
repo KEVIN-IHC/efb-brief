@@ -4,7 +4,7 @@ import { oilBase, dec1, normEntry, altCheck, fuel100, fuelTotal, lineText, nextD
 describe('매시간 점검', () => {
   it('손글씨 한 줄 그대로', () => {
     const e = { time: '1700', altC: '31000', altS: '30990', altF: '31020', oil1: '17.4', oil2: '17.4', oil3: '17.4', oil4: '17.4', dp: '8.6', cab: '5800', fu: '455', fob: '2445', oxyC: '1767', oxyCab: '1828' };
-    expect(lineText(e)).toBe('1700Z  31000/30990/31020  17.4/17.4/17.4/17.4  8.6/5800  455+2445=2900  1767/1828');
+    expect(lineText(e)).toBe('1700Z  31000/30990/31020  17.4/17.4/17.4/17.4  8.6/5800  1767/1828  455+2445=2900');
   });
 
   it('연료 100 단위 · 큰 수는 원래 단위로 보고 나눔', () => {

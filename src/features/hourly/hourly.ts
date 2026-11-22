@@ -1,11 +1,11 @@
 // 매시간 System Check (D-084): 손으로 적던 한 줄을 그대로
-//   1700Z  31000/30990/31020  17.4/17.4/17.4/17.4  8.6/5800  455+2445=2900  1767/1828
-//   시각 · 고도계 CAPT/STBY/F/O · 엔진 오일 1~4 · 여압 ΔP/CAB ALT · FU+FOB=합계(100 단위) · 산소 CKPT/CABIN (psi)
+//   1700Z  31000/30990/31020  17.4/17.4/17.4/17.4  8.6/5800  1767/1828  455+2445=2900
+//   시각 · 고도계 CAPT/STBY/F/O · 엔진 오일 1~4 · 여압 ΔP/CAB ALT · 산소 CKPT/CABIN (psi) · FU+FOB=합계(100 단위) — 연료가 맨 끝
 // 근거: FOM 10.4.1.3 d) 약 1시간마다 고도계 교차 점검, FCOM PRO-NOR-SOP-150 순항(SD 페이지·연료 FOB+FU), LIM-AIR(여압), LIM-OXY(산소)
 // 기록은 기기 안(비행마다), 동기화 안 함. 판정 기준은 이미 앱에 있는 RVSM 표(D-080)만 씀 — 오일·여압·연료·산소는 숫자만 보여 줌
 
 /** 기록 칸 (입력 순서 = 손글씨 순서) */
-export const ENTRY_KEYS = ['time', 'altC', 'altS', 'altF', 'oil1', 'oil2', 'oil3', 'oil4', 'dp', 'cab', 'fu', 'fob', 'oxyC', 'oxyCab'] as const;
+export const ENTRY_KEYS = ['time', 'altC', 'altS', 'altF', 'oil1', 'oil2', 'oil3', 'oil4', 'dp', 'cab', 'oxyC', 'oxyCab', 'fu', 'fob'] as const;
 import { parseOil, RVSM_LIMITS } from '../checks/checks';
 
 export interface HourlyEntry {
@@ -141,8 +141,8 @@ export function lineText(r0: HourlyEntry): string {
     j([r.altC, r.altS, r.altF]),
     j([r.oil1, r.oil2, r.oil3, r.oil4]),
     j([r.dp, r.cab]),
-    r.fu || r.fob ? `${r.fu || '—'}+${r.fob || '—'}${tot !== undefined ? `=${tot}` : ''}` : '',
     j([r.oxyC, r.oxyCab]),
+    r.fu || r.fob ? `${r.fu || '—'}+${r.fob || '—'}${tot !== undefined ? `=${tot}` : ''}` : '',
     r.memo ?? '',
   ]
     .filter(Boolean)

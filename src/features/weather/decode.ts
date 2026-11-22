@@ -190,3 +190,16 @@ export function interpolateAtFl(fl: number, levels: LevelValue[]): { dir: number
     temp: Math.round((lo.temp as number) + ((hi.temp as number) - (lo.temp as number)) * f),
   };
 }
+
+/** 원문 줄바꿈 (발표 양식처럼): TAF = FM·BECMG·TEMPO·PROB 앞에서, METAR = 추세(BECMG·TEMPO·NOSIG)·RMK 앞에서 새 줄.
+ *  PROB30 TEMPO 처럼 붙은 것은 한 줄. 이미 줄바꿈이 있으면 공백으로 합친 뒤 다시 나눔 */
+export function rawLines(raw: string, kind: 'metar' | 'taf'): string {
+  const one = raw.replace(/\s+/g, ' ').trim();
+  const re = kind === 'taf' ? /\s+(?=(?:FM\d{6}|BECMG|TEMPO|PROB\d{2}|RMK)\b)/g : /\s+(?=(?:BECMG|TEMPO|NOSIG|RMK)\b)/g;
+  return one
+    .replace(re, '\n')
+    .replace(/(PROB\d{2})\n(TEMPO)/g, '$1 $2')
+    .split('\n')
+    .map((l, i) => (i ? `  ${l}` : l))
+    .join('\n');
+}

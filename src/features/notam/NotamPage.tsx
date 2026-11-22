@@ -7,7 +7,9 @@ import type { OfpData, OfpNotamItem, OfpNotamLocation, OfpNotams } from '../ofp/
 import { formatDayZ } from '../../lib/time';
 import { classifyNotam, GROUPS, groupLabel, type Classified, type NotamGroup } from './classify';
 import { REFS } from './refs';
-import { firWindows, flightWindow, ROLE_LABEL, TIME_TEXT, timeStatus, type TimeStatus, type Window } from './relevance';
+import { firWindows, flightWindow, ROLE_LABEL, TIME_TEXT, timeNote, timeStatus, type TimeStatus, type Window } from './relevance';
+import { flightAirports } from '../brief/assess';
+import { notamAbbrs } from './abbr';
 
 type Pkg = 0 | 1 | 2 | 3;
 const PKGS: { id: Pkg; label: string }[] = [
@@ -21,6 +23,7 @@ interface Row {
   it: OfpNotamItem;
   c: Classified;
   ts: TimeStatus;
+  note?: string;
 }
 interface LocView {
   loc: OfpNotamLocation;
@@ -31,10 +34,12 @@ interface LocView {
 function build(o: OfpData, n: OfpNotams): LocView[] {
   const fw = flightWindow(o);
   const firs = firWindows(o, n.firOrder);
+  // 공항 = 그 공항을 쓰는 시간창 (Briefing과 같은 계산)
+  const slots = new Map(flightAirports(o, null).map((s) => [s.icao, s.window]));
   return n.packages.flatMap((p) =>
     p.locations.map((loc) => {
-      const wins = loc.role === 'FIR' ? (firs.get(loc.icao) ?? [fw]) : [fw];
-      return { loc, wins, rows: loc.items.map((it) => ({ it, c: classifyNotam(it), ts: timeStatus(it, wins) })) };
+      const wins = loc.role === 'FIR' ? (firs.get(loc.icao) ?? [fw]) : [slots.get(loc.icao) ?? fw];
+      return { loc, wins, rows: loc.items.map((it) => ({ it, c: classifyNotam(it), ts: timeStatus(it, wins), note: timeNote(it, wins) })) };
     }),
   );
 }
@@ -118,7 +123,7 @@ export function NotamPage() {
             })}
           </div>
           <p className="doc-foot">
-            규칙으로 숨긴 NOTAM은 없습니다. 분류는 OFP 제목(◼ …)과 본문의 공식 약어로 기기 안에서 계산합니다. D) 시간표는 해석하지 않으니 원문을 확인하세요. 보조 도구 — 승인된 EFB·원문이 우선합니다.
+            규칙으로 숨긴 NOTAM은 없습니다. 분류는 OFP 제목(◼ …)과 본문의 공식 약어로 기기 안에서 계산합니다. 시간창 = 그 공항을 쓰는 시각(출발 ETD±1h · 도착 ETA±1h · 교체 교체 ETA±1h · ETP ETO±1h · EDTO 창), FIR = 통과 시각. D) 시간표는 해석하지 않으니 원문을 확인하세요. 약어 풀이는 앱 참고용(ICAO Doc 8400) — 원문이 기준. 보조 도구 — 승인된 EFB·원문이 우선합니다.
           </p>
           <details className="ntm-refs">
             <summary>근거 문서</summary>
@@ -197,7 +202,11 @@ export function NotamPage() {
               <p className="ntm-locname">
                 <b>{ROLE_LABEL[v.loc.role] ?? v.loc.role}</b> · {v.loc.name}
               </p>
-              {!v.loc.seeAlso && <p className="small muted mono ntm-win">{v.wins.map(winText).join(' / ')}</p>}
+              {!v.loc.seeAlso && (
+                <p className="small mono ntm-win">
+                  <span className="cell-k">시간창</span> {v.wins.map(winText).join(' / ')}
+                </p>
+              )}
               {v.loc.info.length > 0 && (
                 <details className="ntm-info">
                   <summary>공항 정보 ({v.loc.info.length}줄)</summary>
@@ -219,7 +228,8 @@ export function NotamPage() {
 }
 
 function NotamCard({ r }: { r: Row }) {
-  const { it, c, ts } = r;
+  const { it, c, ts, note } = r;
+  const abbrs = notamAbbrs(it.text);
   const last = it.lines[it.lines.length - 1]?.n ?? it.line;
   return (
     <article className={`ntm-item g-${c.group} ${c.key ? 'key' : ''} ${ts === 'before' || ts === 'after' ? 'off-time' : ''}`}>
@@ -236,6 +246,7 @@ function NotamCard({ r }: { r: Row }) {
           </span>
           <span className={`chip ${ts === 'overlap' ? 'chip-caution' : 'chip-muted'}`}>{TIME_TEXT[ts]}</span>
           {it.schedule && <span className="chip chip-muted">D) 시간표 — 원문 확인</span>}
+          {note && <span className={`small ntm-note ${ts === 'overlap' ? 'c-caution' : 'muted'}`}>{note}</span>}
         </div>
       )}
       {(c.chips.length > 0 || c.runways.length > 0) && (
@@ -254,6 +265,19 @@ function NotamCard({ r }: { r: Row }) {
       )}
       {it.schedule && <pre className="ntm-pre ntm-sub">D) {it.schedule}</pre>}
       <pre className="ntm-pre">{it.text}</pre>
+      {abbrs.length > 0 && (
+        <details className="ntm-abbr">
+          <summary>약어 풀이 {abbrs.length}</summary>
+          <dl>
+            {abbrs.map((a) => (
+              <div key={a.k}>
+                <dt className="mono">{a.k}</dt>
+                <dd>{a.v}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
       {(it.lower || it.upper) && (
         <p className="small mono">
           F) {it.lower ?? '—'} · G) {it.upper ?? '—'}

@@ -6,6 +6,7 @@ import type { Projection } from '../inflight/deviation';
 import { manualAircraft } from '../manual/lookup';
 import type { Window } from '../notam/relevance';
 import type { OfpData } from '../ofp/types';
+import { eraTimes } from '../ofp/eraTimes';
 import type { Snap } from '../weather/store';
 import type { Metar, Taf } from '../weather/types';
 import type { Restriction, SpecialAirport } from './fomTables';
@@ -146,8 +147,8 @@ export function flightAirports(o: OfpData, rules: CompanyRules | null): Slot[] {
       add(a.icao, 'ALTN', { from: eta - H, to: eta + H, basis: '교체공항 ETA ±1h' });
     }
   }
-  for (const w of o.edto?.windows ?? []) add(w.icao, 'EDTO', { from: Date.parse(w.from), to: Date.parse(w.to), basis: 'EDTO 사용 시간창 (OFP)' });
-  for (const e of o.etps) for (const icao of e.airports) add(icao, 'ETP', { from: Date.parse(e.eto) - H, to: Date.parse(e.eto) + H, basis: `${e.name} ETO ±1h` });
+  // ETP·EDTO 교체공항 = FOM 예상 운항 시간대 (Earliest − 1h ~ Latest + 1h, D-094)
+  for (const r of eraTimes(o)) add(r.icao, r.src === 'OFP EDTO' ? 'EDTO' : 'ETP', { from: r.opsFrom, to: r.opsTo, basis: `예상 운항 시간대 (${r.basis}, ±1h)` });
   for (const icao of o.edtoAirports) add(icao, 'ETP', { from: T, to: S, basis: '비행 시간대' });
   for (const p of o.notams?.packages ?? []) for (const l of p.locations) if (/ERA/.test(l.role)) add(l.icao, l.role === '3% ERA' ? '3% ERA' : 'ERA', { from: T, to: S, basis: '비행 시간대' });
   return [...map.values()];

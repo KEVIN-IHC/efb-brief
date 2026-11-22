@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type TabId = 'dashboard' | 'brief' | 'ofp' | 'map' | 'weather' | 'notam' | 'inflight' | 'ops' | 'mel' | 'manual' | 'settings';
+export type TabId = 'dashboard' | 'brief' | 'ofp' | 'map' | 'weather' | 'notam' | 'inflight' | 'ops' | 'mel' | 'manual' | 'pdf' | 'settings';
 
 export interface TabDef {
   id: TabId;
@@ -19,17 +19,19 @@ const I = (d: ReactNode) => (
   </svg>
 );
 
+// 순서 = 출두 후 확인 순서(FCRM 6.7.4 Pre-Flight Briefing Checklist: 서류(OFP) → 기상 → NOTAM) 뒤 운항 중 도구
 export const TABS: TabDef[] = [
   { id: 'dashboard', label: 'Dashboard', primary: true, icon: I(<><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>) },
-  { id: 'brief', label: 'Briefing', primary: false, icon: I(<><path d="M9 4h6v3H9z" /><path d="M7 5H5v16h14V5h-2" /><path d="M8 12l2 2 4-4M8 17h8" /></>) },
   { id: 'ofp', label: 'OFP', primary: true, icon: I(<><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M10 13h6M10 17h6M10 9h2" /></>) },
-  { id: 'map', label: 'Map', primary: false, icon: I(<><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" /></>) },
+  { id: 'brief', label: 'Briefing', primary: false, icon: I(<><path d="M9 4h6v3H9z" /><path d="M7 5H5v16h14V5h-2" /><path d="M8 12l2 2 4-4M8 17h8" /></>) },
   { id: 'weather', label: 'Weather', primary: true, icon: I(<><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7Z" /></>) },
-  { id: 'inflight', label: 'Inflight', primary: true, icon: I(<><path d="M12 3v18" /><path d="M3 13l9-4 9 4" /><path d="M8 20l4-1.5 4 1.5" /></>) },
-  { id: 'ops', label: 'Ops', primary: false, icon: I(<><path d="M12 3 3 20h18L12 3Z" /><path d="M12 10v4M12 17.5v.01" /></>) },
+  { id: 'map', label: 'Map', primary: false, icon: I(<><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" /></>) },
   { id: 'notam', label: 'NOTAM', primary: false, icon: I(<><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h5" /></>) },
+  { id: 'ops', label: 'Ops', primary: false, icon: I(<><path d="M12 3 3 20h18L12 3Z" /><path d="M12 10v4M12 17.5v.01" /></>) },
+  { id: 'inflight', label: 'Inflight', primary: true, icon: I(<><path d="M12 3v18" /><path d="M3 13l9-4 9 4" /><path d="M8 20l4-1.5 4 1.5" /></>) },
   { id: 'mel', label: 'MEL', primary: false, icon: I(<><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z" /></>) },
   { id: 'manual', label: 'Manual', primary: false, icon: I(<><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" /><path d="M4 21V5M8 7h7" /></>) },
+  { id: 'pdf', label: 'OFP PDF', primary: false, icon: I(<><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M9.5 17v-4h1.5a1.2 1.2 0 0 1 0 2.4H9.5M14 13v4M14 13h2M14 15h1.5" /></>) },
   { id: 'settings', label: 'Settings', primary: false, icon: I(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>) },
 ];
 

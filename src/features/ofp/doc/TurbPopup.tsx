@@ -1,4 +1,4 @@
-// 난류 SR 구간 창 (D-073): OFP에서 구간을 누르면 그 자리 위에 확대 지도(오프라인 플랜 뷰) + 지점 목록.
+// 난류 SR 구간 창 (D-073·D-095): OFP·NAV LOG에서 구간을 누르면 그 자리 위에 확대 지도(플랜 뷰) + 단면(버티컬 뷰) + 지점 목록.
 // "Map에서 크게 보기"는 Map 탭으로 가서 그 구간을 보여 주고, 맨 위 "돌아가기"로 이 창까지 되돌아온다
 import { useEffect } from 'react';
 import { goWithReturn } from '../../../app/returnTo';
@@ -6,6 +6,7 @@ import { fmtHm } from '../../../lib/format';
 import { formatZ } from '../../../lib/time';
 import { useActiveFlight } from '../../flight/activeFlight';
 import { PlanView } from '../../vertical/PlanView';
+import { VerticalView } from '../../vertical/VerticalView';
 import { SR_BASIS, srLevel, turbulenceZones, useTurbFocus } from '../turbulence';
 import { LevelPill } from './ui';
 
@@ -59,7 +60,10 @@ export function TurbPopup() {
           <p className="mono small">
             {formatZ(z.from.eto)}–{formatZ(z.to.eto)} · T/O +{fmtHm(z.from.cumMin)} ~ +{fmtHm(z.to.cumMin)} ({fmtHm(Math.max(0, z.to.cumMin - z.from.cumMin))})
           </p>
-          <PlanView focus={{ from: z.from.seq, to: z.to.seq, level: z.level }} title="이 구간 (위에서 본 모습)" />
+          <div className="turb-views">
+            <PlanView focus={{ from: z.from.seq, to: z.to.seq, level: z.level }} title="이 구간 (위에서 본 모습)" />
+            <VerticalView focus={{ from: z.from.seq, to: z.to.seq }} title="이 구간 (옆에서 본 단면)" />
+          </div>
           <div className="table-wrap">
             <table className="dt">
               <thead>

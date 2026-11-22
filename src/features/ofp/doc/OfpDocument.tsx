@@ -12,8 +12,10 @@ import { Cell, DocSection, LevelPill } from './ui';
 import { TurbulenceBlock } from './Turbulence';
 import { Dlt, FmsBlock, FmsCell, FmsInput, showHm, showKilo, RvsmBlock, SystemsBlock, type Fms } from './Fms';
 import { fmsKey, ofpRefs, parseHm, parseKilo, type FmsEntry } from '../../checks/checks';
-import { useDraft } from '../../ops/store';
-import { flightIdFor } from '../../flight/activeFlight';
+import { putKey, useDraft, useKey } from '../../ops/store';
+import { flightIdFor, useActiveFlight } from '../../flight/activeFlight';
+import { kbProps, useAppKeyboard } from '../../../app/AppKeyboard';
+import { depShift, eraTimes } from '../eraTimes';
 import { focusTurbZone } from '../turbulence';
 
 const U = (o: OfpData) => o.unit.toUpperCase();
@@ -69,13 +71,16 @@ function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void
   );
 }
 
-/** OPS PLAN 칸: EDTO(OFP에 있을 때만 — 쌍발기) · REFILE · 3%/5% CONT. 여러 개면 함께 */
+/** 계획 방식은 3가지: REFILE · 3% CONT · 5% CONT. REFILE이면 5%는 따로 붙이지 않음 */
+const showCont = (h: OfpData['header']) => !!h.plan?.contPct && !(h.plan.contPct === 5 && h.plan.refile?.length);
+
+/** OPS PLAN 칸: EDTO(OFP에 있을 때만 — 쌍발기) · REFILE / 3% CONT / 5% CONT */
 export function opsPlan(o: OfpData): string {
   const h = o.header;
   const parts: string[] = [];
   if (h.edtoRule || h.plan?.edto) parts.push(h.edtoRule ?? 'EDTO');
   if (h.plan?.refile?.length) parts.push('REFILE');
-  if (h.plan?.contPct) parts.push(`${h.plan.contPct}% CONT`);
+  if (showCont(h)) parts.push(`${h.plan!.contPct}% CONT`);
   return parts.join(' · ') || '—';
 }
 
@@ -98,7 +103,7 @@ export function FlightBlock({ o, onLine }: { o: OfpData; onLine?: (n: number) =>
         </div>
         {(h.plan?.contPct || h.plan?.refile?.length || h.edtoRule || h.plan?.edto) && (
           <div className="flt-plan">
-            {h.plan?.contPct && <span className={`pill ${h.plan.contPct === 3 ? 'plan-3' : 'plan-n'}`}>{h.plan.contPct}% CONT{h.plan.contPct === 3 && h.plan.era3?.length ? ` · ERA ${h.plan.era3.join(' ')}` : ''}</span>}
+            {showCont(h) && h.plan?.contPct && <span className={`pill ${h.plan.contPct === 3 ? 'plan-3' : 'plan-n'}`}>{h.plan.contPct}% CONT{h.plan.contPct === 3 && h.plan.era3?.length ? ` · ERA ${h.plan.era3.join(' ')}` : ''}</span>}
             {h.plan?.refile?.length ? <span className="pill plan-x">REFILE · {h.plan.refile.join(' ')}</span> : null}
             {(h.edtoRule || h.plan?.edto) && <span className="pill plan-x">{h.edtoRule ?? 'EDTO'}</span>}
           </div>
@@ -448,16 +453,82 @@ export function EtpBlock({ o }: { o: OfpData }) {
           );
         })}
       </div>
-      {o.edto?.windows.length ? (
-        <p className="doc-foot mono">
-          {o.edto.windows.map((w) => `${w.icao} ${w.from}–${w.to}`).join(' · ')}
-        </p>
-      ) : null}
+      <EraTimes o={o} />
       {o.etps.some((e) => e.scenarios?.some((s) => s.flags)) && <p className="doc-foot mono">W: M-MSA · D-FUEL DUMP REQ · F-DIVERT FUEL REQ · S-SPIRAL DESCENT</p>}
       {!o.etps.some((e) => e.criticalFuel !== undefined) && o.etps.length > 0 && (
         <p className="doc-foot muted">이 OFP 양식에는 ETP 임계 연료(CFR)가 명시되어 있지 않아 여유 판정을 하지 않습니다.</p>
       )}
     </DocSection>
+  );
+}
+
+/** ERA 예상 사용 시간 (D-094): FOM Earliest/Latest Estimated Time of Landing · 실제 출발 시각을 넣으면 옮김 */
+function EraTimes({ o }: { o: OfpData }) {
+  const flightId = useActiveFlight((s) => s.flight.flightId);
+  const key = `eraDep:${flightId}`;
+  const dep = useKey<string>(key, '');
+  const appKb = useAppKeyboard();
+  const shift = depShift(o, dep);
+  const rows = eraTimes(o, shift);
+  if (!rows.length) return null;
+  const set = (v: string) => void putKey(key, v.replace(/\D/g, '').slice(0, 4));
+  const z = (ms: number) => formatZ(new Date(ms).toISOString());
+  const sh = Math.round(shift / 60000);
+  return (
+    <div className="era-times">
+      <div className="era-head">
+        <span className="cell-k">ERA 예상 사용 시간</span>
+        <label className="era-dep">
+          <span className="muted small">STD {formatZ(o.header.std)} · 실제 출발</span>
+          <input
+            className="hc-in mono kb-in"
+            style={{ width: '6ch' }}
+            placeholder="HHMM"
+            aria-label="실제 출발 시각 Z"
+            value={dep}
+            onChange={(e) => set(e.target.value)}
+            {...kbProps(appKb, { label: '실제 출발 Z', set, raw: () => dep, step: { kind: 'hm', clock: true } }, 'numeric')}
+          />
+          <span className="mono small">{dep && sh ? `${sh > 0 ? '+' : '−'}${fmtHm(Math.abs(sh))}` : dep ? '±0' : ''}</span>
+          {dep && (
+            <button type="button" className="btn small" onClick={() => void putKey(key, '')}>
+              지우기
+            </button>
+          )}
+        </label>
+      </div>
+      <div className="table-wrap">
+        <table className="dt small-t">
+          <thead>
+            <tr>
+              <th>ERA</th>
+              <th className="r">예상 착륙</th>
+              <th className="r">운항 시간대 ±1h</th>
+              <th className="hide-xs">근거</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.icao}>
+                <td className="mono strong">{r.icao}</td>
+                <td className="r mono">{r.earliest === r.latest ? z(r.earliest) : `${z(r.earliest)}–${z(r.latest)}`}</td>
+                <td className="r mono strong">
+                  {z(r.opsFrom)}–{z(r.opsTo)}
+                </td>
+                <td className="muted small hide-xs">{r.basis}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="doc-foot muted">
+        FOM EDTO ETP Data: 예상 착륙 = 이륙 + (앞·뒤) ETP까지 시간 + 회항 시간, 운항 시간대 = 앞뒤 1시간.{' '}
+        {rows[0].src === 'OFP EDTO'
+          ? 'OFP "SUITABLE FROM ~ TO" 값을 예상 착륙 시간대로 씀.'
+          : 'OFP에 EEP·EXP와 고속·1엔진 회항 시간 구분이 없어 ETP와 OFP 회항 시간 하나로 계산 — 첫·마지막 공항은 한 시각으로 나옴.'}{' '}
+        {dep ? `실제 출발 ${dep}Z 기준으로 옮김.` : 'STD 기준. 실제 출발 시각을 넣으면 옮겨 계산.'} 이 시간대는 Briefing·NOTAM에도 씀(STD 기준).
+      </p>
+    </div>
   );
 }
 

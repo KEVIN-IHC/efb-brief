@@ -529,7 +529,13 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .dt.nav tbody tr:hover td { background: var(--raised); }
 .wpt-sub { font-size: 0.66rem; color: var(--text-faint); max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
 .dt.nav tr.row-fir td { font: 700 var(--fs-xs) var(--mono); letter-spacing: 0.04em; color: var(--accent); background: var(--bg); padding: 4px 8px; }
-.dt.nav .ato { color: var(--text-faint); border-left: 1px dashed var(--line-strong); }
+.dt.nav tbody tr.row-sel td { background: var(--accent-soft); }
+.dt.nav tbody tr.row-sel td.sticky { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); }
+.dt.nav th.nav-h { cursor: pointer; text-decoration: underline dotted var(--text-faint); text-underline-offset: 3px; }
+.dt.nav th.nav-h.on { color: var(--accent); }
+.nav-help { margin: 0 var(--sp-3) var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r-sm, 6px); background: var(--raised); }
+.dt.nav td.sr-zone { cursor: pointer; }
+.sr-zone-mk { margin-left: 3px; color: var(--accent); font-size: var(--fs-xs); }
 @media (max-width: 1279px) { .hide-md { display: none; } }
 @media (max-width: 479px) {
   .dt.nav td, .dt.nav th { padding-left: 6px; padding-right: 6px; }
@@ -1270,6 +1276,12 @@ button.al-basis { min-height: var(--touch); padding: 0; border: 0; background: n
 .hc-save { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
 .hc-save .input { flex: 1 1 auto; min-width: 0; margin: 0; min-height: var(--touch); }
 .hc-save .btn.primary { min-width: 110px; }
+.hc-tablewrap { margin-top: var(--sp-3); }
+.dt.hc-table td { cursor: pointer; white-space: nowrap; }
+.dt.hc-table td.hc-tools { cursor: default; display: table-cell; }
+.dt.hc-table td.hc-tools .btn + .btn { margin-left: 4px; }
+.hc-memos { list-style: none; margin: var(--sp-2) 0 0; padding: 0; color: var(--text-dim, var(--text)); }
+.hc-memos li { padding: 2px 0; }
 .hc-list { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
 .hc-list li { display: flex; align-items: center; gap: var(--sp-2); border-bottom: 1px solid var(--line); }
 .hc-list li.on { background: var(--accent-soft); }
@@ -1285,3 +1297,29 @@ input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-se
 .jb-saved { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); padding: 8px 10px; border: 1px solid var(--warn); border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--text); }
 .jb-saved > span { flex: 1 1 260px; }
 
+
+/* Weather 공항 옆 STD·ETA (교체 = 도착 ETA·회항 ETA) */
+.wx-times { display: flex; flex-wrap: wrap; gap: 2px var(--sp-3); margin: 0 0 var(--sp-2); color: var(--text-dim); }
+.wx-times b { color: var(--text); }
+
+/* NOTAM 시간창 관계 · 약어 풀이 (D-093) */
+.ntm-note { flex-basis: 100%; }
+.ntm-abbr { margin: var(--sp-1, 4px) 0; font-size: var(--fs-sm); }
+.ntm-abbr summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; color: var(--accent); }
+.ntm-abbr dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px var(--sp-3); }
+.ntm-abbr dl > div { display: flex; gap: var(--sp-2); }
+.ntm-abbr dt { font-weight: 700; min-width: 4.5ch; }
+.ntm-abbr dd { margin: 0; color: var(--text-dim); }
+
+/* ERA 예상 사용 시간 (D-094) */
+.era-times { margin-top: var(--sp-3); border-top: 1px solid var(--line); padding-top: var(--sp-2); }
+.era-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.era-dep { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+
+/* 난류 창 플랜+버티컬 · FIR 통신 창 (D-095) */
+.turb-views { display: grid; gap: var(--sp-3); }
+.dt.nav tr.row-fir { cursor: pointer; }
+.fir-row-go { color: var(--text-dim); font-weight: 400; }
+.fir-pop-h { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-dim); letter-spacing: 0.04em; }
+.fir-pop-fir { width: 100%; justify-content: flex-start; margin-bottom: var(--sp-2); }
+.fir-pop-refs { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-2); }

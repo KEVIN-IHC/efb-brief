@@ -678,3 +678,41 @@
   2. Settings 고지 카드: 지금 앱 버전 · [새 버전 확인](서비스 워커 update) · [앱 파일 새로 받기](서비스 워커 등록 해제 + Cache Storage 삭제 + 다시 불러오기. IndexedDB의 비행·기록·OUTBOX·설정은 그대로, 오프라인이면 막음)
   3. 합동 브리핑: 저장된 고친 원고를 쓰는 중이면 맨 위 주황 상자 "기기에 저장된 고친 원고 사용 중 · 기준 원고에 새 문단 n개" + [새 문단 넣기] [최신 원고로 바꾸기](체크·고른 값은 그대로)
 - **영향** `app/{App.tsx,styles.css}`, `settings/SettingsPage.tsx`, `joint/JointBrief.tsx`
+
+### D-092 탭 순서 · OFP PDF 탭 · NAV LOG 정리 · Inflight 통과 기록 삭제 · Hourly 표
+- **날짜** 2026-11-22 (사용자 요청 25개 중 바로 할 수 있는 것. 나머지 묶음·답은 `private/manuals/REQUESTS-2026-11-22.md`)
+- **결정**
+  1. 탭 순서 Dashboard · OFP · Briefing · Weather · Map · NOTAM · Ops · Inflight · MEL · Manual · OFP PDF · Settings (회사 Pre-Flight Briefing Checklist 순서 서류 → 기상 → NOTAM과 같음)
+  2. "PDF · 추출"을 OFP 탭에서 빼 **OFP PDF 탭**으로. OFP 카드·NOTAM의 원문 줄 이동은 이 탭으로
+  3. 계획 방식 표시 = REFILE / 3% CONT / 5% CONT. REFILE이면 5% CONT를 붙이지 않음(OFP 칸·합동 브리핑 글)
+  4. NAV LOG: 줄을 누르면 원문으로 가지 않고 그 줄만 색 표시, ATO 열 삭제, 머리글 누르면 뜻 한 줄, 난류 구간 줄의 SR 칸 ◫ → 난류 구간 창
+  5. CRZ WIND 열 = 왼쪽 낮은 FL → 오른쪽 높은 FL
+  6. Weather: METAR/TAF 원문을 발표 양식처럼 줄바꿈(FM·BECMG·TEMPO·PROB·NOSIG·RMK), 공항 옆 STD·ETA, 교체 = 도착 ETA + 회항 ETA(OFP 교체 시간)
+  7. Inflight: 지점 통과 기록(다음 지점 버튼·입력 창)·요약 칸·Fuel plan vs actual·Waypoint log 삭제. 예전 기록은 DB에 그대로(지우지 않음). 점검 알림에서 연료·통과 지연 알림 삭제(연료는 Hourly check)
+  8. Hourly check: 칸 순서 … ΔP/CAB → OXY → FU+FOB(연료 맨 끝). 기록 목록을 NAV LOG 같은 표로(작은 글 = 고도계 차이·오일 사용·RAMP 대비), 메모는 표 아래
+- **영향** `app/{tabs.tsx,App.tsx,styles.css}`, `ofp/{OfpPage.tsx,PdfPage.tsx(신규),sourceJump.ts,OfpOpenButton.tsx}`, `ofp/doc/{NavLog,CrzWind,OfpDocument}.tsx`, `joint/{template.ts,joint.test.ts}`, `weather/{WeatherPage.tsx,decode.ts,decode.test.ts(신규)}`, `inflight/{InflightPage.tsx,reminders.ts}`(EntrySheet·FuelChart 삭제), `hourly/{HourlyCheck.tsx,hourly.ts,hourly.test.ts}`
+
+### D-093 NOTAM 공항별 시간창 · 시간 관계 한 줄 · 약어 풀이
+- **날짜** 2026-11-22 (사용자 요청 20: "notam decoder가 필요할까? 비행 시간대에 겹침 + 시간도 작성해줘. std나 eta라던가")
+- **결정**
+  1. 공항 NOTAM의 시간창 = Briefing과 같은 공항별 창(출발 ETD±1h · 도착 ETA±1h · 교체 교체 ETA±1h · ETP ETO±1h · EDTO 창 · ERA 비행 시간대). FIR은 그대로 통과 시각. 공항 머리에 "시간창 시각 ~ 시각 · 근거"
+  2. NOTAM마다 시간창과의 관계 한 줄: "시간창 내내 유효" · "시간창 중 10 1800Z 종료" · "11 0800Z 시작 — 시간창 끝 10:48 후" 등. D) 시간표는 여전히 해석 안 함
+  3. 전체 해독기는 만들지 않음(원문이 공식, 오역 위험). OFP NOTAM에는 Q) 줄이 없어 Q-코드 대신 **본문 약어 풀이**(ICAO Doc 8400 일반 약어 약 110개, 접힌 칸)
+- **영향** `notam/{relevance.ts,abbr.ts(신규),NotamPage.tsx,notam.test.ts}`, `app/styles.css`
+
+### D-094 ETP·EDTO 교체공항 예상 사용 시간 (FOM 계산식) · 실제 출발 시각으로 옮기기
+- **날짜** 2026-11-22 (사용자 요청 15: "etp 공항은 각 공항별로 std 기준으로 실제 디파쳐 할 경우에 예상 사용 시간을 표시해줘" → 계산 방식 승인)
+- **결정**
+  1. 계산은 회사 FOM Supplement "EDTO ETP Data" 식: Alternate n 예상 착륙 = 이륙 + (앞·뒤) ETP까지 시간 + 회항 시간, 예상 운항 시간대 = 앞뒤 1시간. 공항 순서 = ETP1 [A,B] · ETP2 [B,C] → A(ETP1) · B(ETP1~ETP2) · C(ETP2)
+  2. OFP에 EEP·EXP와 고속/1엔진 회항 시간 구분이 없으면 ETP와 OFP 회항 시간 하나로 계산(첫·마지막 공항은 한 시각). OFP에 "SUITABLE FROM ~ TO"(쌍발 EDTO)가 있으면 그 값을 예상 착륙 시간대로 씀
+  3. OFP 화면 EDTO·ETP 카드 아래 "ERA 예상 사용 시간" 표 + 실제 출발 시각(HHMM Z) 칸 → (실제 − STD)만큼 모두 옮김. 기기 안에만 저장(비행별)
+  4. Briefing·NOTAM의 ETP·EDTO 공항 시간창도 이 운항 시간대(STD 기준)로 바꿈 (이전: ETP ETO ±1h). OFP EDTO "1159Z" 글자를 시각으로 못 읽던 버그도 같이 고침
+- **영향** `ofp/{eraTimes.ts,eraTimes.test.ts}`(신규), `ofp/doc/OfpDocument.tsx`, `brief/assess.ts`, `app/styles.css`
+
+### D-095 난류 창에 단면(버티컬 뷰) 함께 · NAV LOG FIR 줄 → FIR 통신 창
+- **날짜** 2026-11-22 (사용자 요청 7·8: "fir은 누르면 mel 링크처럼 교신 방법", "cpdlc 절차도", "sr 높은 지역은 위에서 본 지도 + 버티컬뷰 2개 다 한번에")
+- **결정**
+  1. 난류 SR 구간 창: 플랜 뷰 아래에 버티컬 뷰를 그 구간만 확대해 함께 (구간 앞뒤 25%, 최소 80NM 여유). 버티컬 뷰에 `focus` 옵션(구간 밖은 잘라냄)
+  2. NAV LOG "▸ FIR …" 줄(ADIZ 제외)을 누르면 FIR 통신 창: OFP 진입 지점·시각 · 개인 통신표(창 안에서 편집) · 회사 FOM 데이터링크 절 📖(Log-on · End of Service · CPDLC · ADS-C · Emergency/Non-Normal · 보고) · FOM "FIR 별 절차"에 그 FIR이 있으면 그 쪽을 FIR 이름 강조로 바로 열기
+  3. 통신표는 여전히 개인 입력(D-055). Jeppesen 자료로 채우는 일은 사용자 자료가 오면 private에서 JSON으로 만들어 가져오기
+- **영향** `vertical/VerticalView.tsx`, `ofp/doc/{TurbPopup,NavLog}.tsx`, `fir/{FirPopup.tsx(신규),FirCommSection.tsx}`, `app/{App.tsx,styles.css}`

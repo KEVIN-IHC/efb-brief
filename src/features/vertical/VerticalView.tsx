@@ -1,5 +1,5 @@
 // 버티컬 뷰 (D-058): 항로 단면 SVG. 화면 폭이 좁으면 안에서만 가로 스크롤 (페이지 가로 스크롤 없음)
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { gcDistanceNm } from '../../lib/geo';
 import { formatAgo, formatZ } from '../../lib/time';
 import { firSequence } from '../fir/sequence';
@@ -47,7 +47,9 @@ function pirepMarks(o: OfpData, list: Pirep[]) {
 
 const turbSev = (t?: string, edr?: number | null) => (edr != null ? (edr >= 0.4 ? 3 : edr >= 0.2 ? 2 : 1) : /SEV|EXTRM/i.test(t ?? '') ? 3 : /MOD/i.test(t ?? '') ? 2 : 1);
 
-export function VerticalView() {
+/** focus = 이 구간(지점 seq)만 확대 (난류 SR 창, D-095). title = 머리 글 바꾸기 */
+export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }: { focus?: { from: number; to: number }; title?: string } = {}) {
+  const clipId = useId().replace(/:/g, '');
   const { o, winds, now, proj, dev, pick, etoRange, mode, t: selT } = useWxPick();
   const sigmets = useWx((s) => s.sigmets);
   const pireps = useWxExtra((s) => s.pirep);
@@ -82,7 +84,14 @@ export function VerticalView() {
 
   if (!o || !calc) return null;
   const { total, profile, wc, sg, firs, pr } = calc;
-  const X = (nm: number) => PAD.l + (nm / total) * (W - PAD.l - PAD.r);
+  // 보이는 거리 범위: 전체 또는 구간 앞뒤 여유 (구간 길이의 25%, 최소 80NM)
+  const f0 = focus ? o.route.find((w) => w.seq === focus.from) : undefined;
+  const f1 = focus ? o.route.find((w) => w.seq === focus.to) : undefined;
+  const pad = f0 && f1 ? Math.max(80, (f1.cumDist - f0.cumDist) * 0.25) : 0;
+  const r0 = f0 && f1 ? Math.max(0, f0.cumDist - pad) : 0;
+  const r1 = f0 && f1 ? Math.min(total, f1.cumDist + pad) : total;
+  const inRange = (nm: number) => nm >= r0 - 1 && nm <= r1 + 1;
+  const X = (nm: number) => PAD.l + ((nm - r0) / (r1 - r0 || 1)) * (W - PAD.l - PAD.r);
   const Y = (fl: number) => H - PAD.b - (Math.min(fl, FL_MAX) / FL_MAX) * (H - PAD.t - PAD.b);
   const hasLevels = wc.cells.length > 0;
   const oldCache = !!winds && !hasLevels;
@@ -98,12 +107,13 @@ export function VerticalView() {
   const selX = mode === 'fixed' && selT != null && Math.abs(selT - now) > 1800_000 ? xAt(selT) : null;
   const msaPts = o.route.filter((w) => w.msa != null && w.msa > 0);
   const flTicks = [0, 100, 200, 300, 400];
-  const labelEvery = Math.max(1, Math.ceil(o.route.length / 14));
+  const visible = o.route.filter((w) => inRange(w.cumDist));
+  const labelEvery = Math.max(1, Math.ceil(visible.length / 14));
 
   return (
     <section className="card flush vv">
       <div className="card-title pad">
-        <h3>버티컬 뷰 (항로 단면)</h3>
+        <h3>{title}</h3>
         <span className="small muted mono">{mode === 'fixed' && selT != null ? `${formatZ(new Date(selT).toISOString())} · ${relLabel(selT, now)}` : etoRange ? '지점 통과 시각' : '지금'}</span>
       </div>
       <div className="pad vv-ctl">
@@ -133,6 +143,12 @@ export function VerticalView() {
       </div>
       <div className="vv-scroll">
         <svg viewBox={`0 0 ${W} ${H}`} className="vv-svg" role="img" aria-label="항로 단면: 계획 고도와 고도별 바람·기상">
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={PAD.l} y={0} width={W - PAD.l - PAD.r} height={H - PAD.b + 2} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
           {/* 바탕 칸: 바람·기온·기온 변화 */}
           {bg !== 'none' &&
             bg !== 'turb' &&
@@ -160,12 +176,7 @@ export function VerticalView() {
             )}
           {/* 눈금 */}
           {flTicks.map((f) => (
-            <g key={f}>
-              <line x1={PAD.l} x2={W - PAD.r} y1={Y(f)} y2={Y(f)} className="vv-grid" />
-              <text x={PAD.l - 6} y={Y(f) + 4} className="vv-ax" textAnchor="end">
-                {f === 0 ? 'SFC' : `FL${f}`}
-              </text>
-            </g>
+            <line key={f} x1={PAD.l} x2={W - PAD.r} y1={Y(f)} y2={Y(f)} className="vv-grid" />
           ))}
           {/* FIR 경계 */}
           {firs.map((f) => (
@@ -258,16 +269,22 @@ export function VerticalView() {
               </text>
             </g>
           )}
+          </g>
+          {flTicks.map((f) => (
+            <text key={f} x={PAD.l - 6} y={Y(f) + 4} className="vv-ax" textAnchor="end">
+              {f === 0 ? 'SFC' : `FL${f}`}
+            </text>
+          ))}
           {/* 지점 이름 */}
-          {o.route.map((w, i) =>
-            i % labelEvery === 0 || i === o.route.length - 1 ? (
+          {visible.map((w, i) =>
+            i % labelEvery === 0 || i === visible.length - 1 ? (
               <text key={w.seq} x={X(w.cumDist)} y={H - PAD.b + 14} className="vv-ax" textAnchor="middle">
                 {w.name}
               </text>
             ) : null,
           )}
           <text x={W - PAD.r} y={H - 6} textAnchor="end" className="vv-ax">
-            {Math.round(total)} NM
+            {focus ? `${Math.round(r0)}–${Math.round(r1)} / ${Math.round(total)} NM` : `${Math.round(total)} NM`}
           </text>
         </svg>
       </div>

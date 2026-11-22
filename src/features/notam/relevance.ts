@@ -1,5 +1,5 @@
-// 비행과의 관련성: 공항 역할, FIR 통과 시간, NOTAM 유효기간과의 겹침 (D-043)
-// - 공항(패키지 1·2): 비행 시간대 = 계획 이륙(ETD) ~ 도착(ETA)
+// 비행과의 관련성: 공항 역할, FIR 통과 시간, NOTAM 유효기간과의 겹침 (D-043 · D-093)
+// - 공항(패키지 1·2): 그 공항을 쓰는 시간창 (Briefing과 같은 계산 — 출발 ETD±1h · 도착 ETA±1h · 교체 ETA±1h · ETP ETO±1h · EDTO 창). 없으면 ETD~ETA
 // - FIR(패키지 3): NAV LOG의 FIR 진입 지점 ETO로 통과 시간대를 만들고, 없으면 비행 시간대
 // - D) 시간표는 해석하지 않는다 → "시간표 있음 — 원문 확인" (잘못 해석해 '해당 없음'으로 오판하지 않도록)
 // 어떤 경우에도 NOTAM을 숨기지 않는다. 겹침 여부는 표시만.
@@ -63,3 +63,30 @@ export const TIME_TEXT: Record<TimeStatus, string> = {
   after: '비행 후 시작',
   unknown: '시간 판단 없음',
 };
+
+const hm = (ms: number) => {
+  const m = Math.round(Math.abs(ms) / 60000);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+};
+const z = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}Z`;
+};
+
+/** 시간창과 NOTAM 유효기간 관계를 한 줄로 (예: "창 내내 유효" · "창 중 05 2030Z 종료" · "05 0900Z 종료 — 창 시작 2:00 전") */
+export function timeNote(it: OfpNotamItem, wins: Window[]): string | undefined {
+  if (it.kind === 'text' || !it.from || !wins.length) return undefined;
+  const f = Date.parse(it.from);
+  const t = it.to ? Date.parse(it.to) : Infinity;
+  const parts = wins.map((w) => {
+    if (t < w.from) return `${z(t)} 종료 — 시간창 시작 ${hm(w.from - t)} 전`;
+    if (f > w.to) return `${z(f)} 시작 — 시간창 끝 ${hm(f - w.to)} 후`;
+    const a = f > w.from;
+    const b = t < w.to;
+    if (a && b) return `시간창 중 ${z(f)}~${z(t)}만 유효`;
+    if (a) return `시간창 중 ${z(f)} 시작`;
+    if (b) return `시간창 중 ${z(t)} 종료`;
+    return it.to ? '시간창 내내 유효' : `시간창 내내 유효 (${it.open ?? '끝 시각 없음'})`;
+  });
+  return [...new Set(parts)].join(' / ');
+}
