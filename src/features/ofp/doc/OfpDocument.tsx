@@ -394,67 +394,35 @@ export function EtpBlock({ o }: { o: OfpData }) {
         {o.etps.map((e) => {
           const m = etpMargin(e, o.unit);
           const critical = o.edto?.mostCritical && Number(o.edto.mostCritical.replace(/\D/g, '')) === Number(e.name.replace(/\D/g, ''));
+          // Driftdown 표는 뺌(D-100) — W 표시(M·D·F·S)만 어느 방식에 붙었는지
+          const flagModes = (e.scenarios ?? []).filter((x) => x.flags?.trim()).map((x) => `${x.flags.trim()} ${x.mode}`);
           return (
             <div key={e.name} className={`etp ${m ? `lv-border-${m.level}` : ''}`}>
               <div className="etp-head">
-                <b className="mono">{e.name}</b>
-                <span className="mono">{e.airports.join(' / ')}</span>
-                <span className="mono muted">{formatDayZ(e.eto)}</span>
+                <b className="mono etp-name">{e.name}</b>
+                <span className="mono etp-ap">
+                  {e.airports[0]}
+                  <span className="etp-arr">⇄</span>
+                  {e.airports[1]}
+                </span>
+                <span className="mono small muted">{Number.isFinite(e.lat) ? formatLatLon(e.lat, e.lon) : ''}</span>
                 {critical && <span className="pill lv-caution">MOST CRITICAL</span>}
               </div>
-              <div className="mono small muted">{Number.isFinite(e.lat) ? formatLatLon(e.lat, e.lon) : ''}</div>
-              <div className="etp-fuel">
-                <span>
-                  FOB <b className="mono">{fmtKg(e.fuelOnBoard)}</b>
-                </span>
-                {e.criticalFuel !== undefined && (
-                  <span>
-                    CFR <b className="mono">{fmtKg(e.criticalFuel)}</b>
-                  </span>
-                )}
-                {m && (
-                  <span className={`c-${m.level}`}>
-                    EXC <b className="mono">{fmtSigned(m.margin)}</b>
-                  </span>
-                )}
-                {e.distToAlt !== undefined && (
-                  <span className="muted">
-                    → ALT {e.distToAlt} NM{e.timeToAltMin !== undefined ? ` · ${fmtHm(e.timeToAltMin)}` : ''}
-                  </span>
-                )}
+              <div className="cells etp-cells">
+                <Cell k="ETO" v={formatDayZ(e.eto)} />
+                <Cell k="FOB" v={fmtKg(e.fuelOnBoard)} />
+                {e.distToAlt !== undefined && <Cell k="TO ALT" v={`${e.distToAlt.toLocaleString()} NM`} />}
+                {e.timeToAltMin !== undefined && <Cell k="TIME" v={fmtHm(e.timeToAltMin)} />}
+                {e.criticalFuel !== undefined && <Cell k="CFR" v={fmtKg(e.criticalFuel)} />}
+                {m && <Cell k="EXC" v={fmtSigned(m.margin)} tone={m.level === 'ok' ? undefined : m.level} />}
+                {flagModes.length > 0 && <Cell k="DRIFTDOWN W" v={flagModes.join(' · ')} tone="caution" />}
               </div>
-              {e.scenarios && e.scenarios.length > 0 && (
-                <div className="table-wrap">
-                <table className="dt small-t">
-                  <thead>
-                    <tr>
-                      <th>DRIFTDOWN</th>
-                      <th className="r">{e.airports[0]} BURN</th>
-                      <th className="r">{e.airports[1]} BURN</th>
-                      <th className="r">FOB</th>
-                      <th>W</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {e.scenarios.map((s) => (
-                      <tr key={s.mode}>
-                        <td className="mono">{s.mode}</td>
-                        <td className="r mono">{fmtKg(s.burn[0])}</td>
-                        <td className="r mono">{fmtKg(s.burn[1])}</td>
-                        <td className="r mono">{fmtKg(s.fob)}</td>
-                        <td className="mono c-caution">{s.flags}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              )}
             </div>
           );
         })}
       </div>
       <EraTimes o={o} />
-      {o.etps.some((e) => e.scenarios?.some((s) => s.flags)) && <p className="doc-foot mono">W: M-MSA · D-FUEL DUMP REQ · F-DIVERT FUEL REQ · S-SPIRAL DESCENT</p>}
+      {o.etps.some((e) => e.scenarios?.some((s) => s.flags)) && <p className="doc-foot mono">DRIFTDOWN W: M-MSA · D-FUEL DUMP REQ · F-DIVERT FUEL REQ · S-SPIRAL DESCENT (방식별 연료 표는 OFP 원문)</p>}
       {!o.etps.some((e) => e.criticalFuel !== undefined) && o.etps.length > 0 && (
         <p className="doc-foot muted">이 OFP 양식에는 ETP 임계 연료(CFR)가 명시되어 있지 않아 여유 판정을 하지 않습니다.</p>
       )}

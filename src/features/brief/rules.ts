@@ -28,6 +28,28 @@ export interface TakeoffStep extends VisReq {
 export type WindPair = [number, number | null] | null;
 export type BrakingKey = 'good' | 'goodMedium' | 'medium' | 'mediumPoor' | 'poor' | 'nil';
 
+/** SD 페이지 가이드 한계 (D-100). g/a/r = 초록·AMBER·RED 글, chk = FCOM 글에 색이 없어 그림 확인 필요, title = FCOM 쪽 제목(원문 찾기) */
+export interface SdLimit {
+  label: string;
+  g?: string;
+  a?: string;
+  r?: string;
+  note?: string;
+  title?: string;
+  chk?: boolean;
+}
+export interface SdPanel {
+  title: string;
+  /** cols = 표(값 줄 × 엔진 열), boxes = 칸(GEN 1·GEN 2 … 안에 값 줄) */
+  kind: 'cols' | 'boxes';
+  cols: string[];
+  rows: SdLimit[];
+}
+export interface SdGuideData {
+  source: string;
+  pages: Record<string, SdPanel[]>;
+}
+
 export interface CompanyRules {
   format: typeof RULES_FORMAT;
   version: number;
@@ -127,6 +149,8 @@ export interface CompanyRules {
   };
   /** 상황 카드 (선택, D-056) */
   ops?: OpsConfig;
+  /** SD 페이지 한계 (D-100) — FCOM 값이라 회사 파일(비공개)에서만 */
+  sdGuide?: SdGuideData;
   /** 합동 브리핑 preset (D-083) */
   jointBrief?: JointBriefConfig;
 }

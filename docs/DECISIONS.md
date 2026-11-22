@@ -751,3 +751,13 @@
   5. 버티컬 뷰 바탕 **여러 개 겹치기**(색 칸은 옅게 겹침, 난류 지수는 빗금), 플랜 뷰 겹쳐 보기 칩(바람 화살표·SIGMET·PIREP·SR 구간·권계면)
   6. IATA Turbulence Aware는 항공사 회원 전용이라 넣지 않음. WAFS 격자 난류·착빙·CB는 Worker 해석이 필요해 다음으로(K-50)
 - **영향** `map/{radar.ts,radar.test.ts}`(신규), `map/MapPage.tsx`, `weather/decode.ts`(LEVELS_HPA), `vertical/{profile.ts,VerticalView.tsx,PlanView.tsx}`, `app/styles.css`
+
+### D-100 SD 가이드 = 실제 SD 화면 모양(ECAM 색) · ETP 카드 숫자 칸·Driftdown 표 삭제
+- **날짜** 2026-11-22 (사용자: "sd 페이지처럼 눈으로 보기 좋게", "etp 가독성 좋게 기존 테마에, 두번째 표(Driftdown)는 지워" → 시안 `private/design/2026-11-22-sd-etp-mockup.html`에서 **SD-B · ETP-A** 선택)
+- **결정**
+  1. SD 가이드 위쪽 = 검은 바탕 ECAM 색 화면(ENG 1~4 표 · ELEC GEN/APU·RAT/TR 칸 · HYD G/Y · FUEL FEED · DOOR OXY). 값 자리에 초록/AMBER/RED 한계, 누르면 설명 + FCOM 원문 문장 + 📖. 아래 = FCOM 숫자 조건 문장 전체(접힘, D-096)
+  2. 한계 숫자는 FCOM 값이라 **회사 기준 파일 `sdGuide`(비공개)** 에 둠 — `private/manuals/build-sd.py`로 만들고 가져오기. 앱 코드에는 숫자 없음. 파일이 예전 것이면 "sdGuide 없음" 안내
+  3. FCOM 글에 색 낱말이 없는 값(HYD PSI·OVHT, ELEC 과부하·과열, FUEL 온도, OXY REGUL)은 `chk` 표시 → 누르면 "원본 그림으로 확인 필요". BLEED·F/CTL은 한계 숫자가 거의 없어 원문·📖만
+  4. ECAM 색은 주간/야간과 상관없이 고정(`--ec-*` 토큰)
+  5. ETP: 이름·공항(⇄) 크게, ETO·FOB·TO ALT·TIME(+CFR·EXC 있으면) 숫자 칸, Driftdown 표 삭제 — W 표시만 "DRIFTDOWN W: M LRC · M 2LE" 칸으로
+- **영향** `brief/rules.ts`(SdGuideData), `hourly/SdGuidePanel.tsx`, `ofp/doc/OfpDocument.tsx`(EtpBlock), `app/styles.css`. private: `build-sd.py`(신규), `company-rules.json`·`out/company-rules.json`(sdGuide 추가, 이전 파일은 세션 임시 폴더에 백업)

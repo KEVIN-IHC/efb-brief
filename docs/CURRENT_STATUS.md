@@ -82,10 +82,18 @@
 
 ## 8. 세션 인계 (가장 최근 작업)
 
-### 2026-11-22 (6) — D-092~D-099 push·배포 (다음 세션은 여기서 시작)
+### 2026-11-22 (7) — SD 가이드 ECAM 화면 · ETP 카드 정리 (D-100) (다음 세션은 여기서 시작)
+- **완료**: 시안 SD-B·ETP-A 선택 → SD 가이드 ECAM 색 화면(한계는 회사 기준 파일 sdGuide), ETP 숫자 칸·Driftdown 표 삭제
+- **아이패드에서**: 새 `private/manuals/out/company-rules.json`(sdGuide 포함)을 구글드라이브에 올려 Settings → 매뉴얼 → 가져오기 해야 SD 화면이 나옴(FCOM 묶음도 있어야 원문·📖)
+- **테스트**: `npm test` 291/291, `tsc -b`, `npm run build` 통과. 개발 브라우저(새 회사 기준 파일·FCOM 묶음을 임시 127.0.0.1 서버로 넣음, 샘플 ofp-11은 메모리만, 서버 종료·복사본 삭제): ENG 2판 8줄·ELEC 3판·HYD·FUEL·DOOR 표시, OIL PSI 누르면 FCOM 원문 4줄 AMBER/RED, HYD PSI 누르면 "확인 필요"·📖, ETP1·ETP2 숫자 칸·DRIFTDOWN W 칸, 375 × 주간/야간 넘침 0. 커밋·배포 안 함. **아이패드 확인 전**
+- **주의**: 개발 브라우저 저장소가 한 번 비어 있었음(매뉴얼·회사 기준 없음) → 이번에 회사 기준 파일·FCOM을 다시 넣음(Mac 안)
+- **다음**: chk 값 색 확정(FCOM 원본 그림 확인), 커밋·배포(요청 시)
+
+### 2026-11-22 (6) — D-092~D-099 push·배포
 - **배포**: 사용자 요청("push·배포"). push 전 검사: private·PDF·매뉴얼 묶음 없음, 회사 편명·등록번호·이름 없음. d95a877·f7835c5 push → GitHub Actions 성공. 배포 사이트: 새 코드(레이더·SD 가이드·OFP PDF 탭·권계면) 있음, `/private/`·샘플 PDF 404(첫 확인 한 번 503 → 다시 404)
 - **아이패드에서 할 일**: ① 앱 새로고침(사이드바 BUILD 시각 11/22 확인, 안 바뀌면 Settings → 앱 파일 새로 받기) ② FCOM 묶음이 기기에 있어야 SD 가이드가 나옴 ③ 확인: 탭 순서·OFP PDF 탭, NAV LOG(줄 색·머리글 뜻·SR 칸·FIR 줄 창), Weather 원문 줄바꿈·STD/ETA, ERA 예상 사용 시간·실제 출발 칸(앱 키보드), NOTAM 시간창·약어, Hourly 표·SD 가이드, Manual 왼쪽 목차, Briefing 9단계, Map 레이더 재생·SIGMET 글자, 버티컬 겹치기·권계면
 - **다음**: 아이패드 확인 결과 반영, 묶음 4 Ops(사용자 설명 대기), FIR 통신표(Jeppesen 자료), PA 책자
+- **(추가 2026-11-22)** 사용자 요청: SD 가이드를 SD 페이지처럼 그림으로, EDTO·ETP 카드 가독성·Driftdown 표 삭제 → 시안 `private/design/2026-11-22-sd-etp-mockup.html` (SD-A 눈금 막대 · SD-B ECAM 화면 모양 · SD-C 색 표 / ETP-A 숫자 칸 · ETP-B 한 표 · ETP-C 항로 띠). **→ SD-B · ETP-A 선택, D-100으로 반영**
 
 ### 2026-11-22 (5) — 커밋 d95a877 · 묶음 5~8 (D-096~D-099)
 - **사용자 요청**: "커밋하고 싹다 진행" → D-092~D-095 커밋 d95a877(push 안 함), 묶음 4(Ops)는 보류, 5~8 진행
