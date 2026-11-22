@@ -19,19 +19,19 @@ const PKGS: { id: Pkg; label: string }[] = [
   { id: 3, label: 'P3 FIR' },
 ];
 
-interface Row {
+export interface Row {
   it: OfpNotamItem;
   c: Classified;
   ts: TimeStatus;
   note?: string;
 }
-interface LocView {
+export interface LocView {
   loc: OfpNotamLocation;
   wins: Window[];
   rows: Row[];
 }
 
-function build(o: OfpData, n: OfpNotams): LocView[] {
+export function build(o: OfpData, n: OfpNotams): LocView[] {
   const fw = flightWindow(o);
   const firs = firWindows(o, n.firOrder);
   // 공항 = 그 공항을 쓰는 시간창 (Briefing과 같은 계산)

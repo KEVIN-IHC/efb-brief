@@ -28,7 +28,7 @@ const dayMon = (iso: string) => {
 const breakable = (s: string) => s.replace(/\.\./g, '..​');
 
 /** 항로·OFP 번호가 OFP 안 여러 곳에서 같은지 (D-067). 펼치면 곳마다 결과와 원문 줄 */
-function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
+export function RouteCheckRow({ o, onLine }: { o: OfpData; onLine?: (n: number) => void }) {
   const rc = o.routeCheck;
   if (!rc) return null;
   const r = rc.route;

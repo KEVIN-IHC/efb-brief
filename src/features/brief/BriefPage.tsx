@@ -1,6 +1,8 @@
-// Briefing 탭 (D-054): 운항관리사식 공항별 브리핑 — 기상 × 회사 기준 × 활주로 × NOTAM, 브리핑 카드 초안, 회항 후보
+// Briefing 탭 (D-054 · D-098): 출두 후 플랜 확인·다른 승무원에게 브리핑할 때 보여 줄 자료를 회사 Pre-flight Briefing 점검 순서로
+//   개요 → 기상(출발 · 항로 · 목적지/교체) → NOTAM → OFP(연료·중량·MEL/CDL) → ATS FPL 대조 → 인가·허가·통신 → 위협·회항 후보
+//   [이전]/[다음]으로 한 단계씩(아이패드로 보여 주며 브리핑) 또는 [전체 보기]. 내용은 기존 카드(기상·NOTAM·OFP·판정)를 그대로 씀
 // 모든 판정 옆에 근거(매뉴얼 위치·OFP 원문·기상 원문). 보조 도구 — 판단은 승인된 EFB·원본 매뉴얼·운항관리
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { formatAgo } from '../../lib/time';
 import { useNow } from '../../lib/useNow';
 import { BasisRow } from '../alerts/AlertsCard';
@@ -15,6 +17,72 @@ import { buildCards, currentPosition, diversionList } from './cards';
 import { BRAKING_LABEL, IMPACT_LABEL } from './notamImpact';
 import { useBrief } from './useBrief';
 import { fmtCeil, fmtVis, fmtWind, type Cond } from './wx';
+import { EtpBlock, FlightBlock, FuelBlock, MelBlock, NotesBlock, RouteCheckRow, WeightBlock } from '../ofp/doc/OfpDocument';
+import { TurbulenceBlock } from '../ofp/doc/Turbulence';
+import { focusTurbZone } from '../ofp/turbulence';
+import { SigmetCard, WindsCard, WxAirportCard } from '../weather/WeatherPage';
+import { flightStations } from '../weather/store';
+import { VerticalView } from '../vertical/VerticalView';
+import { PlanView } from '../vertical/PlanView';
+import { build as buildNotamViews } from '../notam/NotamPage';
+import { groupLabel } from '../notam/classify';
+import { ROLE_LABEL } from '../notam/relevance';
+
+/** 회사 Pre-flight Briefing 점검 항목 순서 (Weather → NOTAM → OFP → ATS FPL 사본 대조 → 인가·Permit → 기타) */
+const STEPS: { id: string; t: string; sub: string }[] = [
+  { id: 'ovw', t: '개요', sub: '편명·구간·시각·계획 방식' },
+  { id: 'wx-dep', t: '기상 · 출발', sub: 'METAR·TAF · 판정' },
+  { id: 'wx-rte', t: '기상 · 항로', sub: '바람·기온 · 난류 · SIGMET' },
+  { id: 'wx-dst', t: '기상 · 목적지·교체', sub: '목적지·교체·ERA 시간' },
+  { id: 'notam', t: 'NOTAM', sub: '출발·도착·교체·항로' },
+  { id: 'ofp', t: 'OFP · MEL/CDL', sub: '연료·중량·MEL·노트' },
+  { id: 'fpl', t: 'ATS FPL 대조', sub: '날짜·ROUTE·OFP 번호' },
+  { id: 'auth', t: '인가 · 허가 · 통신', sub: 'RVSM·EDTO·FIR' },
+  { id: 'threat', t: '위협 · 회항 후보', sub: '비행 전체 판정·초안' },
+];
+const STEP_KEY = 'efb.brief.step';
+const readStep = () => {
+  try {
+    const v = sessionStorage.getItem(STEP_KEY);
+    return v === 'all' || STEPS.some((x) => x.id === v) ? (v as string) : 'ovw';
+  } catch {
+    return 'ovw';
+  }
+};
+
+/** NOTAM 요약: 강조 분류이거나 시간창과 겹치는 것만, 공항·FIR 순서대로 (전체는 NOTAM 탭) */
+function NotamBrief({ o }: { o: NonNullable<ReturnType<typeof useActiveFlight.getState>['ofp']>['parsed'] }) {
+  const views = useMemo(() => (o?.notams ? buildNotamViews(o, o.notams) : []), [o]);
+  if (!o?.notams) return <p className="muted small span-all">이 OFP에는 NOTAM 패키지가 없습니다.</p>;
+  const shown = views.filter((v) => !v.loc.seeAlso).map((v) => ({ v, rows: v.rows.filter((r) => r.c.key && r.ts === 'overlap') }));
+  return (
+    <DocSection title="NOTAM — 강조 · 시간창 겹침만" meta={`${shown.reduce((a, x) => a + x.rows.length, 0)} / ${views.reduce((a, v) => a + v.rows.length, 0)}`} className="span-all">
+      {shown.map(({ v, rows }) => (
+        <div key={`${v.loc.pkg}-${v.loc.line}`} className="brn-loc">
+          <div className="brn-h">
+            <b className="mono">{v.loc.icao}</b> <span className="small muted">{ROLE_LABEL[v.loc.role] ?? v.loc.role} · {v.loc.name}</span>
+            <span className="small muted mono">{rows.length ? `${rows.length}건` : '해당 없음'}</span>
+          </div>
+          {rows.map((r) => (
+            <div key={r.it.line} className="brn-row">
+              <span className={`ntm-g g-${r.c.group}`}>{groupLabel(r.c.group)}</span>
+              <span className="mono small">{r.it.id}</span>
+              <span className="small brn-t">{r.it.text.replace(/\s+/g, ' ').slice(0, 160)}</span>
+              {r.note && <span className="small c-caution brn-note">{r.note}</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+      <p className="doc-foot">
+        강조 분류(활주로·항행시설·공역)이면서 그 공항·FIR 시간창과 겹치는 것만. 나머지·원문은{' '}
+        <a href="#notam" className="linkish">
+          NOTAM 탭
+        </a>
+        .
+      </p>
+    </DocSection>
+  );
+}
 
 const SEV = { warning: '경고', caution: '주의', info: '참고' } as const;
 const ROLE_ORDER: Role[] = ['DEP', 'DEST', 'ALTN', 'TKOF ALTN', '3% ERA', 'EDTO', 'ETP', 'ERA'];
@@ -165,6 +233,7 @@ export function BriefPage() {
   const now = useNow(60_000);
   const [showEra, setShowEra] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [step, setStep] = useState<string>(readStep);
 
   const checks = useMemo(() => (o ? buildChecks(o, latestActuals(logs)) : []), [o, logs]);
   const proj = useMemo(() => (o ? project(o, checks) : null), [o, checks]);
@@ -185,47 +254,8 @@ export function BriefPage() {
   };
   const divRefs = data.rules?.refs.diversion ?? [];
 
-  return (
-    <div className="page-grid doc">
-      <DocSection title="Briefing" meta={brief.hasRules ? '회사 기준 적용' : '회사 기준 없음'} className="span-all">
-        <p className="small">
-          {brief.hasRules ? (
-            <>
-              회사 기준: <span className="mono">{brief.rulesSource}</span>
-            </>
-          ) : (
-            <span className="c-warn">회사 기준 파일 없음 — Settings → 매뉴얼 → 가져오기로 company-rules.json을 넣으면 최저치·바람 제한을 판정합니다. 지금은 기상·활주로·NOTAM 자료만 정리.</span>
-          )}
-        </p>
-        <p className="small muted">
-          판정은 받아 둔 METAR/TAF·OFP NOTAM 기준 · 기상 시간 창은 공항 역할별(출발 ETD±1h, 목적지 ETA±1h, 교체 ETA±1h) · 차트 최저치가 회사 하한보다 높으면 차트가 우선 · 활주로 방위 ≈M은 번호로 추정한 값
-        </p>
-        <nav className="br-jump">
-          {main.map((a) => (
-            <a key={a.icao} className="chip chip-muted" href={`#br-${a.icao}`} onClick={(e) => (e.preventDefault(), document.getElementById(`br-${a.icao}`)?.scrollIntoView({ behavior: 'smooth' }))}>
-              {a.icao}
-              {a.findings.some((f) => f.severity === 'warning') ? ' ⚠' : ''}
-            </a>
-          ))}
-        </nav>
-      </DocSection>
-
-      {main.map((a) => (
-        <AirportCard key={a.icao} a={a} />
-      ))}
-
-      {brief.flight.length > 0 && (
-        <DocSection title="비행 전체" className="span-all">
-          <ul className="al-list">
-            {brief.flight.map((f) => (
-              <FindingRow key={f.key} f={f} />
-            ))}
-          </ul>
-        </DocSection>
-      )}
-
-      {o && <FirCommSection o={o} checks={checks} timeDevMin={proj?.timeDevMin ?? 0} now={now} />}
-
+  const cardsNode = (
+    <>
       {cards.map((c) => {
         const text = `[${c.title}]\n${c.lines.join('\n')}`;
         return (
@@ -245,7 +275,10 @@ export function BriefPage() {
         );
       })}
 
-      <DocSection title="회항 후보" meta={pos ? '현재 위치 기준 (계획 + 기록 편차)' : ''} className="span-all">
+    </>
+  );
+  const diversionNode = (
+    <DocSection title="회항 후보" meta={pos ? '현재 위치 기준 (계획 + 기록 편차)' : ''} className="span-all">
         <div className="table-wrap">
           <table className="tbl">
             <thead>
@@ -283,21 +316,192 @@ export function BriefPage() {
         <p className="doc-foot">기상 자료가 없는 후보는 판정하지 않음. 실제 회항 공항 결정은 PIC·운항관리사.</p>
       </DocSection>
 
-      {era.length > 0 && (
-        <DocSection title={`항로 교체 후보 ${era.length}`} className="span-all">
-          <button className="btn" onClick={() => setShowEra((v) => !v)}>
-            {showEra ? '접기' : '펼치기'}
-          </button>
-          {showEra && (
-            <div className="page-grid">
-              {era.map((a) => (
-                <AirportCard key={a.icao} a={a} />
-              ))}
-            </div>
-          )}
-        </DocSection>
-      )}
+  );
+  const stations = flightStations(o.header.dep, o.header.arr, o);
+  const st = (roles: string[]) => stations.filter((x) => x.roles.some((r) => roles.includes(r)));
+  const briefFor = (roles: Role[]) => main.filter((a) => a.roles.some((r) => roles.includes(r)));
 
+  const intro = (
+    <DocSection title="Briefing" meta={brief.hasRules ? '회사 기준 적용' : '회사 기준 없음'} className="span-all">
+      <p className="small">
+        {brief.hasRules ? (
+          <>
+            회사 기준: <span className="mono">{brief.rulesSource}</span>
+          </>
+        ) : (
+          <span className="c-warn">회사 기준 파일 없음 — Settings → 매뉴얼 → 가져오기로 company-rules.json을 넣으면 최저치·바람 제한을 판정합니다. 지금은 기상·활주로·NOTAM 자료만 정리.</span>
+        )}
+      </p>
+      <p className="small muted">
+        판정은 받아 둔 METAR/TAF·OFP NOTAM 기준 · 기상 시간 창은 공항 역할별(출발 ETD±1h, 목적지 ETA±1h, 교체 ETA±1h, ETP·EDTO = 예상 운항 시간대) · 차트 최저치가 회사 하한보다 높으면 차트가 우선 · 활주로 방위 ≈M은 번호로 추정한 값
+      </p>
+    </DocSection>
+  );
+
+  const wxPair = (roles: Role[], wroles: string[]) => (
+    <>
+      {st(wroles).map((x) => (
+        <WxAirportCard key={`w-${x.icao}`} st={x} now={now} />
+      ))}
+      {briefFor(roles).map((a) => (
+        <AirportCard key={a.icao} a={a} />
+      ))}
+    </>
+  );
+
+  const sections: Record<string, ReactNode> = {
+    ovw: (
+      <>
+        <FlightBlock o={o} />
+        {intro}
+      </>
+    ),
+    'wx-dep': wxPair(['DEP', 'TKOF ALTN'], ['DEP']),
+    'wx-rte': (
+      <>
+        <TurbulenceBlock o={o} onZone={(z) => focusTurbZone(z, 'popup')} className="span-all" />
+        <div className="span-all">
+          <VerticalView />
+        </div>
+        <div className="span-all">
+          <PlanView />
+        </div>
+        <div className="span-all">
+          <SigmetCard now={now} />
+        </div>
+        <div className="span-all">
+          <WindsCard now={now} />
+        </div>
+      </>
+    ),
+    'wx-dst': (
+      <>
+        {wxPair(['DEST', 'ALTN'], ['DEST', 'ALTN'])}
+        <EtpBlock o={o} />
+        {era.length > 0 && (
+          <DocSection title={`항로 교체 후보 ${era.length}`} className="span-all">
+            <button className="btn" onClick={() => setShowEra((v) => !v)}>
+              {showEra ? '접기' : '펼치기'}
+            </button>
+            {showEra && (
+              <div className="page-grid">
+                {era.map((a) => (
+                  <AirportCard key={a.icao} a={a} />
+                ))}
+              </div>
+            )}
+          </DocSection>
+        )}
+      </>
+    ),
+    notam: <NotamBrief o={o} />,
+    ofp: (
+      <>
+        <FuelBlock o={o} />
+        <WeightBlock o={o} />
+        <MelBlock o={o} />
+        <NotesBlock o={o} />
+      </>
+    ),
+    fpl: (
+      <DocSection title="ATS FPL 사본 ↔ OFP" className="span-all">
+        <p className="small muted">제출된 ATS Flight Plan 사본과 OFP의 날짜·ROUTE·OFP 번호를 대조 (OFP 안 여러 곳 비교)</p>
+        <RouteCheckRow o={o} onLine={jumpToOfpSource} />
+        <p className="mono small">
+          {o.header.flightNo} · {o.header.date} · {o.header.dep}→{o.header.arr} · {o.header.acType} {o.header.reg}
+        </p>
+      </DocSection>
+    ),
+    auth: (
+      <>
+        <DocSection title="인가 · 허가" className="span-all">
+          <ul className="br-lines">
+            <li>
+              RVSM 등 인가: 순항 FL{o.header.cruiseFl}
+              {o.header.edtoRule ? ` · ${o.header.edtoRule}` : ''}
+              {o.etps.length ? ` · ETP ${o.etps.length}개` : ''}
+            </li>
+            <li>Overfly · Landing Permit, 입국 서류 — 회사 서류로 확인 (앱 자료 없음)</li>
+          </ul>
+        </DocSection>
+        <FirCommSection o={o} checks={checks} timeDevMin={proj?.timeDevMin ?? 0} now={now} />
+      </>
+    ),
+    threat: (
+      <>
+        {brief.flight.length > 0 && (
+          <DocSection title="비행 전체" className="span-all">
+            <ul className="al-list">
+              {brief.flight.map((f) => (
+                <FindingRow key={f.key} f={f} />
+              ))}
+            </ul>
+          </DocSection>
+        )}
+        {cardsNode}
+        {diversionNode}
+      </>
+    ),
+  };
+  const idx = STEPS.findIndex((x) => x.id === step);
+  const setStepSave = (v: string) => {
+    setStep(v);
+    try {
+      sessionStorage.setItem(STEP_KEY, v);
+    } catch {
+      /* 저장 안 돼도 화면은 그대로 */
+    }
+    window.scrollTo(0, 0);
+  };
+  const stepper = (
+    <nav className="br-steps span-all" aria-label="브리핑 순서">
+      {STEPS.map((x, i) => (
+        <button key={x.id} type="button" className={`br-step ${step === x.id ? 'on' : ''}`} aria-current={step === x.id ? 'step' : undefined} onClick={() => setStepSave(x.id)}>
+          <span className="mono br-step-n">{i + 1}</span>
+          <span className="br-step-t">{x.t}</span>
+        </button>
+      ))}
+      <button type="button" className={`br-step br-all ${step === 'all' ? 'on' : ''}`} onClick={() => setStepSave(step === 'all' ? 'ovw' : 'all')}>
+        {step === 'all' ? '한 단계씩' : '전체 보기'}
+      </button>
+    </nav>
+  );
+  const pager =
+    step !== 'all' ? (
+      <div className="br-pager span-all">
+        <button type="button" className="btn" disabled={idx <= 0} onClick={() => setStepSave(STEPS[idx - 1].id)}>
+          ‹ {idx > 0 ? STEPS[idx - 1].t : '처음'}
+        </button>
+        <span className="small muted mono">
+          {idx + 1}/{STEPS.length}
+        </span>
+        <button type="button" className="btn primary" disabled={idx >= STEPS.length - 1} onClick={() => setStepSave(STEPS[idx + 1].id)}>
+          {idx < STEPS.length - 1 ? STEPS[idx + 1].t : '끝'} ›
+        </button>
+      </div>
+    ) : null;
+
+  return (
+    <div className="page-grid doc">
+      {stepper}
+      {step === 'all'
+        ? STEPS.map((x, i) => (
+            <div key={x.id} className="br-part span-all">
+              <h3 className="br-part-h">
+                <span className="mono">{i + 1}</span> {x.t} <span className="small muted">{x.sub}</span>
+              </h3>
+              <div className="page-grid doc">{sections[x.id]}</div>
+            </div>
+          ))
+        : (
+            <>
+              <h3 className="br-part-h span-all">
+                <span className="mono">{idx + 1}</span> {STEPS[idx].t} <span className="small muted">{STEPS[idx].sub}</span>
+              </h3>
+              {sections[step]}
+            </>
+          )}
+      {pager}
       <p className="doc-foot span-all">
         보조 도구입니다. 회사 기준 수치는 회사 기준 파일(Mac private/에서 만든 파일)에서 읽고, 매뉴얼 위치는 📖로 엽니다. 운항 판단은 승인된 EFB·원본 매뉴얼·운항관리 기준.{' '}
         {data.refs && Object.keys(data.refs).length === 0 && brief.hasRules ? '매뉴얼을 가져오면 근거 링크가 열립니다.' : ''}

@@ -36,6 +36,21 @@ export const flOfHpa = (hpa: number) => {
   return Math.round(lo / 100);
 };
 
+/**
+ * 권계면 (근사, D-099): 500 hPa 위에서 처음으로 기온 감률이 2 °C/km 이하가 되는 기압면의 고도 (WMO 정의를 받은 기압면 간격으로 단순화).
+ * 기압면 간격이 넓어 수천 ft 오차 가능 — 참고값
+ */
+export function tropopauseFl(levels: { hpa: number; temp: number | null }[]): number | null {
+  const lv = levels.filter((l) => l.temp != null && l.hpa <= 500).sort((a, b) => b.hpa - a.hpa);
+  for (let i = 0; i < lv.length - 1; i++) {
+    const z0 = flOfHpa(lv[i].hpa) * 100 * 0.3048;
+    const z1 = flOfHpa(lv[i + 1].hpa) * 100 * 0.3048;
+    const lapse = -((lv[i + 1].temp! - lv[i].temp!) / ((z1 - z0) / 1000));
+    if (lapse <= 2) return flOfHpa(lv[i].hpa);
+  }
+  return null;
+}
+
 export interface WindCell {
   x0: number;
   x1: number;
@@ -74,8 +89,8 @@ export function windCells(
   o: OfpData,
   winds: WindsData | null,
   pick: PickFn = defaultPick,
-): { cells: WindCell[]; turb: TurbCell[]; freezing: { x: number; fl: number }[]; times: string[] } {
-  if (!winds?.points.length) return { cells: [], turb: [], freezing: [], times: [] };
+): { cells: WindCell[]; turb: TurbCell[]; freezing: { x: number; fl: number }[]; tropo: { x: number; fl: number }[]; times: string[] } {
+  if (!winds?.points.length) return { cells: [], turb: [], freezing: [], tropo: [], times: [] };
   const bySeq = new Map(o.route.map((w, i) => [w.seq, i]));
   const pts = winds.points
     .map((p) => {
@@ -92,12 +107,15 @@ export function windCells(
   const cells: WindCell[] = [];
   const turb: TurbCell[] = [];
   const freezing: { x: number; fl: number }[] = [];
+  const tropo: { x: number; fl: number }[] = [];
   const total = o.route[o.route.length - 1]?.cumDist ?? 0;
   const tempAt = (k: number, hpa: number) => pts[k]?.at.levels.find((l) => l.hpa === hpa)?.temp ?? null;
   pts.forEach((v, k) => {
     const x0 = k === 0 ? Math.max(0, v.x - (pts[1] ? (pts[1].x - v.x) / 2 : 50)) : (pts[k - 1].x + v.x) / 2;
     const x1 = k === pts.length - 1 ? Math.min(total, v.x + (k ? (v.x - pts[k - 1].x) / 2 : 50)) : (v.x + pts[k + 1].x) / 2;
     if (v.at.freezingFt != null) freezing.push({ x: v.x, fl: Math.round(v.at.freezingFt / 100) });
+    const tp = tropopauseFl(v.at.levels);
+    if (tp != null) tropo.push({ x: v.x, fl: tp });
     const lv = v.at.levels.slice().sort((a, b) => b.hpa - a.hpa); // 낮은 고도부터
     const fls = lv.map((l) => flOfHpa(l.hpa));
     const kp = Math.max(0, k - 1);
@@ -122,7 +140,7 @@ export function windCells(
     });
     for (const s of shearLayers(lv, flOfHpa)) turb.push({ x0, x1, fl0: flOfHpa(s.hpaLow), fl1: flOfHpa(s.hpaHigh), vws: s.vws, ri: s.ri, level: s.level });
   });
-  return { cells, turb, freezing, times: pts.map((v) => v.at.time) };
+  return { cells, turb, freezing, tropo, times: pts.map((v) => v.at.time) };
 }
 
 export interface SigmetSpan {

@@ -716,3 +716,38 @@
   2. NAV LOG "▸ FIR …" 줄(ADIZ 제외)을 누르면 FIR 통신 창: OFP 진입 지점·시각 · 개인 통신표(창 안에서 편집) · 회사 FOM 데이터링크 절 📖(Log-on · End of Service · CPDLC · ADS-C · Emergency/Non-Normal · 보고) · FOM "FIR 별 절차"에 그 FIR이 있으면 그 쪽을 FIR 이름 강조로 바로 열기
   3. 통신표는 여전히 개인 입력(D-055). Jeppesen 자료로 채우는 일은 사용자 자료가 오면 private에서 JSON으로 만들어 가져오기
 - **영향** `vertical/VerticalView.tsx`, `ofp/doc/{TurbPopup,NavLog}.tsx`, `fir/{FirPopup.tsx(신규),FirCommSection.tsx}`, `app/{App.tsx,styles.css}`
+
+### D-096 Hourly check SD 페이지 가이드 (FCOM 정상 범위·경고 조건)
+- **날짜** 2026-11-22 (사용자 요청 18: "sd page cruise check 할 때 fcom system control indication의 normal range, amber, red 조건 표기")
+- **결정**
+  1. Hourly check SD 줄에 [가이드 (정상·경고 범위)] → SD 페이지(ENG·BLEED·ELEC·HYD·F/CTL·FUEL·DOOR) 골라 보기
+  2. 내용 = 기기에 가져온 FCOM 묶음의 Controls and Indicators 절(DSC-70-20·36-20·24-20·29-20·27-10-20·28-20·35-20-20 등)에서 **숫자+단위가 있는 조건 문장을 원문 그대로** 뽑음. 앱 코드에 FCOM 내용 없음. 같은 제목(GENERATOR VOLTAGE 등)은 첫 문장(“The APU generator …”)을 부제로 구분
+  3. FCOM의 색(초록·AMBER·RED)은 그림에만 있어 글로는 확실히 알 수 없음 → 문장 낱말로 "정상·AMBER·RED·주의·조건" **앱 분류**만 붙이고 📖 원본 쪽(사진)으로 확인. BLEED는 FCOM 글에 숫자가 거의 없어 적게 나옴(K-50)
+- **영향** `hourly/{sdGuide.ts,sdGuide.test.ts,SdGuidePanel.tsx}`(신규), `hourly/HourlyCheck.tsx`, `app/styles.css`
+
+### D-097 Manual 책장 · 검색 범위 · PDF Expert식 목차
+- **날짜** 2026-11-22 (사용자 요청 21: "목차가 깔끔하면, 검색할 때 누르는 거랑 매뉴얼 선택 버튼이 달라서 헷갈림, PDF Expert처럼")
+- **결정**
+  1. 맨 위 **매뉴얼 책장**(매뉴얼마다 버튼 하나, 날짜 표시) = 보기와 검색이 같이 쓰는 선택. 드롭다운·매뉴얼별 검색 칩 없앰
+  2. 검색 범위는 두 개만: **이 매뉴얼 / 전체**
+  3. 목차 = 장 ▸ 펼침, 들여쓰기 선, 지금 위치 강조, **목차 안 찾기** 칸. 1024px 이상(아이패드 가로)은 왼쪽에 늘 보이고, 좁으면 [목차]로 옆에서 나오고 항목을 누르면 닫힘
+- **영향** `manual/ManualPage.tsx`, `app/styles.css`
+
+### D-098 Briefing 탭 = 회사 Pre-flight Briefing 점검 순서의 단계 화면
+- **날짜** 2026-11-22 (사용자 요청 2: "출두해서 플랜 확인하고 다른 크루에게 브리핑할 때 보여 줄 자료가 FOM 순서대로")
+- **결정**
+  1. 9단계: 개요 → 기상·출발 → 기상·항로 → 기상·목적지/교체 → NOTAM → OFP·MEL/CDL → ATS FPL 대조 → 인가·허가·통신 → 위협·회항 후보 (FOM Pre-flight Briefing 점검 항목 순서 + 앞에 개요)
+  2. 위에 단계 버튼, 아래 [‹ 이전] [다음 ›] 고정 막대(아이패드로 보여 주며 넘김), [전체 보기]로 한 화면에 모두
+  3. 내용은 기존 카드 재사용: 공항 METAR/TAF(원문 줄바꿈·STD/ETA) + 공항별 판정, 버티컬·플랜 뷰·SIGMET·루트 바람 비교·난류, ERA 예상 사용 시간, NOTAM(강조 분류 × 시간창 겹침만 요약, 전체는 NOTAM 탭), 연료·중량·MEL·노트, ROUTE·OFP 번호 대조, FIR 통신, 비행 전체 판정·브리핑 초안·회항 후보
+- **영향** `brief/BriefPage.tsx`, `notam/NotamPage.tsx`(build export), `weather/WeatherPage.tsx`(WxAirportCard export), `ofp/doc/OfpDocument.tsx`(RouteCheckRow export), `app/styles.css`
+
+### D-099 기상 확장: 움직이는 레이더 · SIGMET 잘 보이게 · 기압면 추가 · 권계면 · 겹쳐 보기
+- **날짜** 2026-11-22 (사용자 요청 10~12)
+- **결정**
+  1. Map **레이더** 레이어 = RainViewer 공개 API(키 없음, 지난 약 2시간 10분 간격 + 단기 예측이 있으면 함께). 영상 시각을 시간 막대에 넣어 ▶ 재생으로 움직임. 지상 레이더 없는 바다 위는 안 보임. 8초 시간 제한, 실패하면 "레이더 받기 실패"만. 출처 표기
+  2. Map SIGMET: 선 굵게·채움 진하게, 위험 종류·고도 글자, 날짜변경선 꼭짓점 이어 붙이기 (Mac에서는 표시되고 있었음 — 흐려서 안 보인 것으로 판단)
+  3. Open-Meteo 기압면 800·100 hPa 추가(11개) → 단면 세로 해상도·FL530까지. 버티컬 뷰 위쪽 FL520
+  4. **권계면(근사)**: 500 hPa 위에서 기온 감률이 처음 2 °C/km 이하인 기압면 → 버티컬 뷰 점선, 플랜 뷰 "TP" 글자
+  5. 버티컬 뷰 바탕 **여러 개 겹치기**(색 칸은 옅게 겹침, 난류 지수는 빗금), 플랜 뷰 겹쳐 보기 칩(바람 화살표·SIGMET·PIREP·SR 구간·권계면)
+  6. IATA Turbulence Aware는 항공사 회원 전용이라 넣지 않음. WAFS 격자 난류·착빙·CB는 Worker 해석이 필요해 다음으로(K-50)
+- **영향** `map/{radar.ts,radar.test.ts}`(신규), `map/MapPage.tsx`, `weather/decode.ts`(LEVELS_HPA), `vertical/{profile.ts,VerticalView.tsx,PlanView.tsx}`, `app/styles.css`

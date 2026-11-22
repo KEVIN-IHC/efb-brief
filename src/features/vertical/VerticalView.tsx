@@ -16,7 +16,7 @@ import { edrFromRaw, relLabel } from './wxTime';
 const W = 1000;
 const H = 380;
 const PAD = { l: 44, r: 12, t: 14, b: 40 };
-const FL_MAX = 470;
+const FL_MAX = 520; // D-099: 100 hPa(FL530) 받음 → 권계면까지
 
 type Bg = 'wind' | 'isa' | 'turb' | 'grad' | 'dT3' | 'none';
 const BG: { id: Bg; label: string }[] = [
@@ -27,7 +27,8 @@ const BG: { id: Bg; label: string }[] = [
   { id: 'dT3', label: '기온 변화 3h' },
   { id: 'none', label: '없음' },
 ];
-const BG_KEY = 'efb.vv.bg';
+const BG_KEY = 'efb.vv.bgs';
+const FILL_BG: Bg[] = ['wind', 'isa', 'grad', 'dT3'];
 
 /** PIREP·AIREP 중 난류·EDR 있는 것 → 항로 100NM 안이면 단면 위치 */
 function pirepMarks(o: OfpData, list: Pirep[]) {
@@ -53,23 +54,26 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
   const { o, winds, now, proj, dev, pick, etoRange, mode, t: selT } = useWxPick();
   const sigmets = useWx((s) => s.sigmets);
   const pireps = useWxExtra((s) => s.pirep);
-  const [bg, setBgState] = useState<Bg>(() => {
+  // 바탕은 여러 개 겹쳐 볼 수 있음 (D-099). 칸 색 2개 이상이면 옅게 겹침, 난류 지수는 빗금
+  const [bgs, setBgsState] = useState<Bg[]>(() => {
     try {
-      const v = localStorage.getItem(BG_KEY) as Bg | null;
-      return v && BG.some((b) => b.id === v) ? v : 'wind';
+      const v = JSON.parse(localStorage.getItem(BG_KEY) ?? 'null') as Bg[] | null;
+      return Array.isArray(v) ? v.filter((b) => BG.some((x) => x.id === b)) : ['wind'];
     } catch {
-      return 'wind';
+      return ['wind'];
     }
   });
-  const setBg = (v: Bg) => {
-    setBgState(v);
+  const toggleBg = (b: Bg) => {
+    const next = b === 'none' ? [] : bgs.includes(b) ? bgs.filter((x) => x !== b) : [...bgs, b];
+    setBgsState(next);
     try {
-      localStorage.setItem(BG_KEY, v);
+      localStorage.setItem(BG_KEY, JSON.stringify(next));
     } catch {
       /* 저장 못 해도 화면은 동작 */
     }
   };
-  const [show, setShow] = useState({ sigmet: true, sr: true, pirep: true });
+  const fills = FILL_BG.filter((b) => bgs.includes(b));
+  const [show, setShow] = useState({ sigmet: true, sr: true, pirep: true, tropo: true });
 
   const calc = useMemo(() => {
     if (!o?.route.length) return null;
@@ -106,7 +110,7 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
   // 시각 고정이면 그 시각에 있을 위치
   const selX = mode === 'fixed' && selT != null && Math.abs(selT - now) > 1800_000 ? xAt(selT) : null;
   const msaPts = o.route.filter((w) => w.msa != null && w.msa > 0);
-  const flTicks = [0, 100, 200, 300, 400];
+  const flTicks = [0, 100, 200, 300, 400, 500];
   const visible = o.route.filter((w) => inRange(w.cumDist));
   const labelEvery = Math.max(1, Math.ceil(visible.length / 14));
 
@@ -117,22 +121,21 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
         <span className="small muted mono">{mode === 'fixed' && selT != null ? `${formatZ(new Date(selT).toISOString())} · ${relLabel(selT, now)}` : etoRange ? '지점 통과 시각' : '지금'}</span>
       </div>
       <div className="pad vv-ctl">
-        <label className="small vv-sel">
-          <span className="muted">바탕</span>
-          <select className="input" value={bg} onChange={(e) => setBg(e.target.value as Bg)} aria-label="단면 바탕 색">
-            {BG.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="vv-toggles" role="group" aria-label="바탕 (여러 개 겹치기)">
+          <span className="small muted">바탕</span>
+          {BG.filter((b) => b.id !== 'none').map((b) => (
+            <button key={b.id} className={`chip ${bgs.includes(b.id) ? 'on' : ''}`} aria-pressed={bgs.includes(b.id)} onClick={() => toggleBg(b.id)}>
+              {b.label}
+            </button>
+          ))}
+        </div>
         <div className="vv-toggles" role="group" aria-label="겹쳐 보기">
           {(
             [
               ['sigmet', 'SIGMET'],
               ['sr', 'SR 구간 (OFP)'],
               ['pirep', 'PIREP·EDR'],
+              ['tropo', '권계면'],
             ] as const
           ).map(([k, l]) => (
             <button key={k} className={`chip ${show[k] ? 'on' : ''}`} aria-pressed={show[k]} onClick={() => setShow({ ...show, [k]: !show[k] })}>
@@ -144,32 +147,37 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
       <div className="vv-scroll">
         <svg viewBox={`0 0 ${W} ${H}`} className="vv-svg" role="img" aria-label="항로 단면: 계획 고도와 고도별 바람·기상">
           <defs>
+            {[1, 2, 3].map((lv) => (
+              <pattern key={lv} id={`${clipId}-h${lv}`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="8" className={`vv-hatch-l vv-turb-${lv}`} strokeWidth={lv + 1} />
+              </pattern>
+            ))}
             <clipPath id={clipId}>
               <rect x={PAD.l} y={0} width={W - PAD.l - PAD.r} height={H - PAD.b + 2} />
             </clipPath>
           </defs>
           <g clipPath={`url(#${clipId})`}>
           {/* 바탕 칸: 바람·기온·기온 변화 */}
-          {bg !== 'none' &&
-            bg !== 'turb' &&
+          {fills.map((fb) =>
             wc.cells.map((c, i) => {
-              const v = bg === 'isa' ? c.isaDev : bg === 'grad' ? c.grad : bg === 'dT3' ? c.dT3 : c.comp;
+              const v = fb === 'isa' ? c.isaDev : fb === 'grad' ? c.grad : fb === 'dT3' ? c.dT3 : c.comp;
               if (v == null) return null;
-              const scale = bg === 'isa' ? 15 : bg === 'grad' ? 3 : bg === 'dT3' ? 4 : 120;
-              const a = Math.min(1, Math.abs(v) / scale) * 0.6;
-              const cls = bg === 'wind' ? (v >= 0 ? 'vv-tail' : 'vv-head') : v >= 0 ? 'vv-warm' : 'vv-cold';
-              const unit = bg === 'wind' ? 'kt' : bg === 'grad' ? '°C/100NM' : '°C';
+              const scale = fb === 'isa' ? 15 : fb === 'grad' ? 3 : fb === 'dT3' ? 4 : 120;
+              const a = (Math.min(1, Math.abs(v) / scale) * 0.6) / Math.sqrt(fills.length);
+              const cls = fb === 'wind' ? (v >= 0 ? 'vv-tail' : 'vv-head') : v >= 0 ? 'vv-warm' : 'vv-cold';
+              const unit = fb === 'wind' ? 'kt' : fb === 'grad' ? '°C/100NM' : '°C';
               return (
-                <rect key={i} x={X(c.x0)} y={Y(c.fl1)} width={Math.max(0.5, X(c.x1) - X(c.x0))} height={Math.max(0.5, Y(c.fl0) - Y(c.fl1))} className={cls} opacity={a}>
-                  <title>{`${c.hpa}hPa · ${v > 0 ? '+' : ''}${v}${unit}${c.temp != null ? ` · ${Math.round(c.temp)}°C` : ''}`}</title>
+                <rect key={`${fb}${i}`} x={X(c.x0)} y={Y(c.fl1)} width={Math.max(0.5, X(c.x1) - X(c.x0))} height={Math.max(0.5, Y(c.fl0) - Y(c.fl1))} className={cls} opacity={a}>
+                  <title>{`${c.hpa}hPa · ${BG.find((x) => x.id === fb)?.label} ${v > 0 ? '+' : ''}${v}${unit}${c.temp != null ? ` · ${Math.round(c.temp)}°C` : ''}`}</title>
                 </rect>
               );
-            })}
+            }),
+          )}
           {/* 난류 지수 (VWS·Ri) */}
-          {bg === 'turb' &&
+          {bgs.includes('turb') &&
             wc.turb.map((c, i) =>
               c.level === 0 ? null : (
-                <rect key={i} x={X(c.x0)} y={Y(c.fl1)} width={Math.max(0.5, X(c.x1) - X(c.x0))} height={Math.max(0.5, Y(c.fl0) - Y(c.fl1))} className={`vv-turb vv-turb-${c.level}`}>
+                <rect key={i} x={X(c.x0)} y={Y(c.fl1)} width={Math.max(0.5, X(c.x1) - X(c.x0))} height={Math.max(0.5, Y(c.fl0) - Y(c.fl1))} className={`vv-turb vv-turb-${c.level} ${fills.length ? 'vv-hatch' : ''}`} style={fills.length ? { fill: `url(#${clipId}-h${c.level})`, opacity: 1 } : undefined}>
                   <title>{`FL${c.fl0}–${c.fl1} · VWS ${c.vws} kt/1000ft · Ri ${c.ri ?? '—'}`}</title>
                 </rect>
               ),
@@ -191,6 +199,12 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
           {msaPts.length > 1 && <polyline className="vv-msa" points={msaPts.map((w) => `${X(w.cumDist)},${Y(w.msa!)}`).join(' ')} />}
           {/* 결빙고도 */}
           {wc.freezing.length > 1 && <polyline className="vv-frz" points={wc.freezing.map((p) => `${X(p.x)},${Y(p.fl)}`).join(' ')} />}
+          {/* 권계면 (근사, D-099) */}
+          {show.tropo && wc.tropo.length > 1 && (
+            <polyline className="vv-tropo" points={wc.tropo.map((p) => `${X(p.x)},${Y(p.fl)}`).join(' ')}>
+              <title>{`권계면 (근사) FL${Math.min(...wc.tropo.map((p) => p.fl))}–${Math.max(...wc.tropo.map((p) => p.fl))}`}</title>
+            </polyline>
+          )}
           {/* SIGMET */}
           {show.sigmet &&
             sg.map((s) => (
@@ -298,27 +312,32 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
         <span>
           <i className="vv-k vv-k-frz" /> 0°C 고도 (예보)
         </span>
-        {bg === 'wind' && (
+        {show.tropo && (
+          <span>
+            <i className="vv-k vv-k-tropo" /> 권계면 (근사)
+          </span>
+        )}
+        {bgs.includes('wind') && (
           <span>
             <i className="vv-k vv-tail" /> 뒷바람 <i className="vv-k vv-head" /> 앞바람
           </span>
         )}
-        {bg === 'isa' && (
+        {bgs.includes('isa') && (
           <span>
             <i className="vv-k vv-warm" /> ISA+ <i className="vv-k vv-cold" /> ISA−
           </span>
         )}
-        {bg === 'grad' && (
+        {bgs.includes('grad') && (
           <span>
             <i className="vv-k vv-warm" /> 앞으로 갈수록 따뜻 <i className="vv-k vv-cold" /> 차가움 (°C/100NM)
           </span>
         )}
-        {bg === 'dT3' && (
+        {bgs.includes('dT3') && (
           <span>
             <i className="vv-k vv-warm" /> 3시간 사이 오름 <i className="vv-k vv-cold" /> 내림
           </span>
         )}
-        {bg === 'turb' && (
+        {bgs.includes('turb') && (
           <span>
             <i className="vv-k vv-turb-1" /> 약 <i className="vv-k vv-turb-2" /> 중 <i className="vv-k vv-turb-3" /> 강 (모델 지수)
           </span>
@@ -336,7 +355,7 @@ export function VerticalView({ focus, title = '버티컬 뷰 (항로 단면)' }:
         출처: 계획 고도·MSA·SR·ETP·FIR = <b>OFP</b> · 바람·기온·0°C 고도 = <b>Open-Meteo 모델 예보</b>
         {winds ? ` (받음 ${formatAgo(winds.fetchedAt, now)}${winds.data.basis === 'now' ? ', 비행 시각이 예보 범위 밖이라 현재 시각 앞뒤' : ''})` : ' (아직 받지 않음 — Weather에서 갱신)'} · SIGMET = <b>AWC 발표</b>
         {sigmets ? ` (받음 ${formatAgo(sigmets.fetchedAt, now)})` : ''} · PIREP = <b>AWC</b>
-        {pireps ? ` (받음 ${formatAgo(pireps.fetchedAt, now)})` : ''}. 난류 지수 = 기압면 사이 수직 풍속 차(VWS)·리처드슨 수(Ri)로 앱이 계산한 <b>참고 지수</b>(앱 임시 기준: VWS 4/6/9 kt/1000ft 또는 Ri 1/0.5/0.25) — 공식 EDR·WAFS 난류 예보가 아님. EDR 값은 자동 보고(AIREP)에 있을 때만 표시.
+        {pireps ? ` (받음 ${formatAgo(pireps.fetchedAt, now)})` : ''}. 권계면 = 500 hPa 위에서 기온 감률이 처음 2 °C/km 이하가 되는 기압면(근사, 수천 ft 오차 가능). 바탕은 여러 개 겹치기 가능(난류 지수는 빗금). 난류 지수 = 기압면 사이 수직 풍속 차(VWS)·리처드슨 수(Ri)로 앱이 계산한 <b>참고 지수</b>(앱 임시 기준: VWS 4/6/9 kt/1000ft 또는 Ri 1/0.5/0.25) — 공식 EDR·WAFS 난류 예보가 아님. EDR 값은 자동 보고(AIREP)에 있을 때만 표시.
         {oldCache && <span className="c-caution"> 예전 형식 바람 자료 — Weather에서 다시 받으면 고도별 칸이 나옵니다.</span>}
         {proj && nowX != null && ` 지금 위치 = 계획 + 기록 편차 (${formatZ(new Date(now).toISOString())}).`}
       </p>

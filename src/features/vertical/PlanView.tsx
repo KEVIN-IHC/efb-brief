@@ -9,7 +9,8 @@ import { useWxExtra } from '../weather/extra';
 import { nearLon } from '../weather/route';
 import { useWx } from '../weather/store';
 import type { WindPoint } from '../weather/types';
-import { flOfHpa } from './profile';
+import { flOfHpa, tropopauseFl } from './profile';
+import { turbulenceZones } from '../ofp/turbulence';
 import { useWxPick } from './useWxPick';
 import { edrFromRaw, relLabel, shearLayers, type PointAt } from './wxTime';
 
@@ -42,6 +43,8 @@ interface Sample {
   temp: number | null;
   turb: 0 | 1 | 2 | 3 | null;
   vws: number | null;
+  /** 권계면 (근사) FL */
+  tropo: number | null;
 }
 
 function sampleAt(o: OfpData, p: WindPoint, at: PointAt | null, flSel: FlSel): Sample | null {
@@ -53,7 +56,7 @@ function sampleAt(o: OfpData, p: WindPoint, at: PointAt | null, flSel: FlSel): S
   const fl = flSel === 'plan' ? (w.fl > 0 ? w.fl : o.header.cruiseFl) : flSel;
   const v = interpolateAtFl(fl, at.levels);
   const layer = shearLayers(at.levels, flOfHpa).find((s) => flOfHpa(s.hpaLow) <= fl && fl <= flOfHpa(s.hpaHigh));
-  return { seq: p.seq, name: p.name, lat: w.lat, lon: w.lon, fl, track, ...v, turb: layer?.level ?? null, vws: layer?.vws ?? null };
+  return { seq: p.seq, name: p.name, lat: w.lat, lon: w.lon, fl, track, ...v, turb: layer?.level ?? null, vws: layer?.vws ?? null, tropo: tropopauseFl(at.levels) };
 }
 
 function valueOf(s: Sample, param: Param): number | null {
@@ -78,6 +81,8 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
   const pireps = useWxExtra((s) => s.pirep);
   const [param, setParam] = useState<Param>('wind');
   const [flSel, setFlSel] = useState<FlSel>('plan');
+  /** 겹쳐 보기 (D-099): 항로 색은 하나, 그 위에 여러 층 */
+  const [ov, setOv] = useState({ arrows: true, sigmet: true, pirep: true, sr: true, tropo: false });
   const [land, setLand] = useState<Geo | null>(null);
   useEffect(() => {
     void loadLand().then(setLand, () => setLand(null));
@@ -181,6 +186,21 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
             ))}
           </select>
         </label>
+        <div className="vv-toggles" role="group" aria-label="겹쳐 보기">
+          {(
+            [
+              ['arrows', '바람 화살표'],
+              ['sigmet', 'SIGMET'],
+              ['pirep', 'PIREP·EDR'],
+              ['sr', 'SR 구간 (OFP)'],
+              ['tropo', '권계면 높이'],
+            ] as const
+          ).map(([k, l]) => (
+            <button key={k} className={`chip ${ov[k] ? 'on' : ''}`} aria-pressed={ov[k]} onClick={() => setOv({ ...ov, [k]: !ov[k] })}>
+              {l}
+            </button>
+          ))}
+        </div>
         <div className="segmented" role="radiogroup" aria-label="고도">
           {FLS.map((f) => (
             <button key={f} role="radio" aria-checked={flSel === f} className={flSel === f ? 'on' : ''} onClick={() => setFlSel(f)}>
@@ -196,7 +216,8 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
             <path key={i} d={d} className="pv-land" />
           ))}
           {/* SIGMET (선택 시각에 유효) */}
-          {activeSig.flatMap((s) =>
+          {ov.sigmet &&
+            activeSig.flatMap((s) =>
             s.polys.map((poly, j) => (
               <polygon key={`${s.id}-${j}`} points={polyPoints(poly)} className="pv-sig">
                 <title>{s.raw}</title>
@@ -219,9 +240,16 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
               </line>
             );
           })}
+          {/* OFP SR 구간 (D-099) */}
+          {ov.sr &&
+            !view.zone &&
+            turbulenceZones(o.route).map((z, i) => {
+              const seg = pts.filter((p) => p.seq >= z.from.seq && p.seq <= z.to.seq);
+              return seg.length > 1 ? <polyline key={`sr${i}`} points={seg.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className={`pv-zone pv-zone-${z.level}`} /> : null;
+            })}
           {/* 바람 화살표 (바람이 불어 가는 쪽) */}
           {samples.map((s, i) => {
-            if (i % arrowEvery || s.dir == null || s.spd == null) return null;
+            if (!ov.arrows || i % arrowEvery || s.dir == null || s.spd == null) return null;
             const [x, y] = P(s.lat, s.lon);
             const len = 10 + Math.min(30, s.spd / 5);
             const r = ((s.dir + 180) * Math.PI) / 180;
@@ -237,8 +265,20 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
               </g>
             );
           })}
+          {/* 권계면 높이 (근사) */}
+          {ov.tropo &&
+            samples.map((s, i) => {
+              if (i % arrowEvery || s.tropo == null) return null;
+              const [x, y] = P(s.lat, s.lon);
+              return (
+                <text key={`tp${s.seq}`} x={x + 5} y={y + 16} className="pv-txt pv-tropo">
+                  TP{s.tropo}
+                </text>
+              );
+            })}
           {/* PIREP 난류·EDR */}
-          {pr.map((p) => {
+          {ov.pirep &&
+            pr.map((p) => {
             const [x, y] = P(p.lat, p.lon);
             if (x < 0 || x > W || y < 0 || y > H) return null;
             const edr = edrFromRaw(p.raw);

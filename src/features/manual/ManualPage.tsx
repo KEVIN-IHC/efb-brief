@@ -1,6 +1,7 @@
-// Manual 탭 (Phase 5 2단계, D-045): 가져온 매뉴얼을 쪽 단위로 보기 + 오프라인 검색 + "Refer to" 이동
+// Manual 탭 (Phase 5 2단계, D-045 · D-097): 위 = 매뉴얼 책장(보기·검색 공통), 검색(이 매뉴얼/전체), 왼쪽 = PDF Expert식 목차(넓은 화면 늘 보임, 좁으면 옆에서 나옴)
+// 가져온 매뉴얼을 쪽 단위로 보기 + 오프라인 검색 + "Refer to" 이동
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildToc, directKey, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
+import { buildToc, directKey, type TocGroup, docPages, itemSlice, openManualPage, resolveRef, searchPages, useManualNav, type SearchHit, type StoredPage } from './lookup';
 import { ManualText } from './ManualText';
 import { PageImages } from './PageImages';
 import { listManuals, manualEvents, type StoredManual } from './store';
@@ -13,7 +14,8 @@ export function ManualPage() {
   const [mark, setMark] = useState<string | undefined>();
   const [pages, setPages] = useState<StoredPage[]>([]);
   const [q, setQ] = useState('');
-  const [scope, setScope] = useState<string>('ALL');
+  /** 검색 범위: 이 매뉴얼만 / 전체 */
+  const [scopeAll, setScopeAll] = useState(true);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -24,7 +26,6 @@ export function ManualPage() {
   /** 목차 펼침 · 쪽 번호 입력 (D-077) */
   const [tocOpen, setTocOpen] = useState(false);
   const [jump, setJump] = useState<string | null>(null);
-  const tocRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = () => void listManuals().then(setDocs);
@@ -43,7 +44,7 @@ export function ManualPage() {
     }
     if (nav.query) {
       setQ(nav.query);
-      void runSearch(nav.query, 'ALL');
+      void runSearch(nav.query, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.t]);
@@ -74,9 +75,6 @@ export function ManualPage() {
     for (const x of toc[curGroup]?.entries ?? []) if (x.seq <= seq) e = x.seq;
     return e;
   }, [toc, curGroup, seq]);
-  useEffect(() => {
-    if (tocOpen) tocRef.current?.querySelector('.on')?.scrollIntoView({ block: 'center' });
-  }, [tocOpen]);
   const doc = docs?.find((d) => d.docId === docId);
   const slice = useMemo(() => itemSlice(pages, seq, mark), [pages, seq, mark]);
   const focus = slice && !whole ? slice : null;
@@ -117,13 +115,13 @@ export function ManualPage() {
     setMsg(`"${v}" 위치를 찾지 못함`);
   };
 
-  async function runSearch(text: string, sc: string) {
+  async function runSearch(text: string, everywhere: boolean) {
     const query = text.trim();
     if (!query || !docs) return;
     setMsg(null);
     const dk = directKey(query);
     if (dk) {
-      const t = await resolveRef(dk, sc === 'ALL' ? (docId ?? '') : sc, docs);
+      const t = await resolveRef(dk, docId ?? '', docs);
       if (t) {
         setHits(null);
         go(t.docId, t.seq, t.mark ?? query.toUpperCase());
@@ -131,7 +129,7 @@ export function ManualPage() {
       }
     }
     setSearching(true);
-    const ids = sc === 'ALL' ? docs.map((d) => d.docId) : [sc];
+    const ids = everywhere || !docId ? docs.map((d) => d.docId) : [docId];
     const all = (await Promise.all(ids.map(docPages))).flat();
     setHits(searchPages(all, query));
     setSearching(false);
@@ -158,12 +156,20 @@ export function ManualPage() {
 
   return (
     <div className="man">
+      <nav className="man-shelf" aria-label="매뉴얼 고르기">
+        {docs.map((d) => (
+          <button key={d.docId} type="button" className={`man-book ${d.docId === docId ? 'on' : ''}`} aria-current={d.docId === docId ? 'true' : undefined} onClick={() => d.docId !== docId && go(d.docId, 0)}>
+            <span className="mono strong">{d.docId}</span>
+            <span className="small muted">{d.issueDate ?? d.revision ?? ''}</span>
+          </button>
+        ))}
+      </nav>
       <section className="card">
         <form
           className="man-search"
           onSubmit={(e) => {
             e.preventDefault();
-            void runSearch(q, scope);
+            void runSearch(q, scopeAll);
           }}
         >
           <input
@@ -181,11 +187,15 @@ export function ManualPage() {
           </button>
         </form>
         <div className="man-scope" role="radiogroup" aria-label="검색 범위">
-          {['ALL', ...docs.map((d) => d.docId)].map((id) => (
-            <button key={id} role="radio" aria-checked={scope === id} className={`man-f ${scope === id ? 'on' : ''}`} onClick={() => setScope(id)}>
-              {id === 'ALL' ? '전체' : id}
+          <span className="small muted">검색 범위</span>
+          <div className="segmented man-scope-seg">
+            <button type="button" role="radio" aria-checked={!scopeAll} className={!scopeAll ? 'on' : ''} onClick={() => setScopeAll(false)}>
+              이 매뉴얼 ({docId})
             </button>
-          ))}
+            <button type="button" role="radio" aria-checked={scopeAll} className={scopeAll ? 'on' : ''} onClick={() => setScopeAll(true)}>
+              전체 {docs.length}권
+            </button>
+          </div>
         </div>
         {msg && <p className="small c-warn">{msg}</p>}
         {hits && (
@@ -213,15 +223,18 @@ export function ManualPage() {
         )}
       </section>
 
+      <div className={`man-body ${tocOpen ? 'toc-open' : ''}`}>
+      {toc.length > 0 && (
+        <aside className="man-side" aria-label="목차">
+          <TocTree toc={toc} curGroup={curGroup} curEntry={curEntry} onGo={(s2) => go(docId!, s2)} onClose={() => setTocOpen(false)} title={docId ?? ''} />
+        </aside>
+      )}
+      {tocOpen && <div className="man-side-backdrop" onClick={() => setTocOpen(false)} />}
       <section className="card man-view" ref={viewRef}>
         <div className="man-bar">
-          <select className="input" value={docId ?? ''} onChange={(e) => go(e.target.value, 0)} aria-label="매뉴얼 선택">
-            {docs.map((d) => (
-              <option key={d.docId} value={d.docId}>
-                {d.docId} · {d.issueDate ?? ''}
-              </option>
-            ))}
-          </select>
+          <span className="man-title">
+            <b className="mono">{docId}</b> <span className="small muted">{doc?.title}</span>
+          </span>
           <div className="man-nav">
             <button className="btn" disabled={!history.length} onClick={() => {
               const h = history.at(-1)!;
@@ -239,7 +252,7 @@ export function ManualPage() {
             <button className="btn" disabled={seq >= pages.length - 1} onClick={() => go(docId!, seq + 1, undefined, false)} aria-label="다음 쪽">
               ›
             </button>
-            <button className={`btn ${tocOpen ? 'primary' : ''}`} onClick={() => setTocOpen((o) => !o)} aria-expanded={tocOpen} disabled={!toc.length}>
+            <button className={`btn man-toc-btn ${tocOpen ? 'primary' : ''}`} onClick={() => setTocOpen((o) => !o)} aria-expanded={tocOpen} disabled={!toc.length}>
               목차
             </button>
           </div>
@@ -271,26 +284,6 @@ export function ManualPage() {
             </button>
           </form>
         )}
-        {tocOpen && (
-          <div className="man-toc" ref={tocRef}>
-            {toc.map((g, gi) => (
-              <details key={`${g.key}-${g.seq}`} open={gi === curGroup}>
-                <summary className={gi === curGroup ? 'cur' : ''}>{g.title}</summary>
-                <ul>
-                  {g.entries.map((e) => (
-                    <li key={e.seq}>
-                      <button className={`man-toc-e ${e.seq === curEntry && gi === curGroup ? 'on' : ''}`} style={{ paddingLeft: `calc(${e.depth} * var(--sp-4))` }} onClick={() => go(docId!, e.seq)}>
-                        {e.code && <span className="mono small strong">{e.code}</span>}
-                        <span className="small">{e.title}</span>
-                        {e.pages > 1 && <span className="muted small mono">{e.pages}쪽</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            ))}
-          </div>
-        )}
         {page ? (
           <>
             <div className="man-ref">
@@ -312,6 +305,74 @@ export function ManualPage() {
           <p className="muted">{pages.length ? '' : '불러오는 중…'}</p>
         )}
       </section>
+      </div>
+    </div>
+  );
+}
+
+/** PDF Expert식 목차: 장 ▸ 펼침, 들여쓰기 선, 지금 위치 강조, 목차 안 찾기 */
+function TocTree({ toc, curGroup, curEntry, onGo, onClose, title }: { toc: TocGroup[]; curGroup: number; curEntry: number; onGo: (seq: number) => void; onClose: () => void; title: string }) {
+  const [open, setOpen] = useState<Set<number>>(() => new Set([curGroup]));
+  const [f, setF] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setOpen((o) => (o.has(curGroup) ? o : new Set([...o, curGroup])));
+  }, [curGroup]);
+  useEffect(() => {
+    ref.current?.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+  }, [curEntry]);
+  const q = f.trim().toLowerCase();
+  const match = (t?: string) => !!t && t.toLowerCase().includes(q);
+  return (
+    <div className="toc">
+      <div className="toc-head">
+        <b className="small">목차 · {title}</b>
+        <button type="button" className="btn small toc-close" onClick={onClose}>
+          닫기
+        </button>
+      </div>
+      <input className="input toc-filter" type="search" placeholder="목차에서 찾기" value={f} onChange={(e) => setF(e.target.value)} aria-label="목차에서 찾기" />
+      <div className="toc-list" ref={ref}>
+        {toc.map((g, gi) => {
+          const entries = q ? g.entries.filter((e) => match(e.title) || match(e.code)) : g.entries;
+          if (q && !entries.length && !match(g.title)) return null;
+          const isOpen = !!q || open.has(gi);
+          return (
+            <div key={`${g.key}-${g.seq}`} className={`toc-g ${gi === curGroup ? 'cur' : ''}`}>
+              <button
+                type="button"
+                className="toc-gh"
+                aria-expanded={isOpen}
+                onClick={() =>
+                  setOpen((o) => {
+                    const n = new Set(o);
+                    if (n.has(gi)) n.delete(gi);
+                    else n.add(gi);
+                    return n;
+                  })
+                }
+              >
+                <span className="toc-chev">{isOpen ? '▾' : '▸'}</span>
+                <span className="toc-gt">{g.title}</span>
+                <span className="mono small muted">{g.entries.length}</span>
+              </button>
+              {isOpen && (
+                <ul>
+                  {entries.map((e) => (
+                    <li key={e.seq} style={{ ['--d' as string]: e.depth }}>
+                      <button type="button" className={`toc-e ${e.seq === curEntry && gi === curGroup ? 'on' : ''}`} onClick={() => onGo(e.seq)}>
+                        {e.code && <span className="mono toc-code">{e.code}</span>}
+                        <span className="toc-t">{e.title}</span>
+                        {e.pages > 1 && <span className="mono small muted toc-p">{e.pages}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

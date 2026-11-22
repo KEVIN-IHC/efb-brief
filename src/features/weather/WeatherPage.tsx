@@ -136,7 +136,7 @@ function stationTimes(st: Station, flight: { std: string; sta: string }, ofp: Re
   return out;
 }
 
-function AirportCard({ st, now }: { st: Station; now: number }) {
+export function WxAirportCard({ st, now }: { st: Station; now: number }) {
   const m = useWx((s) => s.metars[st.icao]);
   const t = useWx((s) => s.tafs[st.icao]);
   const flight = useActiveFlight((s) => s.flight);
@@ -307,7 +307,7 @@ export function WeatherPage() {
       </p>
       <div className="wx-airports">
         {stations.map((s) => (
-          <AirportCard key={s.icao} st={s} now={now} />
+          <WxAirportCard key={s.icao} st={s} now={now} />
         ))}
       </div>
       <section className="card">

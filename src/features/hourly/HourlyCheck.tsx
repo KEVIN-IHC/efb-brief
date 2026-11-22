@@ -12,6 +12,7 @@ import { listManuals, manualEvents } from '../manual/store';
 import { DocSection } from '../ofp/doc/ui';
 import type { OfpData } from '../ofp/types';
 import { putKey, useDraft, useKey } from '../ops/store';
+import { SdGuide } from './SdGuidePanel';
 import { altCheck, dec1, DEC1_KEYS, num, draftKey, ENTRY_KEYS, normEntry, fuelTotal, lineText, nextDue, nowHHMM, oilBase, oilDelta, recsKey, SD_PAGES, type HourlyEntry, type HourlyRec } from './hourly';
 
 type Refs = { alt?: ManualTarget; sd?: ManualTarget; fuel?: ManualTarget; oil?: ManualTarget; press?: ManualTarget; oxy?: ManualTarget };
@@ -104,6 +105,7 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
   const latest = useRef(e);
   latest.current = e;
   const [editId, setEditId] = useState<string | null>(null);
+  const [guide, setGuide] = useState<string | null>(null);
   const editing = editId ? recs.find((r) => r.id === editId) : undefined;
   const fms = useKey<FmsEntry>(fmsKey(flightId), {});
   const refs = useRefs();
@@ -316,7 +318,11 @@ export function HourlyCheck({ flightId, o }: { flightId: string; o: OfpData | nu
           <button type="button" className="btn small" onClick={() => set({ sd: SD_PAGES.map((p) => p.id) })}>
             모두
           </button>
+          <button type="button" className={`btn small ${guide ? 'primary' : ''}`} onClick={() => setGuide(guide ? null : 'ENG')} aria-expanded={!!guide}>
+            가이드 (정상·경고 범위)
+          </button>
         </div>
+        {guide && <SdGuide initial={guide} onClose={() => setGuide(null)} />}
 
         <div className="hc-save">
           <input className="input" aria-label="메모" placeholder="메모 (선택)" value={e.memo ?? ''} onChange={(ev) => set({ memo: ev.target.value })} />

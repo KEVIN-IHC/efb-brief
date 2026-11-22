@@ -14,6 +14,7 @@ import { loadAirports } from '../weather/airports';
 import { nearLon, unwrapLons } from '../weather/route';
 import { flightStations, useWx } from '../weather/store';
 import { FreshTag } from '../weather/ui';
+import { loadRadar, radarFrameAt, radarTileUrl, RADAR_MAX_ZOOM, useRadar } from './radar';
 import { getSatTile, pruneSatFrames, satPastTimes, SAT_LAYERS, SAT_MAX_ZOOM, tileInCoverage, useSat } from './satellite';
 import { interpolateAtFl } from '../weather/decode';
 import { ExtraCard } from '../weather/ExtraCard';
@@ -26,12 +27,12 @@ import { relLabel } from '../vertical/wxTime';
 import { focusTurbZone, turbulenceZones, useTurbFocus } from '../ofp/turbulence';
 import { TurbulenceBlock } from '../ofp/doc/Turbulence';
 
-type LayerKey = 'sat' | 'sigmet' | 'wind' | 'srz' | 'airports' | 'fir' | 'pirep' | 'tc' | 'gairmet';
-const LAYER_LABEL: Record<LayerKey, string> = { sat: '위성', sigmet: 'SIGMET', wind: '바람', srz: '난류 SR', airports: '공항', fir: 'FIR 경계', pirep: 'PIREP', tc: '열대저기압', gairmet: 'G-AIRMET' };
+type LayerKey = 'sat' | 'radar' | 'sigmet' | 'wind' | 'srz' | 'airports' | 'fir' | 'pirep' | 'tc' | 'gairmet';
+const LAYER_LABEL: Record<LayerKey, string> = { sat: '위성', radar: '레이더', sigmet: 'SIGMET', wind: '바람', srz: '난류 SR', airports: '공항', fir: 'FIR 경계', pirep: 'PIREP', tc: '열대저기압', gairmet: 'G-AIRMET' };
 const LS_KEY = 'efb.mapLayers';
 
 function readLayers(): Record<LayerKey, boolean> {
-  const def = { sat: false, sigmet: true, wind: true, srz: true, airports: true, fir: true, pirep: true, tc: true, gairmet: true };
+  const def = { sat: false, radar: false, sigmet: true, wind: true, srz: true, airports: true, fir: true, pirep: true, tc: true, gairmet: true };
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') as Partial<Record<LayerKey, boolean>>) };
   } catch {
@@ -126,10 +127,20 @@ export function MapPage() {
   const fixed = mode === 'fixed' && selT != null;
   const selMs = fixed ? selT : now;
   const pastSat = useMemo(() => satPastTimes(now).map(Date.parse), [Math.floor(now / 1800_000)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 레이더 (D-099): 켜면 받고 10분마다 다시. 영상 시각을 시간 막대에 넣어 ▶ 재생으로 움직임
+  const radar = useRadar();
+  useEffect(() => {
+    if (!layers.radar) return;
+    void loadRadar();
+    const id = setInterval(() => void loadRadar(), 600_000);
+    return () => clearInterval(id);
+  }, [layers.radar]);
+  const radarTimes = useMemo(() => (layers.radar ? radar.frames.map((f) => f.t).filter((t) => t <= now + 3_600_000) : []), [layers.radar, radar.frames, now]);
   const timeline = useMemo(() => {
     const w = (myWinds?.data.times ?? []).map(Date.parse).filter((t) => t >= now - 3 * 3_600_000);
-    return mergeTimes(pastSat, [now], w);
-  }, [myWinds, pastSat, now]);
+    return mergeTimes(pastSat, [...radarTimes, now], w);
+  }, [myWinds, pastSat, radarTimes, now]);
+  const radarFrame = layers.radar ? radarFrameAt(radar.frames, selMs) : null;
   /** 위성: 30분 넘게 지난 시각이면 그 시각 영상, 아니면(지금·미래) 최신 */
   const satTime = fixed && selT! < now - 1800_000 ? (pastSat.filter((t) => t <= selT! + 60_000).at(-1) ?? pastSat[0]) : null;
   const satTimeIso = satTime != null ? new Date(satTime).toISOString().slice(0, 19) + 'Z' : 'latest';
@@ -149,6 +160,7 @@ export function MapPage() {
     if (import.meta.env.DEV) (window as unknown as { __efbMap?: L.Map }).__efbMap = map; // 개발 중 점검용
     map.createPane('ne').style.zIndex = '150';
     map.createPane('sat').style.zIndex = '250';
+    map.createPane('radar').style.zIndex = '260';
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(el.current);
     return () => {
@@ -208,6 +220,14 @@ export function MapPage() {
     if (!layers.sat) return;
     for (const s of SAT_LAYERS) new SatGrid({ satLayer: s.id, satTime: satTimeIso, pane: 'sat', opacity: 0.75, maxNativeZoom: SAT_MAX_ZOOM, maxZoom: 9, attribution: 'NASA GIBS' }).addTo(g);
   }, [layers.sat, satTimeIso]);
+
+  // 레이더 (RainViewer)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = group('radar');
+    if (!layers.radar || !radar.host || !radarFrame) return;
+    L.tileLayer(radarTileUrl(radar.host, radarFrame), { pane: 'radar', opacity: 0.7, maxNativeZoom: RADAR_MAX_ZOOM, maxZoom: 9, attribution: 'Radar © RainViewer' }).addTo(g);
+  }, [layers.radar, radar.host, radarFrame?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 루트·웨이포인트·ETP
   useEffect(() => {
@@ -277,13 +297,22 @@ export function MapPage() {
       const severe = /^(TS|CONVECTIVE|VA|TC)$/.test(s.hazard);
       const color = cssVar(severe ? '--bad' : '--warn');
       for (const poly of s.polys) {
-        const off = nearLon(poly[0][1], refLon) - poly[0][1];
-        L.polygon(
-          poly.map(([la, lo]) => [la, lo + off] as L.LatLngTuple),
-          { color, weight: 1.5, fillColor: color, fillOpacity: 0.12 },
-        )
-          .bindPopup(`<b>${s.hazard}</b> ${s.fir} ${s.qualifier ?? ''}<br>${formatDayZ(s.validFrom)}–${formatZ(s.validTo)}<pre>${s.raw.replace(/</g, '&lt;')}</pre>`)
+        // 꼭짓점을 앞 점에 이어 붙인 뒤(날짜변경선) 통째로 루트 쪽으로 옮김
+        let prev = poly[0][1];
+        const un = poly.map(([la, lo]) => {
+          const l = nearLon(lo, prev);
+          prev = l;
+          return [la, l] as [number, number];
+        });
+        const off = nearLon(un[0][1], refLon) - un[0][1];
+        const ll = un.map(([la, lo]) => [la, lo + off] as L.LatLngTuple);
+        const fl = s.base != null || s.top != null ? ` ${s.base != null ? `FL${Math.round(s.base / 100)}` : 'SFC'}–${s.top != null ? `FL${Math.round(s.top / 100)}` : ''}` : '';
+        // D-099: 잘 보이게 — 선 굵게·채움 진하게·위험 종류 글자
+        L.polygon(ll, { color, weight: 2.2, fillColor: color, fillOpacity: severe ? 0.28 : 0.2 })
+          .bindPopup(`<b>${s.hazard}</b> ${s.fir} ${s.qualifier ?? ''}${fl}<br>${formatDayZ(s.validFrom)}–${formatZ(s.validTo)}<pre>${s.raw.replace(/</g, '&lt;')}</pre>`)
           .addTo(g);
+        const c = L.polygon(ll).getBounds().getCenter();
+        L.marker(c, { interactive: false, keyboard: false, icon: L.divIcon({ className: `sig-lbl ${severe ? 'sev' : ''}`, iconSize: [60, 16], iconAnchor: [30, 8], html: `${s.hazard}${fl ? `<small>${fl}</small>` : ''}` }) }).addTo(g);
       }
     }
   }, [layers.sigmet, wx.sigmets, refLon, selMs, fixed, theme]);
@@ -463,6 +492,16 @@ export function MapPage() {
         </div>
         <div className="map-fresh">
           {layers.sigmet && <FreshTag kind="sigmet" label="SIGMET" refIso={wx.sigmets?.fetchedAt} now={now} />}
+          {layers.radar &&
+            (radar.error && !radar.frames.length ? (
+              <span className="small c-caution">레이더 받기 실패 ({radar.error}) — 온라인에서 다시</span>
+            ) : radarFrame ? (
+              <span className="small mono">
+                레이더 {formatZ(new Date(radarFrame.t).toISOString())} ({relLabel(radarFrame.t, now)}) · RainViewer
+              </span>
+            ) : (
+              <span className="small muted">레이더 받는 중…</span>
+            ))}
           {layers.wind && <FreshTag kind="winds" label={`바람 ${parsed ? fmtFl(parsed.header.cruiseFl) : ''}`} refIso={wx.winds?.flightId === flight.flightId ? wx.winds.fetchedAt : null} now={now} />}
           {layers.sat && (satTime != null ? <span className="small mono c-caution">위성 IR {formatZ(new Date(satTime).toISOString())} ({relLabel(satTime, now)}, 지난 영상)</span> : <FreshTag kind="sat" label="위성 IR" refIso={satT[satT.length - 1]} now={now} />)}
         </div>
@@ -482,7 +521,7 @@ export function MapPage() {
             FIR 경계 = VATSpy 공개 자료(CC BY-SA 4.0{firMeta.commitDate ? `, ${firMeta.commitDate.slice(0, 10)}` : ''}) — <b>비공식, 실제 경계와 다를 수 있음</b>. 진입 시각은 OFP 기준 ·{' '}
           </>
         )}
-        ✈ = 선택 시각의 예상 위치(계획 + 기록 편차) · 루트 = OFP 웨이포인트 · 주황 원 = ETP · 공항 색 = METAR 비행 등급 · SIGMET 빨강 = 뇌우·화산재·열대저기압, 주황 = 난류·착빙 등 · 바람 화살표 = 불어가는 방향(웨이포인트 계획 고도) · 참고용, 공식 브리핑 대체 아님
+        ✈ = 선택 시각의 예상 위치(계획 + 기록 편차) · 루트 = OFP 웨이포인트 · 주황 원 = ETP · 공항 색 = METAR 비행 등급 · 레이더 = RainViewer 지상 레이더 합성(지난 약 2시간, 10분 간격 — 레이더 없는 바다 위는 안 보임, ▶ 재생으로 움직임) · SIGMET 빨강 = 뇌우·화산재·열대저기압, 주황 = 난류·착빙 등 · 바람 화살표 = 불어가는 방향(웨이포인트 계획 고도) · 참고용, 공식 브리핑 대체 아님
       </p>
       {/* 공항 METAR·TAF 외 기상은 여기 (D-065) */}
       <div className="map-wx">
