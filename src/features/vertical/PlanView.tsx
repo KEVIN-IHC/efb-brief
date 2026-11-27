@@ -1,4 +1,5 @@
-// 플랜 뷰 (D-063): 위에서 본 항로 — 선택 고도·시각의 바람·기온·난류 지수를 항로 색으로, SIGMET·PIREP 겹쳐 보기.
+// 플랜 뷰 (D-063 → D-107): 위에서 본 항로를 값마다 작은 지도 한 장(앞/뒷바람·난류·ISA·기온 2×2), 누르면 크게.
+// 항로 = 한 줄(고른 값 색) · SIGMET·SR(OFP)·PIREP 겹침 · 웨이포인트 이름+ETO는 겹치지 않게 우선순위로 배치.
 // 육지 윤곽 = 앱에 들어 있는 Natural Earth(오프라인). 버티컬 뷰와 같은 시각 선택을 쓴다
 import { useEffect, useMemo, useState } from 'react';
 import { bearingDeg } from '../../lib/geo';
@@ -17,8 +18,8 @@ import { edrFromRaw, relLabel, shearLayers, type PointAt } from './wxTime';
 type Param = 'wind' | 'isa' | 'turb' | 'temp';
 const PARAMS: { id: Param; label: string }[] = [
   { id: 'wind', label: '앞/뒷바람' },
-  { id: 'isa', label: 'ISA 편차' },
   { id: 'turb', label: '난류 지수' },
+  { id: 'isa', label: 'ISA 편차' },
   { id: 'temp', label: '기온' },
 ];
 const FLS = ['plan', 290, 330, 370, 410] as const;
@@ -79,7 +80,8 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
   const { o, winds, now, pick, mode, t } = useWxPick();
   const sigmets = useWx((s) => s.sigmets);
   const pireps = useWxExtra((s) => s.pirep);
-  const [param, setParam] = useState<Param>('wind');
+  /** 작은 지도 4장 중 크게 볼 하나 (D-107). 난류 창(focus)은 난류부터 크게 */
+  const [big, setBig] = useState<Param | null>(focus ? 'turb' : null);
   const [flSel, setFlSel] = useState<FlSel>('plan');
   /** 겹쳐 보기 (D-099): 항로 색은 하나, 그 위에 여러 층 */
   const [ov, setOv] = useState({ arrows: true, sigmet: true, pirep: true, sr: true, tropo: false });
@@ -162,13 +164,226 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
     const off = (un.length ? nearLon(un[0][1], view.midLon) : 0) - (un[0]?.[1] ?? 0);
     return un.map(([la, lo]) => view.Praw(la, lo + off).join(',')).join(' ');
   };
-  const inView = (p: { lat: number; lon: number }) => { const [x, y] = P(p.lat, p.lon); return x >= -20 && x <= W + 20 && y >= -20 && y <= H + 20; };
+  const inView = (p: { lat: number; lon: number }) => {
+    const [x, y] = P(p.lat, p.lon);
+    return x >= -20 && x <= W + 20 && y >= -20 && y <= H + 20;
+  };
   const selMs = mode === 'fixed' && t != null ? t : now;
   const activeSig = (sigmets?.data ?? []).filter((s) => Date.parse(s.validFrom) - 3_600_000 <= selMs && selMs <= Date.parse(s.validTo));
   const pr = (pireps?.data ?? []).filter((p) => p.turb || edrFromRaw(p.raw) != null);
   const arrowEvery = Math.max(1, Math.ceil(samples.length / 18));
-  const unit = param === 'wind' ? 'kt' : param === 'turb' ? '' : '°C';
+  const etoOf = new Map(o.route.map((w) => [w.seq, w.eto]));
+  const z = (seq: number) => {
+    const e = etoOf.get(seq);
+    return e ? `${e.slice(11, 13)}${e.slice(14, 16)}Z` : '';
+  };
+  const srZones = turbulenceZones(o.route);
+  /** FIR 진입 지점 (ADIZ는 FIR 경계 아님) */
+  const isFir = (w: { fir?: string }) => !!w.fir && !/^ADIZ/.test(w.fir);
+  const srEnds = new Set(srZones.flatMap((zz) => [zz.from.seq, zz.to.seq]));
+  // 웨이포인트 이름 우선순위: 출발·도착 > TOC·TOD·FIR 진입·ETP > SR 끝 > 이름 지점 > 좌표 지점
+  const prio = (w: (typeof pts)[number], i: number) =>
+    i === 0 || i === pts.length - 1 ? 0 : /^(TOC|TOD|ETP\d?)$/.test(w.name) || isFir(w) ? 1 : srEnds.has(w.seq) ? 2 : /^\d/.test(w.name) ? 4 : 3;
 
+  /** 한 장 그리기. big = 크게(이름 + ETO·FL 모두), 작으면 중요한 이름만 크게 */
+  const drawMap = (param: Param, big: boolean) => {
+    const sc = big ? 1 : 1.9; // 작은 지도는 화면에 반쯤 줄어 보이므로 글자·선을 키워 그림
+    const LW = (big ? 7 : 6) * (big ? 1 : 1.6);
+    const fs = 12.5 * sc;
+    const boxes: { x: number; y: number; w: number; h: number }[] = [];
+    const hit = (b: { x: number; y: number; w: number; h: number }) => boxes.some((q) => b.x < q.x + q.w && b.x + b.w > q.x && b.y < q.y + q.h && b.y + b.h > q.y);
+    const labels: JSX.Element[] = [];
+    const order = pts.map((w, i) => ({ w, i, p: prio(w, i) })).filter((x) => (view.zone ? inView(x.w) : true) && (big || view.zone ? x.p <= 4 : x.p <= 2));
+    for (const d of pts) {
+      if (!inView(d)) continue;
+      const [x, y] = P(d.lat, d.lon);
+      boxes.push({ x: x - 5 * sc, y: y - 5 * sc, w: 10 * sc, h: 10 * sc });
+    }
+    order.sort((a, b) => a.p - b.p || a.i - b.i);
+    for (const { w, p } of order) {
+      const [x, y] = P(w.lat, w.lon);
+      const name = isFir(w) ? `${w.fir!.slice(0, 4)} FIR` : w.fir && /^ADIZ/.test(w.fir) ? 'ADIZ' : w.name;
+      const sub = big || view.zone ? `${z(w.seq)}${w.fl > 0 ? ` · F${w.fl}` : ''}` : z(w.seq);
+      const bw = Math.max(name.length * fs * 0.66, sub.length * fs * 0.58) + 6;
+      const bh = fs * 2.1;
+      let at: { x: number; y: number; w: number; h: number } | null = null;
+      for (const [dx, dy] of [
+        [8 * sc, -bh - 2 * sc],
+        [8 * sc, 6 * sc],
+        [-bw - 8 * sc, -bh - 2 * sc],
+        [-bw - 8 * sc, 6 * sc],
+        [-bw / 2, -bh - 10 * sc],
+        [-bw / 2, 12 * sc],
+      ]) {
+        const b = { x: x + dx, y: y + dy, w: bw, h: bh };
+        if (b.x < 2 || b.x + b.w > W - 2 || b.y < 2 || b.y + b.h > H - 2 || hit(b)) continue;
+        at = b;
+        break;
+      }
+      if (!at) continue;
+      boxes.push(at);
+      labels.push(
+        <g key={`l${w.seq}`} className="pv-lbl">
+          <text x={at.x + 3} y={at.y + fs} className={`pv-name ${p <= 1 ? 'key' : ''}`} style={{ fontSize: fs }}>
+            {name}
+          </text>
+          <text x={at.x + 3} y={at.y + fs * 2} className="pv-eto" style={{ fontSize: fs * 0.82 }}>
+            {sub}
+          </text>
+        </g>,
+      );
+    }
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} className="pv-svg" role="img" aria-label={`항로 평면도: ${PARAMS.find((x) => x.id === param)?.label}`}>
+        <rect x={0} y={0} width={W} height={H} className="pv-sea" />
+        {landPaths.map((d, i) => (
+          <path key={i} d={d} className="pv-land" />
+        ))}
+        {ov.sigmet &&
+          activeSig.flatMap((s) =>
+            s.polys.map((poly, j) => (
+              <polygon key={`${s.id}-${j}`} points={polyPoints(poly)} className="pv-sig" style={{ strokeWidth: 1.5 * sc }}>
+                <title>{s.raw}</title>
+              </polygon>
+            )),
+          )}
+        {/* 항로 한 줄: 테두리 + 고른 값 색 */}
+        <polyline points={pts.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className="pv-route" style={{ strokeWidth: LW + 3 * sc }} />
+        {view.zone && <polyline points={view.zone.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className={`pv-zone pv-zone-${focus?.level ?? 'warning'}`} style={{ strokeWidth: LW * 2.6 }} />}
+        {samples.slice(0, -1).map((s, i) => {
+          const n = samples[i + 1];
+          const [x1, y1] = P(s.lat, s.lon);
+          const [x2, y2] = P(n.lat, n.lon);
+          const v = valueOf(s, param);
+          return (
+            <line key={s.seq} x1={x1} y1={y1} x2={x2} y2={y2} className={`pv-seg ${colorClass(v, param)}`} style={{ strokeWidth: LW }}>
+              <title>{`${s.name} ${z(s.seq)} FL${s.fl} · ${v ?? '—'}${UNIT[param]}`}</title>
+            </line>
+          );
+        })}
+        {/* OFP SR 구간 = 주황 괄호 점선 (D-107) */}
+        {ov.sr &&
+          !view.zone &&
+          srZones.map((zz, i) => {
+            const seg = pts.filter((p) => p.seq >= zz.from.seq && p.seq <= zz.to.seq);
+            if (seg.length < 2) return null;
+            const side = (k: number) =>
+              seg
+                .map((p, j) => {
+                  const a = seg[Math.max(0, j - 1)];
+                  const b = seg[Math.min(seg.length - 1, j + 1)];
+                  const [ax, ay] = P(a.lat, a.lon);
+                  const [bx, by] = P(b.lat, b.lon);
+                  const L = Math.hypot(bx - ax, by - ay) || 1;
+                  const [x, y] = P(p.lat, p.lon);
+                  const o = k * (LW + 5 * sc);
+                  return `${x - ((by - ay) / L) * o},${y + ((bx - ax) / L) * o}`;
+                })
+                .join(' ');
+            return (
+              <g key={`sr${i}`} className={`pv-srz pv-srz-${zz.level}`} style={{ strokeWidth: 2.2 * sc, strokeDasharray: `${5 * sc} ${3 * sc}` }}>
+                <polyline points={side(1)} />
+                <polyline points={side(-1)} />
+              </g>
+            );
+          })}
+        {param === 'wind' &&
+          ov.arrows &&
+          samples.map((s, i) => {
+            if (i % arrowEvery || s.dir == null || s.spd == null) return null;
+            const [x, y] = P(s.lat, s.lon);
+            const len = (10 + Math.min(30, s.spd / 5)) * (big ? 1 : 1.4);
+            const r = ((s.dir + 180) * Math.PI) / 180;
+            return (
+              <g key={`a${s.seq}`} className="pv-arrow" style={{ strokeWidth: 1.5 * sc }}>
+                <line x1={x} y1={y} x2={x + Math.sin(r) * len} y2={y - Math.cos(r) * len} />
+                <circle cx={x + Math.sin(r) * len} cy={y - Math.cos(r) * len} r={2.5 * sc} />
+              </g>
+            );
+          })}
+        {param === 'temp' &&
+          ov.tropo &&
+          samples.map((s, i) => {
+            if (i % arrowEvery || s.tropo == null) return null;
+            const [x, y] = P(s.lat, s.lon);
+            return (
+              <text key={`tp${s.seq}`} x={x + 5} y={y + 16 * sc} className="pv-txt pv-tropo" style={{ fontSize: 11 * sc }}>
+                TP{s.tropo}
+              </text>
+            );
+          })}
+        {ov.pirep &&
+          pr.map((p) => {
+            const [x, y] = P(p.lat, p.lon);
+            if (x < 0 || x > W || y < 0 || y > H) return null;
+            const edr = edrFromRaw(p.raw);
+            const sev = edr != null ? (edr >= 0.4 ? 3 : edr >= 0.2 ? 2 : 1) : /SEV|EXTRM/i.test(p.turb ?? '') ? 3 : /MOD/i.test(p.turb ?? '') ? 2 : 1;
+            const k = 6 * sc;
+            return (
+              <path key={p.id} d={`M${x},${y - k} L${x + k},${y + k * 0.7} L${x - k},${y + k * 0.7} Z`} className={`vv-pirep vv-turb-${sev}`}>
+                <title>{`${p.turb ?? ''}${edr != null ? ` EDR ${edr}` : ''} FL${p.fl ?? '?'} · ${formatZ(p.obsTime)} · ${p.raw}`}</title>
+              </path>
+            );
+          })}
+        {/* FIR 경계 = 항로를 가로지르는 막대 */}
+        {pts.map((w, i) => {
+          if (!isFir(w) || !inView(w)) return null;
+          const a = pts[Math.max(0, i - 1)];
+          const b = pts[Math.min(pts.length - 1, i + 1)];
+          const [ax, ay] = P(a.lat, a.lon);
+          const [bx, by] = P(b.lat, b.lon);
+          const L = Math.hypot(bx - ax, by - ay) || 1;
+          const [nx, ny] = [-(by - ay) / L, (bx - ax) / L];
+          const [x, y] = P(w.lat, w.lon);
+          const h = 14 * sc;
+          return <line key={`f${w.seq}`} x1={x - nx * h} y1={y - ny * h} x2={x + nx * h} y2={y + ny * h} className="pv-firbar" style={{ strokeWidth: 2.5 * sc }} />;
+        })}
+        {/* 웨이포인트 점 */}
+        {pts.map((w, i) =>
+          inView(w) ? <circle key={`d${w.seq}`} cx={P(w.lat, w.lon)[0]} cy={P(w.lat, w.lon)[1]} r={(prio(w, i) <= 1 ? 4.5 : 3) * sc} className={`pv-dot ${prio(w, i) <= 1 ? 'key' : ''}`} style={{ strokeWidth: 1.6 * sc }} /> : null,
+        )}
+        {labels}
+      </svg>
+    );
+  };
+
+  /** 한 줄 요약 (시각 포함) */
+  const summary = (param: Param): string => {
+    const vals = samples.map((s) => ({ s, v: valueOf(s, param) })).filter((x): x is { s: Sample; v: number } => x.v != null);
+    if (!vals.length) return '예보 없음 — Weather에서 갱신';
+    const at = (x: { s: Sample }) => `${x.s.name} ${z(x.s.seq)}`;
+    if (param === 'wind') {
+      const head = vals.reduce((m, x) => (x.v < m.v ? x : m));
+      const tail = vals.reduce((m, x) => (x.v > m.v ? x : m));
+      return head.v < 0 ? `앞바람 최대 ${-head.v}kt @${at(head)}` : `앞바람 없음 · 뒷바람 최대 ${tail.v}kt @${at(tail)}`;
+    }
+    if (param === 'turb') {
+      const spans: { a: Sample; b: Sample; lv: number }[] = [];
+      for (const x of vals) {
+        const last = spans.at(-1);
+        if (x.v >= 2) {
+          if (last && last.b === vals[vals.indexOf(x) - 1]?.s) {
+            last.b = x.s;
+            last.lv = Math.max(last.lv, x.v);
+          } else spans.push({ a: x.s, b: x.s, lv: x.v });
+        }
+      }
+      if (!spans.length) return '중 이상 없음 (모델 지수)';
+      const f = spans[0];
+      const where = f.a === f.b ? `${z(f.a.seq)} ${f.a.name}` : `${z(f.a.seq)}–${z(f.b.seq)} ${f.a.name}→${f.b.name}`;
+      return `중 이상 ${spans.length}구간 · ${where}${spans.length > 1 ? ' 외' : ''}`;
+    }
+    if (param === 'isa') {
+      const hi = vals.reduce((m, x) => (x.v > m.v ? x : m));
+      const lo = vals.reduce((m, x) => (x.v < m.v ? x : m));
+      const sg = (v: number) => `${v >= 0 ? '+' : ''}${v}`;
+      return `최고 ISA${sg(hi.v)} @${at(hi)} · 최저 ISA${sg(lo.v)} @${at(lo)}`;
+    }
+    const lo = vals.reduce((m, x) => (x.v < m.v ? x : m));
+    return `최저 ${lo.v}°C @${at(lo)}`;
+  };
+
+  const shown = big ? [big] : PARAMS.map((p) => p.id);
   return (
     <section className="card flush pv">
       <div className="card-title pad">
@@ -176,23 +391,13 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
         <span className="small muted mono">{mode === 'fixed' && t != null ? `${formatZ(new Date(t).toISOString())} · ${relLabel(t, now)}` : '지점 통과 시각'}</span>
       </div>
       <div className="pad vv-ctl">
-        <label className="small vv-sel">
-          <span className="muted">표시</span>
-          <select className="input" value={param} onChange={(e) => setParam(e.target.value as Param)} aria-label="항로 색">
-            {PARAMS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className="vv-toggles" role="group" aria-label="겹쳐 보기">
           {(
             [
-              ['arrows', '바람 화살표'],
               ['sigmet', 'SIGMET'],
-              ['pirep', 'PIREP·EDR'],
               ['sr', 'SR 구간 (OFP)'],
+              ['pirep', 'PIREP·EDR'],
+              ['arrows', '바람 화살표'],
               ['tropo', '권계면 높이'],
             ] as const
           ).map(([k, l]) => (
@@ -209,127 +414,81 @@ export function PlanView({ focus, title = '플랜 뷰 (위에서 본 항로)' }:
           ))}
         </div>
       </div>
-      <div className="vv-scroll">
-        <svg viewBox={`0 0 ${W} ${H}`} className="pv-svg" role="img" aria-label="항로 평면도: 선택 고도의 바람·기온·난류 지수">
-          <rect x={0} y={0} width={W} height={H} className="pv-sea" />
-          {landPaths.map((d, i) => (
-            <path key={i} d={d} className="pv-land" />
-          ))}
-          {/* SIGMET (선택 시각에 유효) */}
-          {ov.sigmet &&
-            activeSig.flatMap((s) =>
-            s.polys.map((poly, j) => (
-              <polygon key={`${s.id}-${j}`} points={polyPoints(poly)} className="pv-sig">
-                <title>{s.raw}</title>
-              </polygon>
-            )),
-          )}
-          {/* 계획 항로 (회색 바탕) */}
-          <polyline points={pts.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className="pv-route" />
-          {/* 강조 구간 (난류 SR) */}
-          {view.zone && <polyline points={view.zone.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className={`pv-zone pv-zone-${focus?.level ?? 'warning'}`} />}
-          {/* 예보 값 색 */}
-          {samples.slice(0, -1).map((s, i) => {
-            const n = samples[i + 1];
-            const [x1, y1] = P(s.lat, s.lon);
-            const [x2, y2] = P(n.lat, n.lon);
-            const v = valueOf(s, param);
-            return (
-              <line key={s.seq} x1={x1} y1={y1} x2={x2} y2={y2} className={`pv-seg ${colorClass(v, param)}`}>
-                <title>{`${s.name} FL${s.fl} · ${v ?? '—'}${unit}${s.vws != null ? ` · VWS ${s.vws}` : ''}`}</title>
-              </line>
-            );
-          })}
-          {/* OFP SR 구간 (D-099) */}
-          {ov.sr &&
-            !view.zone &&
-            turbulenceZones(o.route).map((z, i) => {
-              const seg = pts.filter((p) => p.seq >= z.from.seq && p.seq <= z.to.seq);
-              return seg.length > 1 ? <polyline key={`sr${i}`} points={seg.map((p) => P(p.lat, p.lon).join(',')).join(' ')} className={`pv-zone pv-zone-${z.level}`} /> : null;
-            })}
-          {/* 바람 화살표 (바람이 불어 가는 쪽) */}
-          {samples.map((s, i) => {
-            if (!ov.arrows || i % arrowEvery || s.dir == null || s.spd == null) return null;
-            const [x, y] = P(s.lat, s.lon);
-            const len = 10 + Math.min(30, s.spd / 5);
-            const r = ((s.dir + 180) * Math.PI) / 180;
-            const dx = Math.sin(r) * len;
-            const dy = -Math.cos(r) * len;
-            return (
-              <g key={`a${s.seq}`} className="pv-arrow">
-                <line x1={x} y1={y} x2={x + dx} y2={y + dy} />
-                <circle cx={x + dx} cy={y + dy} r={2.5} />
-                <text x={x + dx + 4} y={y + dy - 4} className="pv-txt">
-                  {Math.round(s.spd)}
-                </text>
-              </g>
-            );
-          })}
-          {/* 권계면 높이 (근사) */}
-          {ov.tropo &&
-            samples.map((s, i) => {
-              if (i % arrowEvery || s.tropo == null) return null;
-              const [x, y] = P(s.lat, s.lon);
-              return (
-                <text key={`tp${s.seq}`} x={x + 5} y={y + 16} className="pv-txt pv-tropo">
-                  TP{s.tropo}
-                </text>
-              );
-            })}
-          {/* PIREP 난류·EDR */}
-          {ov.pirep &&
-            pr.map((p) => {
-            const [x, y] = P(p.lat, p.lon);
-            if (x < 0 || x > W || y < 0 || y > H) return null;
-            const edr = edrFromRaw(p.raw);
-            const sev = edr != null ? (edr >= 0.4 ? 3 : edr >= 0.2 ? 2 : 1) : /SEV|EXTRM/i.test(p.turb ?? '') ? 3 : /MOD/i.test(p.turb ?? '') ? 2 : 1;
-            return (
-              <path key={p.id} d={`M${x},${y - 6} L${x + 6},${y + 4} L${x - 6},${y + 4} Z`} className={`vv-pirep vv-turb-${sev}`}>
-                <title>{`${p.turb ?? ''}${edr != null ? ` EDR ${edr}` : ''} FL${p.fl ?? '?'} · ${formatZ(p.obsTime)} · ${p.raw}`}</title>
-              </path>
-            );
-          })}
-          {/* 지점 이름 (드문드문) */}
-          {pts.map((p, i) =>
-            (view.zone ? inView(p) : i === 0 || i === pts.length - 1 || i % Math.max(1, Math.ceil(pts.length / 10)) === 0) ? (
-              <text key={p.seq} x={P(p.lat, p.lon)[0] + 4} y={P(p.lat, p.lon)[1] + 12} className="pv-txt pv-wpt">
-                {p.name}
-              </text>
-            ) : null,
-          )}
-        </svg>
+      {/* 동서로 긴 항로는 지도가 납작해서 2×2면 작음 → 4장을 위아래로 (D-107) */}
+      <div className={`pv-grid ${big ? 'one' : H < 420 ? 'stack' : ''}`}>
+        {shown.map((param) => (
+          <div key={param} className="pv-cell">
+            <button type="button" className="pv-cell-h" onClick={() => setBig(big ? null : param)} aria-expanded={!!big}>
+              <b>{PARAMS.find((x) => x.id === param)?.label}</b>
+              <span className="pv-sum">{summary(param)}</span>
+              <span className="pv-key">
+                {LEGEND[param].map(([c, l]) => (
+                  <span key={l}>
+                    <i className={`vv-k ${c}`} />
+                    {l}
+                  </span>
+                ))}
+              </span>
+              <span className="pv-more">{big ? '← 4장 보기' : '크게 ⤢'}</span>
+            </button>
+            <div className="pv-map" onClick={() => setBig(big ? null : param)}>
+              {drawMap(param, !!big || H < 420)}
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="pad small vv-legend">
-        {param === 'wind' && (
-          <span>
-            <i className="vv-k pv-good-2" /> 뒷바람 40kt+ <i className="vv-k pv-good-1" /> 뒷바람 <i className="vv-k pv-bad-1" /> 앞바람 <i className="vv-k pv-bad-2" /> 앞바람 40kt+
-          </span>
-        )}
-        {param === 'isa' && (
-          <span>
-            <i className="vv-k pv-warm-2" /> ISA+10 <i className="vv-k pv-warm-1" /> +3 <i className="vv-k pv-mid" /> ±3 <i className="vv-k pv-cold-1" /> −3 <i className="vv-k pv-cold-2" /> −10
-          </span>
-        )}
-        {param === 'temp' && (
-          <span>
-            <i className="vv-k pv-warm-1" /> −40°C 이상 <i className="vv-k pv-mid" /> −55 <i className="vv-k pv-cold-1" /> −65 <i className="vv-k pv-cold-2" /> 그 아래
-          </span>
-        )}
-        {param === 'turb' && (
-          <span>
-            <i className="vv-k pv-turb-0" /> 없음 <i className="vv-k vv-turb-1" /> 약 <i className="vv-k vv-turb-2" /> 중 <i className="vv-k vv-turb-3" /> 강 (모델 지수)
-          </span>
-        )}
-        <span>
-          <i className="vv-k vv-k-sig" /> SIGMET (이 시각 유효)
+      <div className="pad small pv-src">
+        <span className="muted">출처</span>
+        <span className="pv-s">
+          <b>OFP</b> 항로·SR·FIR
         </span>
-        <span>
-          <i className="vv-k vv-k-pirep" /> PIREP 난류·EDR
+        <span className="pv-s">
+          <b>Open-Meteo</b> 바람·기온·난류 지수 · {winds ? formatAgo(winds.fetchedAt, now) : '없음'}
         </span>
+        <span className="pv-s">
+          <b>AWC</b> SIGMET{sigmets ? ` · ${formatAgo(sigmets.fetchedAt, now)}` : ''}
+        </span>
+        {pireps && (
+          <span className="pv-s">
+            <b>AWC</b> PIREP · {formatAgo(pireps.fetchedAt, now)}
+          </span>
+        )}
+        <details className="pv-how">
+          <summary>ⓘ 어떻게 계산했나</summary>
+          <ul>
+            <li>항로 색 = 각 웨이포인트 통과 시각(또는 고른 시각)의 모델 예보를 고른 FL에서 기압면 보간</li>
+            <li>앞/뒷바람 = 항로 방향 성분 · ISA 편차 = 예보 기온 − 표준대기</li>
+            <li>난류 지수 = 기압면 사이 수직 풍속 차(VWS)·리처드슨 수(Ri)로 앱이 계산한 참고값 — 공식 EDR·WAFS 아님</li>
+            <li>육지 = Natural Earth · 화살표 = 바람이 불어 가는 쪽</li>
+          </ul>
+        </details>
       </div>
-      <p className="pad small muted">
-        {winds ? `바람·기온 = Open-Meteo 모델 예보 (받음 ${formatAgo(winds.fetchedAt, now)})` : '바람 자료 없음 — Weather에서 갱신'} · 항로 = OFP · 육지 = Natural Earth · 화살표 = 바람이 불어 가는 쪽(숫자 kt). 난류 지수는 앱 계산 참고값(공식 EDR 아님).
-      </p>
     </section>
   );
 }
+
+const UNIT: Record<Param, string> = { wind: 'kt', isa: '°C', turb: '', temp: '°C' };
+const LEGEND: Record<Param, [string, string][]> = {
+  wind: [
+    ['pv-good-2', '뒷 40+'],
+    ['pv-good-1', '뒷'],
+    ['pv-bad-1', '앞'],
+    ['pv-bad-2', '앞 40+'],
+  ],
+  turb: [
+    ['pv-turb-0', '없음'],
+    ['vv-turb-1', '약'],
+    ['vv-turb-2', '중'],
+    ['vv-turb-3', '강'],
+  ],
+  isa: [
+    ['pv-cold-2', '−10'],
+    ['pv-mid', '±3'],
+    ['pv-warm-2', '+10'],
+  ],
+  temp: [
+    ['pv-cold-2', '−65↓'],
+    ['pv-mid', '−55'],
+    ['pv-warm-1', '−40↑'],
+  ],
+};
