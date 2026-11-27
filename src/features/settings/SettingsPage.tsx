@@ -221,40 +221,7 @@ export function SettingsPage() {
         )}
       </section>
 
-      <section className="card">
-        <div className="card-title">
-          <h3>업로드 대기 ({unsent.length})</h3>
-          {unsent.length > 0 && (
-            <button
-              className="btn small"
-              onClick={() => {
-                if (confirm(`업로드 대기 ${unsent.length}건을 모두 지울까요?\n시트로 보내지 않습니다. 기기 안 기록은 그대로 남습니다. 되돌릴 수 없습니다.`)) void discardOutbox();
-              }}
-            >
-              전부 지우기
-            </button>
-          )}
-        </div>
-        {unsent.length === 0 && <p className="muted">대기 항목 없음</p>}
-        {unsent.length > 0 && <p className="small muted">지우면 시트로 보내지 않습니다 (기기 안 기록은 그대로).</p>}
-        <ul className="loglist">
-          {unsent.map((i) => (
-            <li key={i.opId}>
-              <div className="logmeta">
-                <span className="mono">{formatDayZ(i.createdAt)}</span>
-                <span className={`mark ${i.status === 'failed' ? 'bad' : 'warn'}`}>
-                  {i.status} ×{i.retries}
-                </span>
-                <button className="btn small outbox-del" aria-label="이 항목 업로드 대기에서 지우기" onClick={() => void discardOutbox([i.opId])}>
-                  지우기
-                </button>
-              </div>
-              <div className="lognote">{i.payload.note}</div>
-              {i.lastError && <div className="small c-bad">{i.lastError}</div>}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <OutboxCard items={unsent} />
 
       <ManualCard />
       <ProfileCard />
@@ -274,6 +241,69 @@ export function SettingsPage() {
         <AppFiles />
       </section>
     </div>
+  );
+}
+
+/** 업로드 대기 (D-102·D-103): 고른 항목만 / 전부 지우기. 지운 항목은 시트로 안 보냄, 기기 안 기록은 그대로 */
+function OutboxCard({ items }: { items: OutboxItem[] }) {
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  // 목록이 바뀌면 사라진 항목은 선택에서 뺀다
+  useEffect(() => setSel((s) => new Set([...s].filter((id) => items.some((i) => i.opId === id)))), [items]);
+  const toggle = (id: string) =>
+    setSel((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const all = items.length > 0 && sel.size === items.length;
+  const discard = (ids?: string[]) => {
+    const n = ids ? ids.length : items.length;
+    if (!confirm(`업로드 대기 ${n}건을 지울까요?\n시트로 보내지 않습니다. 기기 안 기록은 그대로 남습니다. 되돌릴 수 없습니다.`)) return;
+    void discardOutbox(ids).then(() => setSel(new Set()));
+  };
+  return (
+    <section className="card">
+      <div className="card-title">
+        <h3>업로드 대기 ({items.length})</h3>
+      </div>
+      {items.length === 0 && <p className="muted">대기 항목 없음</p>}
+      {items.length > 0 && (
+        <>
+          <p className="small muted">지우면 시트로 보내지 않습니다 (기기 안 기록은 그대로).</p>
+          <div className="row outbox-tools">
+            <button className="btn small" onClick={() => setSel(all ? new Set() : new Set(items.map((i) => i.opId)))}>
+              {all ? '선택 해제' : '전체 선택'}
+            </button>
+            <button className="btn small danger" disabled={!sel.size} onClick={() => discard([...sel])}>
+              선택 지우기{sel.size ? ` (${sel.size})` : ''}
+            </button>
+            <button className="btn small" onClick={() => discard()}>
+              전부 지우기
+            </button>
+          </div>
+        </>
+      )}
+      <ul className="loglist">
+        {items.map((i) => (
+          <li key={i.opId} className={sel.has(i.opId) ? 'sel' : ''}>
+            <label className="outbox-row">
+              <input type="checkbox" checked={sel.has(i.opId)} onChange={() => toggle(i.opId)} aria-label="이 항목 선택" />
+              <span className="outbox-body">
+                <span className="logmeta">
+                  <span className="mono">{formatDayZ(i.createdAt)}</span>
+                  <span className={`mark ${i.status === 'failed' ? 'bad' : 'warn'}`}>
+                    {i.status} ×{i.retries}
+                  </span>
+                </span>
+                <span className="lognote">{i.payload.note}</span>
+                {i.lastError && <span className="small c-bad">{i.lastError}</span>}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

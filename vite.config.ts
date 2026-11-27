@@ -28,7 +28,7 @@ function blockPrivatePlugin(): Plugin {
  * aviationweather.gov는 브라우저 CORS를 허용하지 않아 개발·미리보기 서버가 대신 받아 준다.
  * 허용 목록 경로만, GET만, 키·토큰 없음. 배포 후에는 같은 규격의 Cloudflare Worker로 대체.
  */
-const AWC_ALLOWED = new Set(['metar', 'taf', 'isigmet', 'airsigmet']);
+const AWC_ALLOWED = new Set(['metar', 'taf', 'isigmet', 'airsigmet', 'pirep', 'gairmet']); // Worker와 같게 (D-060·D-103)
 function wxProxyPlugin(): Plugin {
   const handler: Connect.NextHandleFunction = (req, res, next) => {
     const m = /^\/wx\/awc\/([a-z]+)(\?.*)?$/.exec(req.url ?? '');

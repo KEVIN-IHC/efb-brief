@@ -778,3 +778,11 @@
   2. 매뉴얼 가져오기 한 곳에서 `efb-fir-comm` JSON → FIR 통신표로, `<이름>_meta.json` → 같이 고른 같은 이름 .md의 목차로 씀(따로 저장 안 함)
   3. Settings 업로드 대기: 항목마다 "지우기" + "전부 지우기"(확인 창). 지우지 않고 outbox `status=discarded`로 바꿈 → 시트로 안 보내고, 기기 안 기록은 그대로, Inflight 기록 표시는 "–"(보내지 않음). DB 버전 그대로(상태 값만 추가)
 - **영향** `app/styles.css`, `manual/{ManualCard.tsx,store.ts}`, `sync/{outbox.ts,outbox.test.ts}`, `db/schema.ts`(OutboxStatus·discardedAt), `settings/SettingsPage.tsx`, `inflight/InflightPage.tsx`
+
+### D-103 업로드 대기 선택 지우기 · PIREP 범위 좌표 소수 둘째 자리 (기상 레이어 점검)
+- **날짜** 2026-11-27 (사용자: "선택지우기도 가능하게", "버티컬뷰·플랜뷰·위성 등 기상 레이어 잘되는지 다시 점검")
+- **결정**
+  1. 업로드 대기: 항목마다 체크 상자, "전체 선택/선택 해제" · "선택 지우기 (n)" · "전부 지우기"(둘 다 확인 창). 항목별 "지우기" 버튼은 체크 상자로 대신. 목록은 실패 먼저, 만든 시각 순
+  2. 점검 결과 PIREP이 실제 항로에서 늘 실패하고 있었음 — AWC가 긴 소수 좌표(`29.94250000000001`)의 bbox를 HTTP 400으로 거절. bbox를 바깥쪽으로 소수 둘째 자리로 맞춤(`routeBoxes`)
+  3. Mac 개발·미리보기 서버의 내장 기상 중계(`vite.config.ts` AWC_ALLOWED)에 pirep·gairmet 추가 (Worker와 같게) — 아이패드(Worker)는 원래 됨
+- **영향** `settings/SettingsPage.tsx`(OutboxCard), `app/styles.css`, `sync/outbox.ts`(정렬), `weather/extra.ts`(routeBoxes), `ops/ops.test.ts`, `vite.config.ts`

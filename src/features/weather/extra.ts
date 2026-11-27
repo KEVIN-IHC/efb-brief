@@ -167,16 +167,20 @@ export function routeBoxes(pts: { lat: number; lon: number }[], padDeg = 4): [nu
   const n = Math.min(90, Math.max(...lats) + padDeg);
   let w = Math.min(...lons) - padDeg;
   let e = Math.max(...lons) + padDeg;
-  if (e - w >= 360) return [[s, -180, n, 180]];
+  // AWC는 소수점이 긴 좌표(29.94250000000001)를 거절함(HTTP 400) → 바깥쪽으로 소수 둘째 자리 (D-103)
+  const out = (b: [number, number, number, number]): [number, number, number, number] => [
+    Math.max(-90, Math.floor(b[0] * 100) / 100),
+    Math.max(-180, Math.floor(b[1] * 100) / 100),
+    Math.min(90, Math.ceil(b[2] * 100) / 100),
+    Math.min(180, Math.ceil(b[3] * 100) / 100),
+  ];
+  if (e - w >= 360) return [out([s, -180, n, 180])];
   // -180..180 범위로 나눔
   const norm = (x: number) => ((((x + 180) % 360) + 360) % 360) - 180;
-  if (w >= -180 && e <= 180) return [[s, w, n, e]];
+  if (w >= -180 && e <= 180) return [out([s, w, n, e])];
   w = norm(w);
   e = norm(e);
-  return [
-    [s, w, n, 180],
-    [s, -180, n, e],
-  ];
+  return [out([s, w, n, 180]), out([s, -180, n, e])];
 }
 
 /* ---------------- 받기·저장 ---------------- */

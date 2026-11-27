@@ -305,9 +305,11 @@ textarea.input { resize: vertical; }
 .loglist li { padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
 .loglist li:last-child { border-bottom: 0; }
 .logmeta { display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-dim); }
-.loglist .outbox-del, .card-title .btn.small { min-height: var(--touch); }
-.logmeta:has(.outbox-del) { align-items: center; }
-.logmeta:has(.outbox-del) .mark { margin-left: auto; }
+.outbox-tools .btn.small { min-height: var(--touch); }
+.outbox-row { display: flex; gap: var(--sp-3); align-items: flex-start; min-height: var(--touch); cursor: pointer; }
+.outbox-row input { width: 22px; height: 22px; margin: 11px 0 0; flex: none; accent-color: var(--accent); }
+.outbox-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.loglist li.sel { background: var(--raised); }
 .lognote { margin-top: var(--sp-1); white-space: pre-wrap; word-break: break-word; }
 .mark { white-space: nowrap; }
 .mark.ok { color: var(--ok); } .mark.warn { color: var(--warn); } .mark.bad { color: var(--bad); }

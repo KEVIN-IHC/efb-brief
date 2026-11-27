@@ -185,7 +185,9 @@ export async function getUnsentItems(): Promise<OutboxItem[]> {
     db.getAllFromIndex('outbox', 'byStatus', 'pending'),
     db.getAllFromIndex('outbox', 'byStatus', 'failed'),
   ]);
-  return [...f, ...p];
+  // 실패 먼저, 그 안에서 만든 시각 순 (키(opId) 순서는 무작위라 화면 순서가 뒤섞임)
+  const byTime = (a: OutboxItem, b: OutboxItem) => a.createdAt.localeCompare(b.createdAt);
+  return [...f.sort(byTime), ...p.sort(byTime)];
 }
 
 /**
