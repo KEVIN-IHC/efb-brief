@@ -86,7 +86,9 @@ function NotamBrief({ o }: { o: NonNullable<ReturnType<typeof useActiveFlight.ge
 }
 
 const SEV = { warning: '경고', caution: '주의', info: '참고' } as const;
-const ROLE_ORDER: Role[] = ['DEP', 'DEST', 'ALTN', 'TKOF ALTN', '3% ERA', 'EDTO', 'ETP', 'ERA'];
+/** 공항 순서 (2026-11-27 사용자 결정): 출발 → 도착 → 교체 → 3% ERA·Refile → ETP → ERA */
+const ROLE_ORDER: Role[] = ['DEP', 'TKOF ALTN', 'DEST', 'ALTN', '3% ERA', 'REFILE', 'REFILE ALTN', 'ETP', 'EDTO', 'ERA'];
+const roleRank = (rs: Role[]) => Math.min(...rs.map((r) => ROLE_ORDER.indexOf(r)));
 const hhmm = (ms: number) => new Date(ms).toISOString().slice(11, 16) + 'Z';
 
 function CondLine({ label, c }: { label: string; c: Cond | null | undefined }) {
@@ -133,19 +135,35 @@ function AirportCard({ a }: { a: AirportBrief }) {
       id={`br-${a.icao}`}
     >
       <div className="br-head small muted">
-        {a.window.at ? (
-          <>
-            <b className="mono br-at">
-              {a.window.at.label} {hhmm(a.window.at.t)}
-            </b>{' '}
-            · 판정 시간대 <span className="mono">{hhmm(a.window.from)}–{hhmm(a.window.to)}</span>
-          </>
-        ) : (
-          <>
-            {a.window.basis} <span className="mono">{hhmm(a.window.from)}–{hhmm(a.window.to)}</span>
-          </>
-        )}
-        {a.night ? ' · 야간' : ''} · 경고 {sevCount('warning')} · 주의 {sevCount('caution')}
+        <ul className="br-uses">
+          {a.uses.map((u) => (
+            <li key={u.role}>
+              <span className="br-role">{ROLE_KO[u.role]}</span>{' '}
+              {u.window.at ? (
+                <>
+                  <b className="mono br-at">
+                    {u.window.at.label} {hhmm(u.window.at.t)}
+                  </b>{' '}
+                  · 판정 <span className="mono">{hhmm(u.window.from)}–{hhmm(u.window.to)}</span>
+                </>
+              ) : (
+                <>
+                  <b className="mono br-at">
+                    {hhmm(u.window.from)}–{hhmm(u.window.to)}
+                  </b>{' '}
+                  <span>{u.window.basis}</span>
+                </>
+              )}
+              {u.window.seg && (
+                <span className="mono">
+                  {' '}
+                  · 담당 구간 {u.window.seg.from} {hhmm(u.window.seg.fromT)} → {u.window.seg.to} {hhmm(u.window.seg.toT)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {a.night ? '야간 · ' : ''}경고 {sevCount('warning')} · 주의 {sevCount('caution')}
       </div>
       {!a.metar && !a.taf && <p className="small muted">기상 자료 없음 — Weather 탭에서 받아 두면 판정합니다</p>}
       {a.metar && (
@@ -259,7 +277,7 @@ export function BriefPage() {
 
   if (!o || !brief) return <p className="muted">OFP를 열면 공항별 브리핑을 만듭니다.</p>;
 
-  const sorted = [...brief.airports].sort((x, y) => ROLE_ORDER.indexOf(x.roles[0]) - ROLE_ORDER.indexOf(y.roles[0]));
+  const sorted = [...brief.airports].sort((x, y) => roleRank(x.roles) - roleRank(y.roles) || x.window.from - y.window.from);
   const main = sorted.filter((a) => a.roles.some((r) => r !== 'ERA'));
   const era = sorted.filter((a) => a.roles.every((r) => r === 'ERA'));
   const copy = (id: string, text: string) => {

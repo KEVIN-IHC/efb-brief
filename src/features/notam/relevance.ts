@@ -12,6 +12,10 @@ export interface Window {
   basis: string;
   /** 기준 시각 (예: ETD 0330Z) — 창 범위 대신 화면에 먼저 보여 줌 */
   at?: { label: string; t: number };
+  /** 이 창의 공항 역할 (한 공항이 여러 역할이면 역할마다 창, 2026-11-27) */
+  role?: string;
+  /** ETP 공항이 회항 공항으로 맡는 항로 구간 (출발→ETP1 · ETP1→ETP2 · ETP2→도착) */
+  seg?: { from: string; to: string; fromT: number; toT: number };
 }
 
 export type TimeStatus = 'overlap' | 'before' | 'after' | 'unknown';
@@ -24,7 +28,9 @@ export const ROLE_LABEL: Record<string, string> = {
   EDTO: 'EDTO 교체',
   ERA: '항로 교체(ERA)',
   '3% ERA': '3% ERA',
-  REFILE: 'REFILE',
+  REFILE: 'Refile 공항',
+  'REFILE ALTN': 'Refile 교체',
+  'TKOF ALTN': '이륙 교체',
   FIR: 'FIR',
 };
 
@@ -90,5 +96,75 @@ export function timeNote(it: OfpNotamItem, wins: Window[]): string | undefined {
     if (b) return `시간창 중 ${z(t)} 종료`;
     return it.to ? '시간창 내내 유효' : `시간창 내내 유효 (${it.open ?? '끝 시각 없음'})`;
   });
+  // 역할이 여럿이면 역할마다 (예: "3% ERA: … / ETP 공항: …")
+  if (wins.length > 1) return wins.map((w, i) => `${ROLE_LABEL[w.role ?? ''] ?? w.role ?? ''}${w.role ? ': ' : ''}${parts[i]}`).join(' / ');
   return [...new Set(parts)].join(' / ');
+}
+
+// ---------- J3 화면 (D-110): 역할 줄 · NOTAM 시간 문장 · 공항 순서 ----------
+/** 역할 색 = 검증된 범주색 3개 (파랑 ETP · 주황 3% ERA/Refile · 청록 출발·도착·교체), 순수 ERA는 회색 */
+export function roleColor(role?: string): string {
+  if (role === 'ETP' || role === 'EDTO') return 'var(--role-etp)';
+  if (role === '3% ERA' || role === 'REFILE' || role === 'REFILE ALTN') return 'var(--role-era3)';
+  if (role === 'DEP' || role === 'DEST' || role === 'ALTN' || role === 'TKOF ALTN') return 'var(--role-arr)';
+  return 'var(--text-dim)';
+}
+
+/** 공항 순서 (사용자 결정 2026-11-27): 출발 → 도착 → 교체 → 3% ERA·Refile → ETP → ERA */
+export const ROLE_RANK: Record<string, number> = { DEP: 0, 'TKOF ALTN': 0.5, DEST: 1, ALTN: 2, '3% ERA': 3, REFILE: 3, 'REFILE ALTN': 3.5, ETP: 4, EDTO: 4, ERA: 5 };
+export const rankOf = (wins: Window[]) => Math.min(5, ...wins.map((w) => ROLE_RANK[w.role ?? ''] ?? 5));
+/** 같은 묶음 안의 시각 순서 기준 */
+export const orderTime = (w: Window) => (w.role === 'DEP' ? w.from + 3_600_000 : w.seg ? w.seg.fromT : w.at ? w.at.t : w.from);
+
+const Z = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}Z`;
+};
+const DAY = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCFullYear()).slice(2)}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
+};
+const DUR = (ms: number) => {
+  const m = Math.round(Math.abs(ms) / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`;
+};
+
+/** 역할 줄의 시각 (예: "ETA 1356Z" · "착륙 예상 1359Z" · "1710Z–0548Z") */
+export function winTime(w: Window): string {
+  if (w.at) return `${w.at.label} ${Z(w.at.t)}`;
+  if (w.role === 'ETP' || w.role === 'EDTO') return `착륙 예상 ${Z(w.from + 3_600_000)}${w.to - w.from > 2.2 * 3_600_000 ? `–${Z(w.to - 3_600_000)}` : ''}`;
+  return `${Z(w.from)}–${Z(w.to)}`;
+}
+/** 역할 줄의 둘째 줄 (판정 창 · 담당 구간 / 결정 지점, 없으면 근거) */
+export function winDetail(w: Window): string {
+  const a = w.at ? `판정 ${Z(w.from)}–${Z(w.to)}` : w.role === 'ETP' || w.role === 'EDTO' ? `운항 ${Z(w.from)}–${Z(w.to)}` : '';
+  const s = !w.seg ? '' : w.seg.from === w.seg.to ? `결정 지점 ${w.seg.from} ${Z(w.seg.fromT)}` : `담당 구간 ${w.seg.from} ${Z(w.seg.fromT)} → ${w.seg.to} ${Z(w.seg.toT)}`;
+  return [a, s].filter(Boolean).join(' · ') || w.basis;
+}
+
+export interface Relation {
+  /** in = 그 시각/창에 유효 · part = 일부 · ok = 해당 없음 */
+  k: 'in' | 'part' | 'ok';
+  a: string;
+  b: string;
+}
+/** NOTAM 유효기간 ↔ 역할 시각 관계를 사람 말로 (D) 시간표는 해석하지 않음) */
+export function relation(it: OfpNotamItem, w: Window): Relation | undefined {
+  if (it.kind === 'text' || !it.from) return undefined;
+  const f = Date.parse(it.from);
+  const t = it.to ? Date.parse(it.to) : Infinity;
+  const till = it.to ? `${DAY(t)} ${Z(t)}까지` : (it.open ?? '끝 시각 없음');
+  if (w.at) {
+    const { label, t: at } = w.at;
+    if (f <= at && t >= at) return { k: 'in', a: `${label} ${Z(at)}에 유효`, b: till };
+    if (t < at) return { k: t < w.from ? 'ok' : 'part', a: `${label} ${DUR(at - t)} 전 ${Z(t)} 종료`, b: '그때는 끝남 — 지연되면 확인' };
+    return { k: f > w.to ? 'ok' : 'part', a: `${label} ${DUR(f - at)} 뒤 ${Z(f)} 시작`, b: '그때는 아직 — 늦어지면 해당' };
+  }
+  const L = w.role === 'ETP' || w.role === 'EDTO' ? '운항 시간대' : w.role === 'ERA' || !w.role ? '비행' : '사용 시간대';
+  if (f > w.to) return { k: 'ok', a: `${L} 지난 뒤 ${Z(f)} 시작`, b: '해당 없음' };
+  if (t < w.from) return { k: 'ok', a: `${L} 전 ${Z(t)} 종료`, b: '해당 없음' };
+  if (f <= w.from && t >= w.to) return { k: 'in', a: `${L} ${Z(w.from)}–${Z(w.to)} 내내 유효`, b: till };
+  if (f > w.from && t < w.to) return { k: 'part', a: `${L} 중 ${Z(f)}–${Z(t)}만`, b: '' };
+  if (f > w.from) return { k: 'part', a: `${L} 중 ${Z(f)}부터`, b: till };
+  return { k: 'part', a: `${L} 중 ${Z(t)}까지만`, b: '' };
 }

@@ -1520,3 +1520,46 @@ input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-se
 .pv-how ul { margin: 0; padding-left: 18px; color: var(--text-dim); line-height: 1.7; }
 /* 아이폰: 지도를 넓게 그리고 옆으로 밀어 보기 (글자 크기 유지) */
 @media (max-width: 767px) { .pv-map { overflow-x: auto; -webkit-overflow-scrolling: touch; } .pv-grid .pv-svg { min-width: 720px; } .man-pop .pv-grid .pv-svg { min-width: 720px; } }
+.br-uses { list-style: none; margin: 0 0 2px; padding: 0; display: grid; gap: 2px; }
+.br-role { display: inline-block; min-width: 64px; font-weight: 800; color: var(--text); }
+
+/* NOTAM J3 (D-110): 역할 줄 · 시간 문장 · 공항 지도 — 역할색 = dataviz 검증 범주색 3개 (all-pairs PASS, 주간 대비 WARN → 글 라벨 필수) */
+:root { --role-etp: #3987e5; --role-era3: #d95926; --role-arr: #199e70; --map-route: #56626e; }
+:root[data-theme="light"] { --role-etp: #2a78d6; --role-era3: #eb6834; --role-arr: #1baf7a; --map-route: #8a95a2; }
+.ntm-ap-btn { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--touch); padding: 0 var(--sp-3) 0 0; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.ntm-ap-ic { font-size: var(--fs-lg); font-weight: 800; }
+.ntm-ap-map { font-size: var(--fs-sm); font-weight: 700; color: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 2px 8px; }
+.ntm-ap-btn[aria-expanded="true"] .ntm-ap-map { background: var(--accent-soft); }
+.ntm-key { display: inline-block; flex: none; width: 14px; height: 4px; border-radius: 2px; }
+.ntm-uses { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: grid; gap: var(--sp-1); }
+.ntm-uses li { display: grid; grid-template-columns: 14px minmax(84px, auto) minmax(0, 1fr); gap: 2px var(--sp-2); align-items: baseline; font-size: var(--fs-sm); min-width: 0; }
+.ntm-uses .ntm-key { transform: translateY(-3px); }
+.ntm-rl { color: var(--text); }
+.ntm-bs { grid-column: 2 / -1; word-break: break-word; }
+@media (min-width: 768px) { .ntm-bs { grid-column: 3; } }
+.ntm-basis { color: var(--text-faint); }
+.ntm-rels { display: grid; gap: var(--sp-1); }
+.ntm-rel { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); min-width: 0; }
+.ntm-k { border-radius: 4px; padding: 2px 8px; font-weight: 700; word-break: break-word; }
+.ntm-k.in { background: var(--bad-soft); color: var(--bad); }
+.ntm-k.part { background: var(--warn-soft); color: var(--warn); }
+.ntm-k.ok { background: var(--raised); color: var(--text-dim); }
+.ntm-map { margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-4)) var(--sp-3); background: var(--map-sea); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; overflow: hidden; }
+.ntm-map-legend { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); padding: var(--sp-2) var(--sp-3); background: var(--panel); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.ntm-map-legend > span { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; flex-wrap: wrap; }
+.ntm-map-legend small { color: var(--text-dim); }
+.ntm-map-svg { display: block; max-width: 100%; height: auto; }
+.ntm-map-note { padding: var(--sp-2) var(--sp-3); margin: 0; }
+.nm-sea { fill: var(--map-sea); }
+.nm-land { fill: var(--map-land); stroke: var(--line-strong); stroke-width: 0.8; }
+.nm-route { fill: none; stroke: var(--map-route); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.nm-gap { fill: none; stroke: var(--map-sea); stroke-linejoin: round; stroke-linecap: round; }
+.nm-lane { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.nm-end { stroke: var(--map-sea); stroke-width: 2; }
+.nm-term { fill: var(--panel); stroke: var(--text-dim); stroke-width: 2; }
+.nm-ap { fill: var(--text); stroke: var(--map-sea); stroke-width: 2; }
+.nm-lead { stroke: var(--text-dim); stroke-width: 1; }
+.nm-t { font-family: var(--font); font-weight: 700; paint-order: stroke; stroke: var(--map-sea); stroke-width: 4px; stroke-linejoin: round; }
+.nm-t.mono { font-family: var(--mono); }
+.nm-strong { fill: var(--text); font-weight: 800; }
+.nm-dim { fill: var(--text-dim); }

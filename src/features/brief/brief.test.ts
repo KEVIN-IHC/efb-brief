@@ -22,6 +22,7 @@ import { sunElevation } from './sun';
 import { parseMetarRaw, tafWindow, type Cond } from './wx';
 import { airportRunways as rwyFor } from './runways';
 import { magVar } from '../../lib/magvar';
+import { build as buildNotam } from '../notam/NotamPage';
 
 const ref = (code: string) => ({ code, label: code });
 /** 가짜 회사 기준 (수치는 시험용) */
@@ -281,5 +282,57 @@ describe('활주로 자방위', () => {
     expect(r.ends[0].hdgM).toBeNull();
     const r2 = rwyFor('YYYY', ['1. RUNWAY : 07L/25R : 12923FT X 150FT'], {}, { lat: 0, lon: 0 });
     expect(r2.ends[0]).toMatchObject({ hdgM: 70, approx: true });
+  });
+});
+
+// 한 공항 여러 역할 = 역할마다 시간창 (2026-11-27, 실제 샘플: KSFO = 3% ERA + ETP2)
+const S01 = join(process.cwd(), 'private/samples/ofp-01.txt');
+describe.skipIf(!existsSync(S01))('공항 역할별 시간창 (실제 샘플)', () => {
+  it('KSFO: 3% ERA 창과 ETP2 창(담당 구간 ETP2→도착)을 따로', () => {
+    const o = parseAviatorOfp(readFileSync(S01, 'utf8')).ofp!;
+    const ks = flightAirports(o, null).find((x) => x.icao === 'KSFO')!;
+    const etp = ks.uses.find((u) => u.role === 'ETP')!;
+    const era3 = ks.uses.find((u) => u.role === '3% ERA')!;
+    expect(etp.window.seg).toMatchObject({ from: 'ETP2', to: '도착' });
+    expect(new Date(etp.window.from).toISOString().slice(11, 16)).toBe('12:59');
+    expect(era3.window.basis).toMatch(/3% ERA/);
+    // FOM 3% Contingency: ERA 도착 예상(OFP 3% ERA VALIDATION ETA 1310Z) ±1h, 담당 구간 = COC 둘레 20% 거리
+    expect(era3.window.at?.label).toBe('3% ERA ETA');
+    expect(new Date(era3.window.at!.t).toISOString().slice(11, 16)).toBe('13:10');
+    expect(new Date(era3.window.from).toISOString().slice(11, 16)).toBe('12:10');
+    expect(era3.window.seg).toBeTruthy();
+    expect(era3.window.seg!.fromT).toBeLessThan(era3.window.seg!.toT);
+    // 판정 창은 둘 다 덮음
+    expect(ks.window.from).toBeLessThanOrEqual(Math.min(etp.window.from, era3.window.from));
+    expect(ks.window.to).toBeGreaterThanOrEqual(Math.max(etp.window.to, era3.window.to));
+    // NOTAM도 역할마다
+    const v = buildNotam(o, o.notams!).find((x) => x.loc.icao === 'KSFO' && x.rows.length)!;
+    expect(v.wins.length).toBe(ks.uses.length);
+    const note = v.rows.map((r) => r.note).find((n) => n?.includes(' / '));
+    expect(note).toMatch(/ETP 공항: /);
+  });
+});
+
+// Refile 공항·교체 (D-110, 실제 샘플 ofp-02: KLAX→RKSI, 결정 지점 SDE 0345Z → RJAA 33분, 교체 RJBB 53분)
+const S02 = join(process.cwd(), 'private/samples/ofp-02.txt');
+describe.skipIf(!existsSync(S02))('Refile 공항 (실제 샘플)', () => {
+  it('REFILE FLT PLAN 읽기 → Refile ETA ±1h, 교체 ETA ±1h', () => {
+    const o = parseAviatorOfp(readFileSync(S02, 'utf8')).ofp!;
+    expect(o.refile).toMatchObject({ point: 'SDE', airport: 'RJAA', toAirportMin: 33, altn: 'RJBB', altnMin: 53 });
+    const s = flightAirports(o, null);
+    const rj = s.find((x) => x.icao === 'RJAA')!.uses.find((u) => u.role === 'REFILE')!;
+    expect(new Date(rj.window.at!.t).toISOString().slice(11, 16)).toBe('04:18');
+    expect(new Date(rj.window.from).toISOString().slice(11, 16)).toBe('03:18');
+    expect(rj.window.seg).toMatchObject({ from: 'SDE', to: 'SDE' });
+    const bb = s.find((x) => x.icao === 'RJBB')!.uses.find((u) => u.role === 'REFILE ALTN')!;
+    expect(new Date(bb.window.at!.t).toISOString().slice(11, 16)).toBe('05:11');
+  });
+  it('NOTAM 공항 순서: 출발 → 도착 → 교체 → Refile → ETP → ERA, FIR 맨 뒤', () => {
+    const o = parseAviatorOfp(readFileSync(S02, 'utf8')).ofp!;
+    const v = buildNotam(o, o.notams!);
+    const ics = [...new Set(v.filter((x) => x.loc.role !== 'FIR').map((x) => x.loc.icao))];
+    expect(ics.slice(0, 8)).toEqual(['KLAX', 'RKSI', 'RKSS', 'RJAA', 'RJBB', 'KSFO', 'PANC', 'RJCC']);
+    const firAt = v.findIndex((x) => x.loc.role === 'FIR');
+    expect(v.slice(firAt).every((x) => x.loc.role === 'FIR')).toBe(true);
   });
 });

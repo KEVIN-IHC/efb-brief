@@ -82,6 +82,9 @@ export interface OfpAlternate {
   fuel?: number;
   fl?: number;
   route?: string;
+  /** 3% CONT ERA: OFP "3% CONTINGENCY ERA VALIDATION"의 ERA 도착 예상 HHMM(Z)과 기준 지점(COC, 누적 거리) */
+  eta?: string;
+  coc?: { lat: number; lon: number; cumd: number };
 }
 
 export interface LimitPair {
@@ -172,6 +175,8 @@ export interface OfpData {
   routeCheck?: OfpRouteCheck;
   /** ATS FPL 장비·Item 18 (D-104, 항로 스펙 대조) — OFP 안 첫 FPL 블록 */
   atsFpl?: { equipment: string; item18: Record<string, string>; level: string; route: string; line?: number };
+  /** REFILE FLT PLAN (FOM 5.12): 결정 지점(Refile Point) → Refile 공항·교체 · 시간은 분 (D-110) */
+  refile?: { point: string; airport: string; toAirportMin: number; altn?: string; altnMin?: number; line: number };
 }
 
 /** 원문 한 줄 (n = 원문 뷰어 줄 번호) */

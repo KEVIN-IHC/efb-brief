@@ -8,7 +8,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.9'; // 1.9: FL250 이상 OT를 영하로 읽음 · 1.8: ATS FPL 장비·Item 18 저장 (D-104) · 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.11'; // 1.11: REFILE FLT PLAN 결정 지점·Refile 공항·교체 (D-110) · 1.10: 3% ERA 도착 예상(ETA)·기준 지점(COC) · 1.9: FL250 이상 OT를 영하로 읽음 · 1.8: ATS FPL 장비·Item 18 저장 (D-104) · 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -123,8 +123,29 @@ function assemble(ctx: ExtractCtx, texts: string[]): OfpData | undefined {
     cargo: d?.cargo?.value,
     fuelStats: d?.stats ? { period: d.stats.period, items: d.stats.items } : undefined,
     notams: ctx.av.notams,
+    refile: refilePlan(ctx),
     atsFpl: fpl ? { equipment: fpl.equipment, item18: fpl.item18, level: fpl.level, route: fpl.route, line: ctx.fpls[0].lines[0]?.n } : undefined,
   };
+}
+
+/** REFILE FLT PLAN 머리: "- KLAX TO RJAA   - SDE TO RKSI" · "SDE TO RJAA 0064 00.33" · "ALTN/RJBB 0254 00.53" */
+const hm = (t: string) => { const [h, m] = t.split('.').map(Number); return h * 60 + m; };
+function refilePlan(ctx: ExtractCtx): OfpData['refile'] {
+  const i = ctx.lines.findIndex((l) => /REFILE FLT PLAN/.test(l.text));
+  if (i < 0) return undefined;
+  const blk = ctx.lines.slice(i, i + 12).map((l) => l.text);
+  const head = /^-\s*([A-Z]{4})\s+TO\s+([A-Z]{4})\s+-\s*([A-Z0-9]{2,5})\s+TO\s+[A-Z]{4}/.exec(blk[1]?.trim() ?? '');
+  if (!head) return undefined;
+  const [, , airport, point] = head;
+  let toAirportMin: number | undefined, altn: string | undefined, altnMin: number | undefined;
+  for (const t of blk) {
+    const a = new RegExp(`^\\s*${point}\\s+TO\\s+${airport}\\s+\\d{4}\\s+(\\d{2}\\.\\d{2})`).exec(t);
+    if (a) toAirportMin = hm(a[1]);
+    const b = /^\s*ALTN\/([A-Z]{4})\s+\d{4}\s+(\d{2}\.\d{2})/.exec(t);
+    if (b && !altn) { altn = b[1]; altnMin = hm(b[2]); }
+  }
+  if (toAirportMin == null) return undefined;
+  return { point, airport, toAirportMin, altn, altnMin, line: ctx.lines[i].n };
 }
 
 function runChecks(ctx: ExtractCtx): CheckResult[] {

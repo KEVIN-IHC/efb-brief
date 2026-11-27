@@ -20,6 +20,13 @@ export function parseDm(s: string): number {
   const v = Number(m[2]) + Number(m[3]) / 60;
   return m[1] === 'S' || m[1] === 'W' ? -v : v;
 }
+/** "N4412.2" / "W14333.4" (도 + 분, 띄어쓰기 없음 — 3% ERA COC) → 도 */
+export function dmNoSpace(s: string): number {
+  const m = /^([NSEW])(\d{2,3})(\d{2}\.\d)$/.exec(s.trim());
+  if (!m) return NaN;
+  const v = Number(m[2]) + Number(m[3]) / 60;
+  return m[1] === 'S' || m[1] === 'W' ? -v : v;
+}
 /** "N45366" / "E168258" (도·분·1/10분) → 도 */
 export function parseDmPacked(s: string): number {
   const m = /^([NSEW])(\d{2,3})(\d{2})(\d)$/.exec(s.trim());
@@ -241,10 +248,14 @@ export function parseAlternates(lines: DocLine[]): (OfpAlternate & { line: numbe
       out.push({ icao: m[2], role: `DEST ALTN ${m[1]}`, distNm: Number(m[5]), fl: Number(m[6]), timeMin: hmToMin(m[8]), fuel: Number(m[9]), route, line: l.n });
     }
     if (/CONTINGENCY ERA VALIDATION/.test(l.text)) era = true;
-    // KSFO    N4412.2  4170   61  112  1038   2.05  1310
-    if (era && (m = /^([A-Z]{4})\s+[NS]\d{4}\.\d\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d{1,2})\.(\d{2})\s+\d{4}/.exec(l.text))) {
-      out.push({ icao: m[1], role: '3% CONT ERA', distNm: Number(m[2]), timeMin: Number(m[3]) * 60 + Number(m[4]), line: l.n });
+    // KSFO    N4412.2  4170   61  112  1038   2.05  1310   (ERA · COC 위도 · 누적 거리 · MSA · TTK · DIST · TIME · ETA)
+    //        W14333.4                                      (COC 경도, 다음 줄)
+    if (era && (m = /^([A-Z]{4})\s+([NS]\d{4}\.\d)\s+(\d+)\s+\d+\s+\d+\s+(\d+)\s+(\d{1,2})\.(\d{2})\s+(\d{4})/.exec(l.text))) {
+      out.push({ icao: m[1], role: '3% CONT ERA', distNm: Number(m[4]), timeMin: Number(m[5]) * 60 + Number(m[6]), eta: m[7], coc: { lat: dmNoSpace(m[2]), lon: NaN, cumd: Number(m[3]) }, line: l.n });
+      continue;
     }
+    const last = out.at(-1);
+    if (era && last?.coc && Number.isNaN(last.coc.lon) && (m = /^\s*([EW]\d{5}\.\d)\s*$/.exec(l.text))) last.coc.lon = dmNoSpace(m[1]);
     if (/EQUAL TIME POINT/.test(l.text)) break;
   }
   return out;

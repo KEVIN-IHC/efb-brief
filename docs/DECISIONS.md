@@ -826,3 +826,30 @@
   5. 출처 = 자료 칩 한 줄(받은 지 얼마) + "ⓘ 어떻게 계산했나" 접기 (요청 5의 첫 적용)
   6. 아이폰: 지도를 720px로 그리고 옆으로 밀어 보기(글자 크기 유지)
 - **영향** `vertical/PlanView.tsx`, `app/styles.css`. 시안 `private/design/2026-11-27-planview-mockup*.html`
+
+### D-108 공항 = 역할마다 시간창 · ETP 공항 담당 구간
+- **날짜** 2026-11-27 (사용자: KSFO가 3% ERA이면서 ETP2 공항일 때 "두 가지가 표시되거나 … 각각 항목에 대해 사용 시간대 표시 … 목적에 따라 공항은 겹칠 수도 있지. 구간으로 고쳐")
+- **결정**
+  1. 한 공항이 여러 역할이면 **역할마다 창**(`Slot.uses`, `AirportBrief.uses`). 기상 판정은 모든 역할 창을 덮는 범위, 화면·NOTAM은 역할마다 따로 (예: KSFO = 3% ERA 창 + ETP 창). 전에는 처음 잡힌 역할 창(3% ERA "비행 후반 대략")만 쓰고 ETP 계산을 버렸음(버그)
+  2. ETP 공항 **담당 구간**: 공항 순서 A·B·C(ETP1[A/B]·ETP2[B/C])에서 A = 이륙→ETP1, B = ETP1→ETP2, C = ETP2→도착. 사용(운항) 시간대는 그대로 FOM 식(ETP 통과 + 회항 시간 = 착륙 예상, ±1h). 지도는 담당 구간을, 글은 착륙 예상·운항 시간대를
+  3. OFP NOTAM 패키지의 ERA 목록은 이미 역할이 있는 공항엔 "비행 전체" 창을 더하지 않음 (도착·ETP 공항에 "항로 교체: 내내 유효"가 붙던 것)
+  4. 순수 ERA(다른 역할 없음) 창은 지금처럼 비행 전체 — "항로가 가장 가까울 때 ±1h"는 시안의 제안(FOM 근거 없음, 사용자 확인 대기)
+- **영향** `brief/assess.ts`(Slot.uses·AirportBrief.uses·ERA 중복 방지), `ofp/eraTimes.ts`(seg), `notam/relevance.ts`(Window.role·seg, timeNote 역할별), `notam/NotamPage.tsx`, `brief/BriefPage.tsx`(공항 카드 역할별 줄), `app/styles.css`, 테스트 `eraTimes.test.ts`·`brief.test.ts`(실제 샘플 KSFO)
+
+### D-109 시간창 근거 정리 — 3% ERA = OFP ERA ETA ±1h (FOM), 출발·순수 ERA = 앱 기준 표시
+- **날짜** 2026-11-27 (사용자: "±1시간 예전에 내가 지침줘서 그런 거 같은데 FOM 이거 괜찮은가")
+- **확인** FOM R75-1: 목적지·교체 = 5.7.1 "도착예정시각 1시간 전부터 1시간 후까지" ✅ · ETP/EDTO = 5.13.1.5 + Supplement(Earliest −1h ~ Latest +1h) ✅ · **3% ERA = 3% Contingency 제한사항 "도착 예상시각 1시간 전부터 1시간 후까지"** — 앱은 "비행 후반 대략"을 쓰고 있었음 ❌ · 출발 ETD±1h, 순수 ERA(3·4발 60분 ERA) = FOM에 시간창 문장 없음
+- **결정**
+  1. 파서 aviator-1.10: OFP "3% CONTINGENCY ERA VALIDATION"의 ERA **ETA**와 기준 지점(COC 좌표·누적 거리)을 읽음
+  2. 3% ERA 창 = ERA ETA ±1h. 담당 구간 = COC를 중심으로 반경 "총 비행계획 거리 20%"(FOM 선정 기준 원)가 덮는 항로. OFP에 ETA가 없으면 예전 근사(표시: "OFP에 ERA ETA 없음")
+  3. 창 설명에 근거 표시: "FOM EDTO: …" · "FOM 3% Contingency: …" · 출발 "ETD ±1h (앱 기준 — FOM 문장 없음)" · 순수 ERA "비행 시간대 (앱 기준 — FOM 시간창 규정 없음)". 시안의 "가장 가까울 때 ±1h"는 근거 없어 버림
+- **영향** `ofp/types.ts`(OfpAlternate.eta·coc), `ofp/parser/{aviator.ts,index.ts}`, `brief/assess.ts`(era3Window·basis), `brief/brief.test.ts`
+
+### D-110 공항 순서 + Refile 공항·교체 역할
+- **날짜** 2026-11-27 (사용자: "refile 공항은 ofp 보면 나오는데 · 추천 순서대로")
+- **결정**
+  1. 공항 순서 (NOTAM·브리핑 공통): 출발(이륙 교체) → 도착 → 목적지 교체 → 3% ERA · Refile 공항 · Refile 교체 → ETP·EDTO → 항로 교체(ERA). 묶음 안은 시각 순. 이유: 매 비행 쓰는 공항과 연료 계획이 걸린 공항이 먼저, 참고용 ERA는 뒤로
+  2. 파서 aviator-1.11: OFP "REFILE FLT PLAN" 머리에서 결정 지점(Refile Point)·Refile 공항·Refile 교체·시간 읽음 (`OfpData.refile`) — 샘플 6개 모두 같은 형식
+  3. 시간창: Refile ETA = 결정 지점 ETO + "P TO R" 시간, ±1h. Refile 교체 ETA = Refile ETA + ALTN 시간, ±1h. **앱 기준** 표시 — FOM 5.10.1.1은 Refile 공항·교체도 "운항 시간대 기상 제한치 이내"라고만 하고 ±1h는 목적지 규정(5.7.1)을 준용
+  4. 지도: 결정 지점 표시 + 결정 지점 → Refile 공항(→ 교체) 점선, 색은 3% ERA와 같은 주황 (두 방식은 한 비행에 같이 나오지 않음 — 샘플 10개 확인)
+- **영향** `ofp/types.ts`(refile), `ofp/parser/index.ts`(refilePlan), `brief/assess.ts`(Role REFILE·REFILE ALTN), `brief/BriefPage.tsx`(ROLE_ORDER), `notam/relevance.ts`(ROLE_LABEL), `brief/brief.test.ts`(샘플 02)

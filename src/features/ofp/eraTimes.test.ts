@@ -4,7 +4,7 @@ import type { OfpData } from './types';
 
 const base = (extra: Partial<OfpData>) =>
   ({
-    header: { std: '2026-01-10T02:00:00Z', takeoff: '2026-01-10T02:00:00Z' },
+    header: { std: '2026-01-10T02:00:00Z', takeoff: '2026-01-10T02:00:00Z', sta: '2026-01-10T12:00:00Z' },
     etps: [
       { name: 'ETP1', airports: ['AAAA', 'BBBB'], eto: '2026-01-10T06:00:00Z', timeToAltMin: 180 },
       { name: 'ETP2', airports: ['BBBB', 'CCCC'], eto: '2026-01-10T09:00:00Z', timeToAltMin: 150 },
@@ -20,6 +20,14 @@ describe('ERA 예상 사용 시간 (FOM ETP Data, D-094)', () => {
       ['AAAA', '09:00', '09:00', '08:00', '10:00'],
       ['BBBB', '09:00', '11:30', '08:00', '12:30'],
       ['CCCC', '11:30', '11:30', '10:30', '12:30'],
+    ]);
+  });
+  it('담당 구간: 첫 공항 이륙→ETP1, 가운데 ETP1→ETP2, 마지막 ETP2→도착', () => {
+    const r = eraTimes(base({}));
+    expect(r.map((x) => [x.icao, x.seg?.from, z(x.seg!.fromT), x.seg?.to, z(x.seg!.toT)])).toEqual([
+      ['AAAA', '이륙', '02:00', 'ETP1', '06:00'],
+      ['BBBB', 'ETP1', '06:00', 'ETP2', '09:00'],
+      ['CCCC', 'ETP2', '09:00', '도착', '12:00'],
     ]);
   });
   it('실제 출발 시각만큼 옮김 (자정 넘김 포함)', () => {

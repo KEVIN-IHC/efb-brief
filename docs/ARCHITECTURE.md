@@ -134,8 +134,9 @@ IPBS/
 |---|---|
 | `refs.ts` | 근거 문서 목록(PANS-AIM 부록 3, Doc 8400 약어·NOTAM Code, FAA JO 7930.2, OFP 원문, 회사 자료) + `checked` |
 | `classify.ts` | OFP 분류 제목 → 그룹(`HEADING`), 본문 약어 칩(`KW`), RWY 추출, 강조 판단, 근거(`Reason`) |
-| `relevance.ts` | 비행 시간대(ETD~ETA), FIR 통과 시간대(NAV LOG `fir`·ETO), 유효기간 겹침 |
-| `NotamPage.tsx` | 요약(패키지 건수 점검)·보기 필터·공항 목록·항목 카드(근거·원문 링크) |
+| `relevance.ts` | 비행 시간대(ETD~ETA), FIR 통과 시간대(NAV LOG `fir`·ETO), 유효기간 겹침, 역할 색·공항 순서·역할별 시간 문장(D-110) |
+| `NotamPage.tsx` | 요약(패키지 건수 점검)·보기 필터·공항 목록(출발→도착→교체→3%/Refile→ETP→ERA)·역할 줄·항목 카드(시간 문장·근거·원문 링크) |
+| `NotamMap.tsx` | 공항 이름을 누르면 그 공항의 담당 구간 지도 (역할 차선·Refile 결정 지점, `lib/land.ts`) |
 
 - 데이터: `OfpData.notams`(파서가 원문 구조만 저장). 분류는 화면에서 계산 → 규칙을 고쳐도 재파싱 불필요
 

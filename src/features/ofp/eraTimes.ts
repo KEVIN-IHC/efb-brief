@@ -23,6 +23,8 @@ export interface EraTime {
   src: 'OFP EDTO' | 'ETP 계산';
   /** 어느 ETP로 계산했는지 (예: "ETP1 ~ ETP2") */
   basis: string;
+  /** 회항 공항으로 맡는 항로 구간 — 공항 k = (ETP k 또는 이륙) → (ETP k+1 또는 도착) */
+  seg?: { from: string; to: string; fromT: number; toT: number };
 }
 
 /** OFP EDTO 표의 "1159Z" → 이륙 날짜 기준 ISO 시각 (이륙 6시간 전보다 이르면 다음 날) */
@@ -74,6 +76,9 @@ export function eraTimes(o: OfpData, shiftMs = 0): EraTime[] {
     const e = land(a);
     const l = land(b);
     const basis = a === b ? etps[a].name : `${etps[a].name} ~ ${etps[b].name}`;
+    const segFrom = k === 0 ? { n: '이륙', t: to } : { n: etps[k - 1].name, t: Date.parse(etps[k - 1].eto) };
+    const segTo = k < etps.length ? { n: etps[k].name, t: Date.parse(etps[k].eto) } : { n: '도착', t: Date.parse(o.header.sta) };
+    const seg = { from: segFrom.n, to: segTo.n, fromT: segFrom.t + shiftMs, toT: segTo.t + shiftMs };
     if (prev) {
       // 같은 공항이 두 번 나오면 넓힘
       prev.earliest = Math.min(prev.earliest, e + shiftMs);
@@ -81,7 +86,8 @@ export function eraTimes(o: OfpData, shiftMs = 0): EraTime[] {
       prev.opsFrom = prev.earliest - H;
       prev.opsTo = prev.latest + H;
       prev.basis += ` · ${basis}`;
-    } else out.push(mk(icao, e, l, 'ETP 계산', basis));
+      if (prev.seg) prev.seg = { from: prev.seg.from, to: seg.to, fromT: Math.min(prev.seg.fromT, seg.fromT), toT: Math.max(prev.seg.toT, seg.toT) };
+    } else out.push({ ...mk(icao, e, l, 'ETP 계산', basis), seg });
   });
   return out;
 }

@@ -6,7 +6,7 @@ import type { Projection } from '../inflight/deviation';
 import { manualAircraft } from '../manual/lookup';
 import type { Window } from '../notam/relevance';
 import type { OfpData } from '../ofp/types';
-import { eraTimes } from '../ofp/eraTimes';
+import { eraTimes, hhmmzToMs } from '../ofp/eraTimes';
 import type { Snap } from '../weather/store';
 import type { Metar, Taf } from '../weather/types';
 import type { Restriction, SpecialAirport } from './fomTables';
@@ -21,13 +21,15 @@ import { controllingVis, fmtCeil, fmtVis, fmtWind, hasAsh, hasFreezing, hasHail,
 const H = 3_600_000;
 
 export type Group = 'minima' | 'facility' | 'airport' | 'wind' | 'crew' | 'hazard' | 'ops';
-export type Role = 'DEP' | 'DEST' | 'ALTN' | 'TKOF ALTN' | '3% ERA' | 'EDTO' | 'ETP' | 'ERA';
+export type Role = 'DEP' | 'DEST' | 'ALTN' | 'TKOF ALTN' | 'REFILE' | 'REFILE ALTN' | '3% ERA' | 'EDTO' | 'ETP' | 'ERA';
 
 export const ROLE_KO: Record<Role, string> = {
   DEP: '출발',
   DEST: '목적지',
   ALTN: '목적지 교체',
   'TKOF ALTN': '이륙 교체',
+  REFILE: 'Refile 공항',
+  'REFILE ALTN': 'Refile 교체',
   '3% ERA': '3% ERA',
   EDTO: 'EDTO ERA',
   ETP: 'ETP 공항',
@@ -65,6 +67,8 @@ export interface AirportBrief {
   lon?: number;
   roles: Role[];
   window: Window;
+  /** 역할마다 시간창 (+ ETP 담당 구간) */
+  uses: { role: Role; window: Window }[];
   metar?: { cond: Cond; obsTime: string; raw: string };
   taf?: WindowCond & { raw: string; issueTime: string };
   /** 판정에 쓴 기본 조건 (TAF 기본 예보 + 창 안의 METAR 중 나쁜 쪽) */
@@ -119,7 +123,28 @@ const ofpB = (line: number, label: string): Basis => ({ kind: 'ofp', ofpLine: li
 interface Slot {
   icao: string;
   roles: Role[];
+  /** 판정용 창 = 역할 창들을 모두 덮는 범위 */
   window: Window;
+  /** 역할마다 창 (한 공항이 3% ERA이면서 ETP 공항 등) */
+  uses: { role: Role; window: Window }[];
+}
+
+/**
+ * 3% ERA 시간창 (FOM 3% Contingency Fuel 운영 절차): "도착 예상시각 1시간 전부터 1시간 후까지" 기상.
+ * 도착 예상 = OFP "3% CONTINGENCY ERA VALIDATION"의 ETA. 담당 구간 = 기준 지점(COC)을 중심으로 반경 "총 비행계획 거리의 20%" 원이 덮는 항로.
+ * OFP에 ETA가 없으면 예전 근사(비행 후반)로.
+ */
+function era3Window(o: OfpData, a: OfpData['alternates'][number], T: number, S: number, air: number): Window {
+  if (!a.eta) return { from: S - 0.4 * air - H, to: S, basis: '비행 후반 (3% ERA 위치 부근, 대략 — OFP에 ERA ETA 없음)' };
+  const eta = hhmmzToMs(a.eta, T);
+  const total = o.route.at(-1)?.cumDist ?? 0;
+  let seg: Window['seg'];
+  if (a.coc && total > 0) {
+    const r = 0.2 * total;
+    const pts = o.route.filter((w) => Math.abs((w.cumDist ?? 0) - a.coc!.cumd) <= r && Number.isFinite(Date.parse(w.eto)));
+    if (pts.length > 1) seg = { from: pts[0].name, to: pts.at(-1)!.name, fromT: Date.parse(pts[0].eto), toT: Date.parse(pts.at(-1)!.eto) };
+  }
+  return { from: eta - H, to: eta + H, basis: 'FOM 3% Contingency: ERA 도착 예상 ±1h (OFP 3% ERA VALIDATION)', at: { label: '3% ERA ETA', t: eta }, seg };
 }
 
 export function flightAirports(o: OfpData, rules: CompanyRules | null): Slot[] {
@@ -131,26 +156,47 @@ export function flightAirports(o: OfpData, rules: CompanyRules | null): Slot[] {
     const k = (icao ?? '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(k)) return;
     const s = map.get(k);
-    if (!s) map.set(k, { icao: k, roles: [role], window: w });
-    else if (!s.roles.includes(role)) s.roles.push(role);
+    const ww = { ...w, role };
+    if (!s) map.set(k, { icao: k, roles: [role], window: ww, uses: [{ role, window: ww }] });
+    else if (!s.roles.includes(role)) {
+      s.roles.push(role);
+      s.uses.push({ role, window: ww });
+      // 판정용 창은 모든 역할을 덮게 넓힘 (기준 시각은 역할이 하나일 때만)
+      s.window = { from: Math.min(s.window.from, ww.from), to: Math.max(s.window.to, ww.to), basis: s.uses.map((u) => u.window.basis).join(' + ') };
+    }
   };
-  add(o.header.dep, 'DEP', { from: T - H, to: T + H, basis: 'ETD ±1h', at: { label: 'ETD', t: T } });
+  add(o.header.dep, 'DEP', { from: T - H, to: T + H, basis: 'ETD ±1h (앱 기준 — FOM 문장 없음)', at: { label: 'ETD', t: T } });
   add(o.header.arr, 'DEST', { from: S - H, to: S + H, basis: 'ETA ±1h', at: { label: 'ETA', t: S } });
   const tkMax = (rules?.takeoffAlternate.maxTimeMin[engineCount(o.header.acType)] ?? 120) * 60000;
   for (const a of o.alternates) {
     const r = a.role.toUpperCase();
     if (/TKOF|TAKE ?OFF/.test(r)) add(a.icao, 'TKOF ALTN', { from: T, to: T + tkMax, basis: '이륙 ~ 이륙 교체 시간 한도' });
-    else if (/3%/.test(r)) add(a.icao, '3% ERA', { from: S - 0.4 * air - H, to: S, basis: '비행 후반 (3% ERA 위치 부근, 대략)' });
+    else if (/3%/.test(r)) add(a.icao, '3% ERA', era3Window(o, a, T, S, air));
     else if (/ENRT|ERA/.test(r)) add(a.icao, 'ERA', { from: T, to: S, basis: '비행 시간대' });
     else {
       const eta = S + (a.timeMin || 0) * 60000;
       add(a.icao, 'ALTN', { from: eta - H, to: eta + H, basis: '교체공항 ETA ±1h', at: { label: 'ALTN ETA', t: eta } });
     }
   }
+  // Refile 공항·교체 (D-110): 결정 지점 ETO + OFP REFILE FLT PLAN 시간 → ETA ±1h
+  // FOM 5.10.1.1은 "운항 시간대" 기상만 말함 — ±1h는 목적지 규정(5.7.1)을 준용한 앱 기준
+  const rf = o.refile;
+  const rp = rf && o.route.find((w) => w.name === rf.point);
+  const rpT = rp ? Date.parse(rp.eto) : NaN;
+  if (rf && Number.isFinite(rpT)) {
+    const seg = { from: rf.point, to: rf.point, fromT: rpT, toT: rpT };
+    const eta = rpT + rf.toAirportMin * 60000;
+    add(rf.airport, 'REFILE', { from: eta - H, to: eta + H, basis: `Refile ETA ±1h (결정 지점 ${rf.point} 기준 · 앱 기준 — FOM 5.10.1.1 운항 시간대, ±1h는 목적지 5.7.1 준용)`, at: { label: 'Refile ETA', t: eta }, seg });
+    if (rf.altn && rf.altnMin != null) {
+      const ae = eta + rf.altnMin * 60000;
+      add(rf.altn, 'REFILE ALTN', { from: ae - H, to: ae + H, basis: 'Refile 교체 ETA ±1h (앱 기준 — 교체공항 5.7.1 준용)', at: { label: 'Refile 교체 ETA', t: ae }, seg });
+    }
+  }
   // ETP·EDTO 교체공항 = FOM 예상 운항 시간대 (Earliest − 1h ~ Latest + 1h, D-094)
-  for (const r of eraTimes(o)) add(r.icao, r.src === 'OFP EDTO' ? 'EDTO' : 'ETP', { from: r.opsFrom, to: r.opsTo, basis: `예상 운항 시간대 (${r.basis}, ±1h)` });
+  for (const r of eraTimes(o)) add(r.icao, r.src === 'OFP EDTO' ? 'EDTO' : 'ETP', { from: r.opsFrom, to: r.opsTo, basis: `FOM EDTO: 예상 운항 시간대 (${r.basis}, ±1h)`, seg: r.seg });
   for (const icao of o.edtoAirports) add(icao, 'ETP', { from: T, to: S, basis: '비행 시간대' });
-  for (const p of o.notams?.packages ?? []) for (const l of p.locations) if (/ERA/.test(l.role)) add(l.icao, l.role === '3% ERA' ? '3% ERA' : 'ERA', { from: T, to: S, basis: '비행 시간대' });
+  // NOTAM 패키지의 ERA 목록: 이미 역할(도착·교체·ETP·3% ERA)이 있는 공항엔 "비행 전체" 창을 더하지 않음 (2026-11-27)
+  for (const p of o.notams?.packages ?? []) for (const l of p.locations) if (/ERA/.test(l.role) && !map.has(l.icao.trim().toUpperCase())) add(l.icao, l.role === '3% ERA' ? '3% ERA' : 'ERA', { from: T, to: S, basis: '비행 시간대 (앱 기준 — FOM 시간창 규정 없음)' });
   return [...map.values()];
 }
 
@@ -264,7 +310,7 @@ function assessAirport(i: BriefInput, slot: Slot, ofpInfo: Record<string, string
   const acKey = manualAircraft(o.header.acType);
   const night = g ? isNight(g[0], g[1], (w.from + w.to) / 2) : false;
 
-  const brief: AirportBrief = { icao, name: g?.[2], lat: g?.[0], lon: g?.[1], roles: slot.roles, window: w, metar, taf, base, runways, closedRwys, impacts, restrictions: [], night, findings };
+  const brief: AirportBrief = { icao, name: g?.[2], lat: g?.[0], lon: g?.[1], roles: slot.roles, window: w, uses: slot.uses, metar, taf, base, runways, closedRwys, impacts, restrictions: [], night, findings };
   const wxBasis = [taf ? dataB(`TAF ${t!.issueTime.slice(11, 16)}Z 발표 · 창 ${w.basis}`) : null, obsInWindow ? dataB(metar!.raw) : null].filter((x): x is Basis => !!x);
 
   // ---- 최저치 (회사 기준 파일 필요) ----

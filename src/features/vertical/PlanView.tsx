@@ -3,6 +3,7 @@
 // 육지 윤곽 = 앱에 들어 있는 Natural Earth(오프라인). 버티컬 뷰와 같은 시각 선택을 쓴다
 import { useEffect, useMemo, useState } from 'react';
 import { bearingDeg } from '../../lib/geo';
+import { loadLand, type LandGeo } from '../../lib/land';
 import { formatAgo, formatZ } from '../../lib/time';
 import type { OfpData } from '../ofp/types';
 import { interpolateAtFl } from '../weather/decode';
@@ -25,9 +26,7 @@ const PARAMS: { id: Param; label: string }[] = [
 const FLS = ['plan', 290, 330, 370, 410] as const;
 type FlSel = (typeof FLS)[number];
 
-type Geo = { features: { geometry: { type: string; coordinates: number[][][] | number[][][][] } }[] };
-let landCache: Promise<Geo> | null = null;
-const loadLand = () => (landCache ??= fetch(new URL('./geo/land.json', location.href).href).then((r) => r.json() as Promise<Geo>));
+type Geo = LandGeo;
 
 const W = 1000;
 const isaTemp = (fl: number) => Math.max(-56.5, 15 - 1.98 * (fl / 10));
