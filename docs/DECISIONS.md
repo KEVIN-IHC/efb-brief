@@ -786,3 +786,13 @@
   2. 점검 결과 PIREP이 실제 항로에서 늘 실패하고 있었음 — AWC가 긴 소수 좌표(`29.94250000000001`)의 bbox를 HTTP 400으로 거절. bbox를 바깥쪽으로 소수 둘째 자리로 맞춤(`routeBoxes`)
   3. Mac 개발·미리보기 서버의 내장 기상 중계(`vite.config.ts` AWC_ALLOWED)에 pirep·gairmet 추가 (Worker와 같게) — 아이패드(Worker)는 원래 됨
 - **영향** `settings/SettingsPage.tsx`(OutboxCard), `app/styles.css`, `sync/outbox.ts`(정렬), `weather/extra.ts`(routeBoxes), `ops/ops.test.ts`, `vite.config.ts`
+
+### D-104 항로 스펙 대조 = 항로 띠 + FIR × 스펙 표 (시안 A·C 합침)
+- **날짜** 2026-11-27 (사용자: "내 항로의 스펙 확인·검증, ats fpln·mel·fcom·pbn·pbcs" → 시안 `private/design/2026-11-27-route-spec-mockup.html` → "a,c 를 합쳐")
+- **결정**
+  1. Briefing 7단계(ATS FPL 대조)에 카드 하나: 위 = 항로 띠(FIR 구간 시간 비례, 스펙마다 한 줄), 아래 = FIR × 스펙(RVSM·PBN·CPDLC·ADS-C·PBCS) 표 + 결과(분리·통신). 띠 조각·표 칸을 누르면 근거 서랍(① 항로 요구 + 📖 ② FPL 신고 코드 ③ 오늘 비행기)
+  2. ① 요구 = 회사 기준 파일 `routeSpec`(비공개, FOM PBCS·RVSM 절 / Jeppesen Pacific 쪽). 규칙 = FIR·항로 이름·FL 범위 × 필요 능력 × 수준(required 필수 → ✕ · area 적용 구역 → ⚠, 운항 가능하나 분리·절차 달라짐 · info 참고(운영 시간) · nodata ?)
+  3. ② 신고 = OFP 안 ATS FPL 장비·Item 18을 파서가 저장(`atsFpl`, 파서 aviator-1.8) → ICAO 표준 코드 해석(공개 코드)
+  4. ③ 비행기 = OFP MEL/CDL 항목 번호 앞부분 → 영향 줄 수 있는 능력(앱 분류 `melMap`, 비공개) → "⚠ 확인"까지만, 판정 안 함. 기종 기본 능력(회사 승인·FCOM)은 자료 없음 → "자료 없음" 표시, 자료 오면 `aircraft`에
+  5. Jeppesen 쪽 코드 = `JEPP-PACIFIC-158`(책 이름 포함, General·Pacific 쪽 번호 겹침) → 근거 링크가 한 권을 가리킴. JEPP 묶음 다시 만듦
+- **영향** `routespec/{fplCaps.ts,evaluate.ts,RouteSpecCard.tsx,routespec.test.ts}`(신규), `ofp/types.ts`·`ofp/parser/index.ts`(atsFpl, 버전 1.8), `brief/rules.ts`(RouteSpecData·검사), `brief/BriefPage.tsx`, `brief/brief.test.ts`, `manual/parse.ts`(Jeppesen 쪽 코드), `app/styles.css`. private: `build-routespec.py`(신규), company-rules.json, JEPP 묶음

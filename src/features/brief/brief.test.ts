@@ -240,11 +240,13 @@ describe.skipIf(!hasReal)('실제 회사 기준 + OFP 샘플 (private)', () => {
 
 const FOM_BUNDLE = join(__dirname, '../../../private/manuals/out/GEN-FOM.efbman.json.gz');
 const FCOM_BUNDLE = join(__dirname, '../../../private/manuals/out/A380-FCOM.efbman.json.gz');
+const JEPP_BUNDLE = join(__dirname, '../../../private/manuals/out/JEPP-PACIFIC.efbman.json.gz');
 describe.skipIf(!existsSync(FOM_BUNDLE) || !existsSync(RULES_FILE))('실제 FOM 표 (private)', () => {
   it('특수공항 표·공항 제한 절·근거 코드 전부 찾기', async () => {
     const rules = JSON.parse(readFileSync(RULES_FILE, 'utf8')) as CompanyRules;
     await saveManual(JSON.parse(gunzipSync(readFileSync(FOM_BUNDLE)).toString('utf8')));
     if (existsSync(FCOM_BUNDLE)) await saveManual(JSON.parse(gunzipSync(readFileSync(FCOM_BUNDLE)).toString('utf8')));
+    if (existsSync(JEPP_BUNDLE)) await saveManual(JSON.parse(gunzipSync(readFileSync(JEPP_BUNDLE)).toString('utf8')));
     const sp = await loadSpecialAirports(rules.sections.specialAirports);
     expect(sp.length).toBeGreaterThan(20);
     expect(sp.every((a) => /^[A-Z]{4}$/.test(a.icao) && a.note)).toBe(true);
@@ -255,7 +257,7 @@ describe.skipIf(!existsSync(FOM_BUNDLE) || !existsSync(RULES_FILE))('실제 FOM 
     expect(rs.some((r) => r.aircraft)).toBe(true);
     const codes = ruleCodes(rules);
     const refs = await loadRefsFor(codes);
-    const missing = codes.filter((c) => !refs[c] && (existsSync(FCOM_BUNDLE) || c.startsWith('FOM-')));
+    const missing = codes.filter((c) => !refs[c] && (c.startsWith('FOM-') || (c.startsWith('JEPP-') ? existsSync(JEPP_BUNDLE) : existsSync(FCOM_BUNDLE))));
     expect(missing).toEqual([]);
   }, 60_000);
 });

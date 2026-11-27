@@ -10,6 +10,7 @@ import { FirCommSection } from '../fir/FirCommSection';
 import { useActiveFlight } from '../flight/activeFlight';
 import { latestActuals, useFlightLogs } from '../inflight/actuals';
 import { buildChecks, project } from '../inflight/deviation';
+import { RouteSpecCard } from '../routespec/RouteSpecCard';
 import { DocSection } from '../ofp/doc/ui';
 import { jumpToOfpSource } from '../ofp/sourceJump';
 import { ROLE_KO, manualBasis, type AirportBrief, type Finding, type Role } from './assess';
@@ -36,7 +37,7 @@ const STEPS: { id: string; t: string; sub: string }[] = [
   { id: 'wx-dst', t: '기상 · 목적지·교체', sub: '목적지·교체·ERA 시간' },
   { id: 'notam', t: 'NOTAM', sub: '출발·도착·교체·항로' },
   { id: 'ofp', t: 'OFP · MEL/CDL', sub: '연료·중량·MEL·노트' },
-  { id: 'fpl', t: 'ATS FPL 대조', sub: '날짜·ROUTE·OFP 번호' },
+  { id: 'fpl', t: 'ATS FPL 대조', sub: '날짜·ROUTE·OFP 번호·항로 스펙' },
   { id: 'auth', t: '인가 · 허가 · 통신', sub: 'RVSM·EDTO·FIR' },
   { id: 'threat', t: '위협 · 회항 후보', sub: '비행 전체 판정·초안' },
 ];
@@ -404,13 +405,16 @@ export function BriefPage() {
       </>
     ),
     fpl: (
-      <DocSection title="ATS FPL 사본 ↔ OFP" className="span-all">
-        <p className="small muted">제출된 ATS Flight Plan 사본과 OFP의 날짜·ROUTE·OFP 번호를 대조 (OFP 안 여러 곳 비교)</p>
-        <RouteCheckRow o={o} onLine={jumpToOfpSource} />
-        <p className="mono small">
-          {o.header.flightNo} · {o.header.date} · {o.header.dep}→{o.header.arr} · {o.header.acType} {o.header.reg}
-        </p>
-      </DocSection>
+      <>
+        <DocSection title="ATS FPL 사본 ↔ OFP" className="span-all">
+          <p className="small muted">제출된 ATS Flight Plan 사본과 OFP의 날짜·ROUTE·OFP 번호를 대조 (OFP 안 여러 곳 비교)</p>
+          <RouteCheckRow o={o} onLine={jumpToOfpSource} />
+          <p className="mono small">
+            {o.header.flightNo} · {o.header.date} · {o.header.dep}→{o.header.arr} · {o.header.acType} {o.header.reg}
+          </p>
+        </DocSection>
+        <RouteSpecCard o={o} />
+      </>
     ),
     auth: (
       <>

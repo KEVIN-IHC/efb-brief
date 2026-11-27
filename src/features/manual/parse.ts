@@ -125,7 +125,8 @@ export function jeppesenPaths(toc: TocEntry[] | undefined, pageCount: number): s
   return out;
 }
 
-export function splitJeppesen(md: string, toc?: TocEntry[]): { pages: ManualPage[]; unlabeled: number } {
+/** docId(JEPP-PACIFIC)가 있으면 쪽 코드 = JEPP-PACIFIC-158 (General·Pacific 쪽 번호가 겹쳐서, 근거 링크가 한 권을 가리키게) */
+export function splitJeppesen(md: string, toc?: TocEntry[], docId = 'JEPP'): { pages: ManualPage[]; unlabeled: number } {
   const lines = md.split(/\r?\n/);
   const marks: { at: number; n: number }[] = [];
   let last = 0;
@@ -156,7 +157,7 @@ export function splitJeppesen(md: string, toc?: TocEntry[]): { pages: ManualPage
     pages.push({
       seq: pages.length,
       ref: n !== undefined ? `p.${n}` : undefined,
-      code: n !== undefined ? `JEPP-${n}` : undefined,
+      code: n !== undefined ? `${docId}-${n}` : undefined,
       header: (n !== undefined && paths[n]) || running || undefined,
       text,
       line: from + 1,
@@ -491,7 +492,7 @@ function dedupe(items: ManualItem[]): ManualItem[] {
 export function buildManualBundle(md: string, fileName: string, now = new Date(), opts: { toc?: TocEntry[] } = {}): ManualBundle {
   const meta0 = detectMeta(md, fileName);
   if (meta0.docId.startsWith('JEPP-')) {
-    const { pages, unlabeled } = splitJeppesen(md, opts.toc);
+    const { pages, unlabeled } = splitJeppesen(md, opts.toc, meta0.docId);
     const meta: ManualMeta = { ...meta0, sourceFile: fileName.replace(/^.*[\\/]/, ''), builtAt: now.toISOString(), parserVersion: MANUAL_PARSER_VERSION, splitMode: 'page', pageCount: pages.length, unlabeledPages: unlabeled, itemCount: 0 };
     return { format: MANUAL_FORMAT, formatVersion: MANUAL_FORMAT_VERSION, meta, pages, items: [] };
   }

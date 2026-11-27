@@ -8,7 +8,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.7'; // 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.8'; // 1.8: ATS FPL 장비·Item 18 저장 (D-104) · 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);
@@ -123,6 +123,7 @@ function assemble(ctx: ExtractCtx, texts: string[]): OfpData | undefined {
     cargo: d?.cargo?.value,
     fuelStats: d?.stats ? { period: d.stats.period, items: d.stats.items } : undefined,
     notams: ctx.av.notams,
+    atsFpl: fpl ? { equipment: fpl.equipment, item18: fpl.item18, level: fpl.level, route: fpl.route, line: ctx.fpls[0].lines[0]?.n } : undefined,
   };
 }
 

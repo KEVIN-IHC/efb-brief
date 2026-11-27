@@ -186,6 +186,14 @@ IPBS/
 | `FirCommSection.tsx` | FIR · 통신 카드 + 편집 창 (Briefing 전체 / Inflight `compact`) |
 - 점검 알림: `inflight/reminders.ts` 4번 (다음 FIR 진입 10분 전)
 
+### 3.7f-2 항로 스펙 `src/features/routespec/` (D-104)
+| 파일 | 역할 |
+|---|---|
+| `fplCaps.ts` | ATS FPL Item 10·18(PBN/·SUR/·COM/·DAT/) → 신고 코드·능력(`decodeFpl`, ICAO Doc 4444 표준) |
+| `evaluate.ts` | FIR(OFP 순서) × 스펙(RVSM·PBN·CPDLC·PBCS) 칸 = 요구 표(회사 기준 파일 `routeSpec`) × 신고 × MEL 계통 → 맞음·확인·신고 없음·자료 없음·요구 없음 |
+| `RouteSpecCard.tsx` | Briefing 7단계: 항로 띠(시간 축) + FIR × 스펙 표 + 근거 서랍(📖 FOM·Jeppesen) |
+- 요구 표·MEL 계통 연결은 비공개 `private/manuals/build-routespec.py` → company-rules.json `routeSpec`. 파서는 `OfpData.atsFpl`(장비·Item 18) 저장
+
 ### 3.7g Ops `src/features/ops/` (D-056)
 | 파일 | 역할 |
 |---|---|

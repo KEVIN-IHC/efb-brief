@@ -82,7 +82,19 @@
 
 ## 8. 세션 인계 (가장 최근 작업)
 
-### 2026-11-27 (4) — 업로드 대기 선택 지우기 · 기상 레이어 점검 · PIREP 고침 (D-103) (다음 세션은 여기서 시작)
+### 2026-11-27 (6) — 항로 스펙 대조 구현 (D-104, 시안 A+C) (다음 세션은 여기서 시작)
+- **완료**: Briefing 7단계 "Route Spec · 항로 스펙" 카드 = 항로 띠 + FIR × 스펙 표 + 근거 서랍. 파서 ATS FPL 저장(aviator-1.8 → 저장된 OFP 자동 재파싱). 비공개 요구 표 13줄·MEL 분류 7줄(`private/manuals/build-routespec.py` → company-rules.json). Jeppesen 쪽 코드 `JEPP-PACIFIC-158`로 바꾸고 JEPP 묶음 다시 만듦
+- **테스트**: `npm test` 300/300(새 6개: FPL 해석·운영 시간·대조·실제 ofp-01 × 회사 표), `tsc -b`, `npm run build` 통과. 개발 브라우저(실제 ofp-01 메모리만 + 회사 기준·FOM·JEPP 묶음 임시로 넣고 확인 후 지움): 시안 숫자와 같음(✓11·⚠1·?3, RKRR CPDLC 시간 밖), 서랍 📖 FOM·Jeppesen 열림, 375·768·1180·1440 × 주간/야간 넘침 0, 띠 조각 44px, 데모(요구 표·FPL 없음)도 안내만 나오고 정상. **아이패드 확인·커밋·배포 전**
+- **아이패드에서 (배포 후)**: 새 `out/company-rules.json`(routeSpec 포함)과 다시 만든 `JEPP-PACIFIC.efbman.json.gz`·`JEPP-GENERAL.efbman.json.gz`를 가져오기 (Jeppesen 근거 📖가 열리려면). OFP는 자동 재파싱
+- **미해결**: K-51 (기종 기본 능력·미국 국내·다른 노선 요구)
+
+### 2026-11-27 (5) — 항로 스펙 검증 시안
+- **사용자 요청**: 내 항로의 스펙(RVSM·PBN·CPDLC·PBCS)을 ATS FPL·MEL·FCOM과 대조해 검증
+- **시안**: `private/design/2026-11-27-route-spec-mockup.html` (샘플 ofp-01 실제 FPL·MEL 값) — 공통 = ① 항로 요구(비공개 요구 표, FOM·Jeppesen 근거) × ② FPL Item 10·18 신고(자동 해석) × ③ 오늘 비행기(MEL 22·23·34 계통 → "확인 필요"까지만). **A** FIR×스펙 표 + 근거 서랍 · **B** 스펙별 체크리스트(요구→신고→MEL, Briefing 8단계) · **C** 항로 띠(시간 축). 아래에 비공개 요구 표 초안. 1180·375 확인, 넘침 0
+- **자료 없음**: 기종 기본 능력(회사 OpSpec·FCOM), 미국 국내·항로별 RNAV 요구(Jeppesen US), RVSM FIR별 범위 확인
+- **다음**: 사용자 시안 선택 → 새 D-번호로 결정 → 구현(FPL 코드 해석은 공개 코드, 요구 표·MEL 계통 연결은 company-rules.json 비공개)
+
+### 2026-11-27 (4) — 업로드 대기 선택 지우기 · 기상 레이어 점검 · PIREP 고침 (D-103)
 - **완료**: 업로드 대기 체크 상자·선택 지우기, PIREP bbox 소수 둘째 자리(실제 항로에서 HTTP 400이던 것), Mac 내장 중계 pirep·gairmet 허용
 - **기상 레이어 점검 (개발 브라우저, 데모 + 실제 샘플 ofp-01을 시각만 지금으로 옮겨 메모리에만)**: Map SIGMET·바람·위성(GIBS 3장)·레이더(RainViewer 12조각)·G-AIRMET·열대저기압·우주기상 정상, Briefing 3단계·Map의 버티컬 뷰·플랜 뷰 그려짐(실제 항로 56지점 Open-Meteo 정상). 배포 Worker 직접 확인: metar·taf·isigmet·airsigmet·gairmet 200, pirep은 짧은 좌표면 200·긴 좌표면 400 → 고침 후 PIREP 28건·항로 150NM 목록 표시. Open-Meteo 60지점×34값 요청 2초·연속 3번 문제없음
 - **확인 못 함**: 아이패드 Safari에서의 표시(배포 전), 시간 막대 재생

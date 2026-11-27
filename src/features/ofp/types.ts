@@ -170,6 +170,8 @@ export interface OfpData {
   notams?: OfpNotams;
   /** 항로·OFP 번호가 OFP 안 여러 곳에서 같은지 (D-067) */
   routeCheck?: OfpRouteCheck;
+  /** ATS FPL 장비·Item 18 (D-104, 항로 스펙 대조) — OFP 안 첫 FPL 블록 */
+  atsFpl?: { equipment: string; item18: Record<string, string>; level: string; route: string; line?: number };
 }
 
 /** 원문 한 줄 (n = 원문 뷰어 줄 번호) */

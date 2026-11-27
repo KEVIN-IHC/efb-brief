@@ -2,6 +2,7 @@
 // Mac의 private/manuals/company-rules.json → 구글드라이브 → Settings 매뉴얼 가져오기 → 기기(IndexedDB settings)
 // 앱 코드는 형식과 계산만 갖고, 값과 근거 위치(매뉴얼 쪽 코드)는 이 파일에서 읽는다. 없으면 "회사 기준 파일 없음".
 import { getDB } from '../../db/schema';
+import type { Cap } from '../routespec/fplCaps';
 
 export const RULES_FORMAT = 'efb-company-rules';
 export const RULES_FORMAT_VERSION = 1;
@@ -153,6 +154,45 @@ export interface CompanyRules {
   sdGuide?: SdGuideData;
   /** 합동 브리핑 preset (D-083) */
   jointBrief?: JointBriefConfig;
+  /** 항로 스펙 요구 표 (D-104) — FOM·Jeppesen 근거. 비공개 */
+  routeSpec?: RouteSpecData;
+}
+
+/** 항로 스펙 열 (D-104) */
+export type SpecKey = 'rvsm' | 'pbn' | 'cpdlc' | 'pbcs';
+
+/**
+ * 항로 요구 한 줄 (D-104). 대상 = FIR 목록(없으면 전부) × 항로 이름(있으면 그 항로를 지날 때만) × FL 범위.
+ * level: required = 필수(신고 없으면 ✕) · area = 적용 구역(못 맞추면 운항은 되나 분리·절차가 달라짐 → ⚠) ·
+ * info = 참고(운영 시간 등) · nodata = 그 FIR은 근거 자료 없음(?)
+ */
+export interface RouteSpecRule {
+  id: string;
+  spec: SpecKey;
+  firs?: string[];
+  airways?: string[];
+  flMin?: number;
+  flMax?: number;
+  need: Cap[];
+  level: 'required' | 'area' | 'info' | 'nodata';
+  /** 운영 시간 UTC "HHMM-HHMM" (이 시간 밖 통과면 "시간 밖") */
+  hours?: string;
+  /** 요구 설명 (화면) */
+  text: string;
+  /** 맞을 때 결과 (예: 23NM(또는 30NM) 분리 대상) */
+  okText?: string;
+  /** 못 맞출 때 결과 */
+  ifNot?: string;
+  refs: RuleRef[];
+}
+
+export interface RouteSpecData {
+  source: string;
+  rules: RouteSpecRule[];
+  /** MEL 항목 번호 앞부분 → 영향 줄 수 있는 능력 (앱 분류 — "확인 필요"까지만) */
+  melMap: { prefix: string; caps: Cap[]; label: string }[];
+  /** 기종 기본 능력 (회사 승인) — 없으면 "자료 없음" */
+  aircraft?: { match: string; caps: Cap[]; refs?: RuleRef[] }[];
 }
 
 /** 상황 카드 (D-056): 회사 매뉴얼 절 링크·사건 버튼·정보 양식·타이머. 목록과 절 코드는 회사 기준 파일에만 */
@@ -200,6 +240,7 @@ export function validateRules(json: unknown): string | null {
   for (const k of ['takeoff', 'approach', 'alternate', 'dispatch', 'windLimits', 'lowTime', 'rff', 'coldTemp'] as const) if (!r[k]) return `항목 없음: ${k}`;
   if (!Array.isArray(r.approach?.levels) || !r.approach.levels.length) return 'approach.levels 비어 있음';
   if (r.jointBrief && (!Array.isArray(r.jointBrief.items) || r.jointBrief.items.some((x) => !x.id || !x.title || typeof x.text !== 'string'))) return 'jointBrief.items 형식 오류';
+  if (r.routeSpec && (!Array.isArray(r.routeSpec.rules) || !Array.isArray(r.routeSpec.melMap) || r.routeSpec.rules.some((x) => !x.id || !x.spec || !Array.isArray(x.need) || !Array.isArray(x.refs)))) return 'routeSpec 형식 오류';
   if (r.ops && (!Array.isArray(r.ops.cards) || r.ops.cards.some((c) => !c.id || !c.title || !Array.isArray(c.refs)))) return 'ops.cards 형식 오류';
   return null;
 }
