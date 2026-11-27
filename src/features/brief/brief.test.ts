@@ -20,6 +20,8 @@ import { validateRules, type CompanyRules } from './rules';
 import { airportRunways, parseOfpRunways, rankEnds, windComponents } from './runways';
 import { sunElevation } from './sun';
 import { parseMetarRaw, tafWindow, type Cond } from './wx';
+import { airportRunways as rwyFor } from './runways';
+import { magVar } from '../../lib/magvar';
 
 const ref = (code: string) => ({ code, label: code });
 /** 가짜 회사 기준 (수치는 시험용) */
@@ -110,7 +112,7 @@ describe('활주로·바람', () => {
     expect(windComponents(300, 20, 270)).toEqual({ head: 17, cross: 10, tail: 0 });
     expect(windComponents(90, 10, 270)).toEqual({ head: -10, cross: 0, tail: 10 });
     expect(windComponents('VRB', 5, 90)).toEqual({ head: -5, cross: 5, tail: 5 });
-    const ranked = rankEnds([{ id: '09', hdgT: 90, approx: false, lenFt: null, widthFt: null }, { id: '27', hdgT: 270, approx: false, lenFt: null, widthFt: null }], 250, 20);
+    const ranked = rankEnds([{ id: '09', hdgT: 90, hdgM: null, approx: false, lenFt: null, widthFt: null }, { id: '27', hdgT: 270, hdgM: null, approx: false, lenFt: null, widthFt: null }], 250, 20);
     expect(ranked[0].end.id).toBe('27');
   });
 });
@@ -260,4 +262,24 @@ describe.skipIf(!existsSync(FOM_BUNDLE) || !existsSync(RULES_FILE))('실제 FOM 
     const missing = codes.filter((c) => !refs[c] && (c.startsWith('FOM-') || (c.startsWith('JEPP-') ? existsSync(JEPP_BUNDLE) : existsSync(FCOM_BUNDLE))));
     expect(missing).toEqual([]);
   }, 60_000);
+});
+
+// 자방위 (D-106): WMM으로 진방위 → 자방위. 인천 33L/R 진방위 325 → 차트 334M 근처
+describe('활주로 자방위', () => {
+  it('인천(RKSI) 서편차 약 9° → 325T가 333~335M', () => {
+    const d = magVar(37.46, 126.44, new Date('2026-11-27'))!;
+    expect(d).toBeLessThan(-7);
+    expect(d).toBeGreaterThan(-11);
+    const r = rwyFor('RKSI', undefined, { RKSI: [['15L', '33R', 145, 325, 13123, 197, 1]] }, { lat: 37.46, lon: 126.44 });
+    const e33 = r.ends.find((e) => e.id === '33R')!;
+    expect(e33.hdgT).toBe(325);
+    expect(e33.hdgM).toBeGreaterThanOrEqual(333);
+    expect(e33.hdgM).toBeLessThanOrEqual(335);
+  });
+  it('위치 모르면 자방위 비움, 진방위 없으면 번호×10 대략', () => {
+    const r = rwyFor('XXXX', undefined, { XXXX: [['09', '27', 92, 272, 9000, 150, 1]] });
+    expect(r.ends[0].hdgM).toBeNull();
+    const r2 = rwyFor('YYYY', ['1. RUNWAY : 07L/25R : 12923FT X 150FT'], {}, { lat: 0, lon: 0 });
+    expect(r2.ends[0]).toMatchObject({ hdgM: 70, approx: true });
+  });
 });

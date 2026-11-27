@@ -133,7 +133,19 @@ function AirportCard({ a }: { a: AirportBrief }) {
       id={`br-${a.icao}`}
     >
       <div className="br-head small muted">
-        창 {a.window.basis} ({hhmm(a.window.from)}–{hhmm(a.window.to)}){a.night ? ' · 야간' : ''} · 경고 {sevCount('warning')} · 주의 {sevCount('caution')}
+        {a.window.at ? (
+          <>
+            <b className="mono br-at">
+              {a.window.at.label} {hhmm(a.window.at.t)}
+            </b>{' '}
+            · 판정 시간대 <span className="mono">{hhmm(a.window.from)}–{hhmm(a.window.to)}</span>
+          </>
+        ) : (
+          <>
+            {a.window.basis} <span className="mono">{hhmm(a.window.from)}–{hhmm(a.window.to)}</span>
+          </>
+        )}
+        {a.night ? ' · 야간' : ''} · 경고 {sevCount('warning')} · 주의 {sevCount('caution')}
       </div>
       {!a.metar && !a.taf && <p className="small muted">기상 자료 없음 — Weather 탭에서 받아 두면 판정합니다</p>}
       {a.metar && (
@@ -173,7 +185,10 @@ function AirportCard({ a }: { a: AirportBrief }) {
                       {e.id}
                       {closed ? ' 폐쇄' : ''}
                     </td>
-                    <td className="r mono">{e.hdgT != null ? `${String(e.hdgT).padStart(3, '0')}${e.approx ? '≈M' : 'T'}` : '—'}</td>
+                    <td className="r mono">
+                      {e.hdgM != null ? `${String(e.hdgM).padStart(3, '0')}${e.approx ? '≈' : ''}M` : '—'}
+                      {!e.approx && e.hdgT != null && <small className="br-hdgt"> {String(e.hdgT).padStart(3, '0')}T</small>}
+                    </td>
                     <td className="r mono">
                       {e.lenFt ?? '—'}×{e.widthFt ?? '—'}
                     </td>
@@ -195,7 +210,7 @@ function AirportCard({ a }: { a: AirportBrief }) {
         <p className="small muted">
           {w.gust ? 'Gust/Max' : 'Steady'} {w.spd}kt · 활주로 {w.braking ? BRAKING_LABEL[w.braking] : '오염 가능(모름)'} ({w.brakingSrc})
           {w.limit !== undefined ? ` · 한계 측풍/배풍 ${w.limit ? `${w.limit[0]}/${w.limit[1] ?? '불가'}` : '불가'}kt` : ' · 회사 바람 제한 없음'} · 활주로 자료{' '}
-          {a.runways.src === 'both' ? 'OFP + 공개 자료' : a.runways.src === 'ofp' ? 'OFP (방위 ≈번호)' : '공개 자료'}
+          {a.runways.src === 'both' ? 'OFP + 공개 자료' : a.runways.src === 'ofp' ? 'OFP (방위 ≈번호)' : '공개 자료'} · 방위 M = 진방위 − 자기 편차(WMM), 바람 성분은 진방위(T)로 계산
         </p>
       )}
 
@@ -322,21 +337,9 @@ export function BriefPage() {
   const st = (roles: string[]) => stations.filter((x) => x.roles.some((r) => roles.includes(r)));
   const briefFor = (roles: Role[]) => main.filter((a) => a.roles.some((r) => roles.includes(r)));
 
-  const intro = (
-    <DocSection title="Briefing" meta={brief.hasRules ? '회사 기준 적용' : '회사 기준 없음'} className="span-all">
-      <p className="small">
-        {brief.hasRules ? (
-          <>
-            회사 기준: <span className="mono">{brief.rulesSource}</span>
-          </>
-        ) : (
-          <span className="c-warn">회사 기준 파일 없음 — Settings → 매뉴얼 → 가져오기로 company-rules.json을 넣으면 최저치·바람 제한을 판정합니다. 지금은 기상·활주로·NOTAM 자료만 정리.</span>
-        )}
-      </p>
-      <p className="small muted">
-        판정은 받아 둔 METAR/TAF·OFP NOTAM 기준 · 기상 시간 창은 공항 역할별(출발 ETD±1h, 목적지 ETA±1h, 교체 ETA±1h, ETP·EDTO = 예상 운항 시간대) · 차트 최저치가 회사 하한보다 높으면 차트가 우선 · 활주로 방위 ≈M은 번호로 추정한 값
-      </p>
-    </DocSection>
+  // 회사 기준 파일이 없을 때만 알림 (있으면 버전은 맨 아래 한 줄, 시간 창은 공항 카드마다 — 2026-11-27)
+  const intro = brief.hasRules ? null : (
+    <p className="notice warn small span-all">회사 기준 파일 없음 — Settings → 매뉴얼 → 가져오기로 company-rules.json을 넣으면 최저치·바람 제한을 판정합니다. 지금은 기상·활주로·NOTAM 자료만 정리.</p>
   );
 
   const wxPair = (roles: Role[], wroles: string[]) => (
@@ -507,7 +510,7 @@ export function BriefPage() {
           )}
       {pager}
       <p className="doc-foot span-all">
-        보조 도구입니다. 회사 기준 수치는 회사 기준 파일(Mac private/에서 만든 파일)에서 읽고, 매뉴얼 위치는 📖로 엽니다. 운항 판단은 승인된 EFB·원본 매뉴얼·운항관리 기준.{' '}
+        보조 도구입니다. {brief.hasRules ? <>회사 기준 <span className="mono">{brief.rulesSource}</span> · </> : null}판정 = 받아 둔 METAR/TAF·OFP NOTAM · 차트 최저치가 회사 하한보다 높으면 차트 우선. 매뉴얼 위치는 📖. 운항 판단은 승인된 EFB·원본 매뉴얼·운항관리 기준.{' '}
         {data.refs && Object.keys(data.refs).length === 0 && brief.hasRules ? '매뉴얼을 가져오면 근거 링크가 열립니다.' : ''}
       </p>
     </div>

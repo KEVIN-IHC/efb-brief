@@ -233,6 +233,35 @@ function SigmetItem({ s }: { s: Sigmet }) {
   );
 }
 
+/** 예보 vs OFP 차이 표시 기준 (사용자 지정 2026-11-27 — 매뉴얼 수치 아님) */
+export const WIND_DIFF = { dir: 30, spd: 30, temp: 5 };
+
+/** 기준 넘은 차이만 글로 (예: "방향 40°", "속도 +32kt", "기온 +6°") */
+export function windDiff(
+  p: { dir: number | null; spd: number | null; temp: number | null },
+  o: { windDir: number | null; windSpd: number | null; oat: number | null } | undefined,
+): { marks: string[]; any: boolean } {
+  const marks: string[] = [];
+  if (!o) return { marks, any: false };
+  let any = false;
+  if (p.dir != null && o.windDir != null) {
+    any = true;
+    const dd = Math.abs((((p.dir - o.windDir) % 360) + 540) % 360 - 180);
+    if (dd >= WIND_DIFF.dir) marks.push(`방향 ${Math.round(dd)}°`);
+  }
+  if (p.spd != null && o.windSpd != null) {
+    any = true;
+    const ds = Math.round(p.spd - o.windSpd);
+    if (Math.abs(ds) >= WIND_DIFF.spd) marks.push(`속도 ${ds > 0 ? '+' : ''}${ds}kt`);
+  }
+  if (p.temp != null && o.oat != null) {
+    any = true;
+    const dt = Math.round(p.temp - o.oat);
+    if (Math.abs(dt) >= WIND_DIFF.temp) marks.push(`기온 ${dt > 0 ? '+' : ''}${dt}°`);
+  }
+  return { marks, any };
+}
+
 export function WindsCard({ now }: { now: number }) {
   const { flight, ofp } = useActiveFlight();
   const w = useWx((s) => (s.winds?.flightId === flight.flightId ? s.winds : null));
@@ -248,7 +277,7 @@ export function WindsCard({ now }: { now: number }) {
         {w?.data.basis === 'now'
           ? '⚠ 이미 끝난 비행이거나 예보 범위 밖이라 현재 시각 예보를 표시합니다 (비교는 참고만).'
           : '각 웨이포인트 ETO에 가장 가까운 정시 예보, OFP 계획 고도에서 기압면 보간.'}{' '}
-        기온차 = 예보 − OFP.
+        차이 = 예보 − OFP · 표시 기준(사용자 지정): 바람 방향 {WIND_DIFF.dir}° · 속도 {WIND_DIFF.spd} kt · 기온 {WIND_DIFF.temp} °C 이상.
       </p>
       {!w ? (
         <p className="pad muted small">{route.length ? '아직 받지 않음' : 'OFP 루트 없음'}</p>
@@ -264,15 +293,15 @@ export function WindsCard({ now }: { now: number }) {
                 <th>OFP 바람</th>
                 <th>예보 °C</th>
                 <th>OFP °C</th>
-                <th>차</th>
+                <th>차이</th>
               </tr>
             </thead>
             <tbody>
               {w.data.points.map((p) => {
                 const o = bySeq.get(p.seq);
-                const dT = p.temp != null && o?.oat != null ? p.temp - o.oat : null;
+                const d = windDiff(p, o);
                 return (
-                  <tr key={p.seq}>
+                  <tr key={p.seq} className={d.marks.length ? 'wd-row' : ''}>
                     <td className="mono">{p.name}</td>
                     <td className="mono">{fmtFl(p.fl)}</td>
                     <td className="mono">{p.time ? formatZ(p.time) : '—'}</td>
@@ -280,7 +309,21 @@ export function WindsCard({ now }: { now: number }) {
                     <td className="mono muted">{o?.windDir != null && o.windSpd != null ? fmtWind(o.windDir, o.windSpd) : '—'}</td>
                     <td className="mono">{p.temp != null ? fmtTemp(p.temp) : '—'}</td>
                     <td className="mono muted">{o?.oat != null ? fmtTemp(o.oat) : o?.tempText ?? '—'}</td>
-                    <td className={`mono ${dT != null && Math.abs(dT) >= 5 ? 'warn-text' : ''}`}>{dT != null ? fmtTemp(dT) : '—'}</td>
+                    <td className="mono">
+                      {d.marks.length ? (
+                        <span className="wd-marks">
+                          {d.marks.map((m) => (
+                            <span key={m} className="wd-mark">
+                              {m}
+                            </span>
+                          ))}
+                        </span>
+                      ) : d.any ? (
+                        <span className="muted">—</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                   </tr>
                 );
               })}

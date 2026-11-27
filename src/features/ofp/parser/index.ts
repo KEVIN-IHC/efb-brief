@@ -8,7 +8,7 @@ import { toDocLines } from './lines';
 import { splitSections } from './sections';
 import type { CheckResult, ExtractorResult, ParseResult } from './types';
 
-export const AVIATOR_PARSER_VERSION = 'aviator-1.8'; // 1.8: ATS FPL 장비·Item 18 저장 (D-104) · 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
+export const AVIATOR_PARSER_VERSION = 'aviator-1.9'; // 1.9: FL250 이상 OT를 영하로 읽음 · 1.8: ATS FPL 장비·Item 18 저장 (D-104) · 1.7: 도착지 현지 시각 차이 (D-086) · 1.6: 계획 방식 3%/5%·REFILE·EDTO (D-082) · 1.5: SPEED SKD·2ND-$ (D-079) · 1.4: 항로·OFP 번호 일치 확인 (D-067) · 1.3: NOTAM 패키지 추출 (Phase 4)
 
 export function parseAviatorOfp(rawText: string): ParseResult {
   const lines = toDocLines(rawText);

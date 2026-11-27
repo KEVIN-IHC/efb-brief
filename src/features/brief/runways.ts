@@ -1,10 +1,13 @@
 // 활주로: OFP NOTAM의 "1. RUNWAY : 07L/25R : 12923FT X 150FT" 줄(길이·폭) + 공개 자료 runways.json(진방위) (D-050)
 // 바람 성분은 진방위로 계산 (METAR·TAF 바람은 진방위). 진방위를 모르면 활주로 번호×10(자방위, 대략)으로 계산하고 "대략" 표시
+import { magVar, trueToMag } from '../../lib/magvar';
 import type { OfpData } from '../ofp/types';
 
 export interface RunwayEnd {
   id: string; // 07L
-  hdgT: number | null; // 진방위
+  hdgT: number | null; // 진방위 (바람 성분 계산용)
+  /** 자방위 (차트와 같은 기준, D-106) — 진방위 − 자기 편차(WMM). approx면 번호×10 */
+  hdgM: number | null;
   approx: boolean; // 번호로 추정한 방위 (자방위)
   lenFt: number | null;
   widthFt: number | null;
@@ -60,7 +63,8 @@ export function loadRunwayDb(): Promise<RunwayDb> {
   return dbPromise;
 }
 
-export function airportRunways(icao: string, ofpInfo: string[] | undefined, db: RunwayDb): AirportRunways {
+export function airportRunways(icao: string, ofpInfo: string[] | undefined, db: RunwayDb, pos?: { lat: number; lon: number }): AirportRunways {
+  const decl = pos ? magVar(pos.lat, pos.lon) : null;
   const fromOfp = parseOfpRunways(ofpInfo ?? []);
   const rows = db[icao] ?? [];
   const hdg = new Map<string, number>();
@@ -76,7 +80,8 @@ export function airportRunways(icao: string, ofpInfo: string[] | undefined, db: 
   const mk = (id: string, lenFt: number | null, widthFt: number | null): RunwayEnd => {
     const h = hdg.get(norm(id));
     const n = Number(id.slice(0, 2));
-    return { id, hdgT: h ?? (Number.isFinite(n) ? (n * 10) % 360 || 360 : null), approx: h == null, lenFt, widthFt };
+    const byNum = Number.isFinite(n) ? (n * 10) % 360 || 360 : null;
+    return { id, hdgT: h ?? byNum, hdgM: h != null ? (decl != null ? trueToMag(h, decl) : null) : byNum, approx: h == null, lenFt, widthFt };
   };
   if (fromOfp.length) {
     for (const r of fromOfp) {

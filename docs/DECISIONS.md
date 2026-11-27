@@ -796,3 +796,22 @@
   4. ③ 비행기 = OFP MEL/CDL 항목 번호 앞부분 → 영향 줄 수 있는 능력(앱 분류 `melMap`, 비공개) → "⚠ 확인"까지만, 판정 안 함. 기종 기본 능력(회사 승인·FCOM)은 자료 없음 → "자료 없음" 표시, 자료 오면 `aircraft`에
   5. Jeppesen 쪽 코드 = `JEPP-PACIFIC-158`(책 이름 포함, General·Pacific 쪽 번호 겹침) → 근거 링크가 한 권을 가리킴. JEPP 묶음 다시 만듦
 - **영향** `routespec/{fplCaps.ts,evaluate.ts,RouteSpecCard.tsx,routespec.test.ts}`(신규), `ofp/types.ts`·`ofp/parser/index.ts`(atsFpl, 버전 1.8), `brief/rules.ts`(RouteSpecData·검사), `brief/BriefPage.tsx`, `brief/brief.test.ts`, `manual/parse.ts`(Jeppesen 쪽 코드), `app/styles.css`. private: `build-routespec.py`(신규), company-rules.json, JEPP 묶음
+
+### D-105 아이패드 요청 묶음 바로 할 것 (2026-11-27): ETP 칸 · 바람표 차이 · 공항 시각 · 회사 기준 상자
+- **날짜** 2026-11-27 (사용자 아이패드 사진 21장 · 10개 항목 — 나머지는 비공개 요청 목록)
+- **결정**
+  1. OFP EDTO·ETP 숫자 칸 = 카드 폭 기준 자동 줄 바꿈(최소 124px) — 가로 아이패드 2열에서 잘림 방지, 빈 칸 회색 없음
+  2. 바람표 예보 vs OFP: **바람 방향 30° · 속도 30kt · 기온 5°C 이상** 차이면 줄 색 + "방향 40°" 표 (사용자 지정 표시 기준, 매뉴얼 수치 아님)
+  3. 파서 aviator-1.9: Aviator OT 열은 부호가 없어 앱이 비교를 못 했음 → **FL250 이상은 영하로 읽음**(ISA −35 °C 이하라 양수 불가). 그 아래(상승·하강)는 비워 둠
+  4. Briefing 공항 카드: "창 ETD ±1h (…)" 대신 **기준 시각(ETD·ETA·ALTN ETA) + 판정 시간대**. 시간 창 자료에 기준 시각(`at`) 추가 — NOTAM에도 쓸 예정
+  5. Briefing 1단계 "회사 기준" 상자 삭제 — 파일 없을 때만 경고, 회사 기준 버전·판정 규칙은 맨 아래 한 줄
+- **영향** `app/styles.css`, `weather/WeatherPage.tsx`(windDiff·WIND_DIFF, 테스트 `winddiff.test.ts`), `ofp/parser/{aviator.ts,index.ts}`, `notam/relevance.ts`(Window.at), `brief/{assess.ts,BriefPage.tsx}`, `routespec/routespec.test.ts`
+
+### D-106 활주로 방위 = 자방위(M) 표시 · 진방위는 계산에만
+- **날짜** 2026-11-27 (사용자: "인천 젭슨에는 334로 나오는데" → "자방위로 바꿔")
+- **결정**
+  1. Briefing 활주로 표의 방위 = **자방위**(차트와 같은 기준) 크게, 진방위(T)는 옆에 작게. 자방위 = 공개 자료 진방위 − 자기 편차
+  2. 자기 편차 = NOAA·BGS **WMM2025**(2024-11~2029-11 유효), 라이브러리 `geomagnetism`(Apache-2.0, 계수 포함, 오프라인 계산, 약 70KB). 공항 위치는 기존 공개 공항 자료
+  3. 바람 성분(정풍·측풍·배풍)은 그대로 **진방위**로 계산 — METAR·TAF 바람이 진방위라서. 진방위가 없으면 번호×10(≈M)
+  4. 차트와 1° 안팎 차이 가능(모델·반올림·차트 기준 연도) — 화면 메모에 표시
+- **영향** `lib/magvar.ts`(신규), `brief/runways.ts`(hdgM), `brief/assess.ts`, `brief/BriefPage.tsx`, `brief/brief.test.ts`, `app/styles.css`, `package.json`(geomagnetism)

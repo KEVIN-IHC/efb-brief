@@ -1480,3 +1480,12 @@ input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-se
 .rs-code { font-weight: 700; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; background: var(--raised); }
 .rs-dec summary { min-height: var(--touch); display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: var(--fs-sm); }
 @media (max-width: 767px) { .rs-tri { grid-template-columns: 1fr; } }
+
+/* ETP 숫자 칸 (2026-11-27): 화면이 아니라 카드 폭 기준으로 줄 바꿈 — 가로 아이패드 2열 화면에서 "27…" 잘림 방지 */
+.etp-cells { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)) !important; background: transparent; border: 0; gap: 6px; overflow: visible; }
+.etp-cells .cell { border: 1px solid var(--line); border-radius: var(--radius-sm); }
+/* 예보 vs OFP 차이 (2026-11-27) */
+.wd-row td { background: var(--warn-soft); }
+.wd-marks { display: flex; flex-wrap: wrap; gap: 4px; }
+.wd-mark { font: 700 var(--fs-xs) var(--mono); color: var(--warn); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+.br-hdgt { color: var(--text-faint); font-size: var(--fs-xs); }

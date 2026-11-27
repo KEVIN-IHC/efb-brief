@@ -202,7 +202,8 @@ export function parseRouteLog(lines: DocLine[], takeoffMs: number): OfpWaypoint[
       windDir: wind ? Number(wind[1]) * 10 : null,
       windSpd: wind ? Number(wind[2]) : null,
       windComp: wind ? (wind[3] === 'M' ? -1 : 1) * Number(wind[4]) : null,
-      oat: null,
+      // OT 열은 부호 없음 → FL250 이상은 영하만 가능(ISA −35 °C 이하)이라 음수로 읽음. 그 아래(상승·하강)는 부호를 알 수 없어 비움
+      oat: flNum >= 250 && /^\d{1,2}$/.test(a[7] ?? '') ? -Number(a[7]) : null,
       tempText: a[7],
       tas: n3(a[10]),
       gs: n3(b[5]),

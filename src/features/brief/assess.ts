@@ -134,8 +134,8 @@ export function flightAirports(o: OfpData, rules: CompanyRules | null): Slot[] {
     if (!s) map.set(k, { icao: k, roles: [role], window: w });
     else if (!s.roles.includes(role)) s.roles.push(role);
   };
-  add(o.header.dep, 'DEP', { from: T - H, to: T + H, basis: 'ETD ±1h' });
-  add(o.header.arr, 'DEST', { from: S - H, to: S + H, basis: 'ETA ±1h' });
+  add(o.header.dep, 'DEP', { from: T - H, to: T + H, basis: 'ETD ±1h', at: { label: 'ETD', t: T } });
+  add(o.header.arr, 'DEST', { from: S - H, to: S + H, basis: 'ETA ±1h', at: { label: 'ETA', t: S } });
   const tkMax = (rules?.takeoffAlternate.maxTimeMin[engineCount(o.header.acType)] ?? 120) * 60000;
   for (const a of o.alternates) {
     const r = a.role.toUpperCase();
@@ -144,7 +144,7 @@ export function flightAirports(o: OfpData, rules: CompanyRules | null): Slot[] {
     else if (/ENRT|ERA/.test(r)) add(a.icao, 'ERA', { from: T, to: S, basis: '비행 시간대' });
     else {
       const eta = S + (a.timeMin || 0) * 60000;
-      add(a.icao, 'ALTN', { from: eta - H, to: eta + H, basis: '교체공항 ETA ±1h' });
+      add(a.icao, 'ALTN', { from: eta - H, to: eta + H, basis: '교체공항 ETA ±1h', at: { label: 'ALTN ETA', t: eta } });
     }
   }
   // ETP·EDTO 교체공항 = FOM 예상 운항 시간대 (Earliest − 1h ~ Latest + 1h, D-094)
@@ -258,7 +258,7 @@ function assessAirport(i: BriefInput, slot: Slot, ofpInfo: Record<string, string
   // 활주로·NOTAM
   const impacts = airportImpacts(o, icao, [w]);
   const closedRwys = impacts.filter((x) => x.kind === 'rwyClosed').flatMap((x) => x.rwys.flatMap((r) => r.split('/')));
-  const runways = airportRunways(icao, ofpInfo[icao], i.runwayDb);
+  const runways = airportRunways(icao, ofpInfo[icao], i.runwayDb, g ? { lat: g[0], lon: g[1] } : undefined);
   const usable = runways.ends.filter((e) => !closedRwys.includes(e.id));
   const surf = surfaceBraking(impacts, base);
   const acKey = manualAircraft(o.header.acType);

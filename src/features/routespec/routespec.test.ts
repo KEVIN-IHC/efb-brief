@@ -78,6 +78,10 @@ describe.skipIf(!existsSync(S1) || !existsSync(RULES))('실제 샘플 ofp-01 × 
     const o = parseAviatorOfp(readFileSync(S1, 'utf8')).ofp!;
     expect(o.atsFpl?.equipment).toMatch(/J5/);
     expect(o.atsFpl?.item18.PBN).toBeTruthy();
+    // OT 열 부호 없음 → FL250 이상은 영하 (파서 1.9)
+    const cr = o.route.filter((w) => w.fl >= 250);
+    expect(cr.length).toBeGreaterThan(10);
+    expect(cr.every((w) => w.oat != null && w.oat < -20)).toBe(true);
     const rs = JSON.parse(readFileSync(RULES, 'utf8')).routeSpec;
     const r = evaluateRouteSpec(o, rs);
     const leg = (icao: string) => r.legs.find((l) => l.icao === icao);

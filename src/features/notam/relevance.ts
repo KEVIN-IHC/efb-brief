@@ -10,6 +10,8 @@ export interface Window {
   to: number;
   /** 화면 문구 근거 (예: "NAV LOG FIR 진입 L812") */
   basis: string;
+  /** 기준 시각 (예: ETD 0330Z) — 창 범위 대신 화면에 먼저 보여 줌 */
+  at?: { label: string; t: number };
 }
 
 export type TimeStatus = 'overlap' | 'before' | 'after' | 'unknown';
