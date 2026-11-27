@@ -143,7 +143,7 @@ IPBS/
 | 파일 | 역할 |
 |---|---|
 | `types.ts` | 묶음 형식 `ManualBundle`(meta·pages·items), `MANUAL_FORMAT_VERSION` |
-| `parse.ts` | 변환 MD → 묶음: 종류·기종·발행일·개정(`detectMeta`), 쪽 나누기(`splitPages`, 쪽 표시 경계) 또는 절 나누기(`splitSections`, marker 변환·FOM, D-047), MEL 하위 항목·CDL 항목 추출. `MANUAL_PARSER_VERSION` |
+| `parse.ts` | 변환 MD → 묶음: 종류·기종·발행일·개정(`detectMeta`), 쪽 나누기(`splitPages`, 쪽 표시 경계) 또는 절 나누기(`splitSections`, marker 변환·FOM, D-047) 또는 Jeppesen 인쇄 쪽 번호(`splitJeppesen`, PDF 목차 경로, D-101), MEL 하위 항목·CDL 항목 추출. `MANUAL_PARSER_VERSION` |
 | `store.ts` | 파일 읽기(gzip/JSON/MD), 저장(같은 docId 통째 교체·오래된 개정 확인), 목록·삭제, 번호로 항목 찾기(`findManualItems`) |
 | `ManualCard.tsx` | Settings → 매뉴얼 카드 |
 | `lookup.ts` | (D-045) 쪽 캐시, 탭 이동(`openManualPage`), OFP MEL/CDL 매칭(`matchMelItem`, 기종 변환), 표시 문구(`itemFlags`), 참조 찾기·이동(`findRefs`·`resolveRef`), 검색(`searchPages`·`directKey`), MEL 항목만 잘라 보기(`itemSlice`: 상위 제목부터 다음 항목 전까지, 다음 쪽 이어 붙임) |

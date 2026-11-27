@@ -305,6 +305,9 @@ textarea.input { resize: vertical; }
 .loglist li { padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
 .loglist li:last-child { border-bottom: 0; }
 .logmeta { display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-dim); }
+.loglist .outbox-del, .card-title .btn.small { min-height: var(--touch); }
+.logmeta:has(.outbox-del) { align-items: center; }
+.logmeta:has(.outbox-del) .mark { margin-left: auto; }
 .lognote { margin-top: var(--sp-1); white-space: pre-wrap; word-break: break-word; }
 .mark { white-space: nowrap; }
 .mark.ok { color: var(--ok); } .mark.warn { color: var(--warn); } .mark.bad { color: var(--bad); }
@@ -682,6 +685,8 @@ a.card-link:hover .doc-sec { border-color: var(--line-strong); }
 .map-box { height: calc(100dvh - 380px); min-height: 360px; border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden; background: var(--bg); margin-bottom: var(--sp-2); }
 @media (min-width: 1024px) { .map-box { height: calc(100dvh - 330px); min-height: 420px; } }
 .map-box .leaflet-container { font-family: var(--font); }
+/* 지도 타일·창(Leaflet z-index 200~1000)이 아래 탭바(20)를 덮지 않게 지도 안에 가둔다 */
+.leaflet-container { isolation: isolate; z-index: 0; }
 .map-box .leaflet-control-attribution { background: var(--panel); color: var(--text-faint); font-size: 10px; }
 .map-box .leaflet-control-attribution a { color: var(--text-dim); }
 .map-box .leaflet-bar a { background: var(--panel); color: var(--text); border-color: var(--line); width: var(--touch); height: var(--touch); line-height: var(--touch); }

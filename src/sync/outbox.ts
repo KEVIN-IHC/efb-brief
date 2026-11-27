@@ -188,6 +188,27 @@ export async function getUnsentItems(): Promise<OutboxItem[]> {
   return [...f, ...p];
 }
 
+/**
+ * 업로드 대기에서 빼기 (opIds 없으면 대기 전부). 지우지 않고 status=discarded로 남긴다 —
+ * 기록 화면이 "동기화됨"으로 잘못 보이지 않게. 기록(logs)은 기기에 그대로
+ */
+export async function discardOutbox(opIds?: string[]): Promise<number> {
+  if (inflight) await inflight.catch(() => undefined); // 전송 중이면 끝난 뒤 (전송 결과가 덮어쓰지 않게)
+  const db = await getDB();
+  const targets = opIds ? new Set(opIds) : null;
+  const tx = db.transaction('outbox', 'readwrite');
+  let n = 0;
+  for (const st of ['pending', 'failed'] as const)
+    for (const it of await tx.store.index('byStatus').getAll(st))
+      if (!targets || targets.has(it.opId)) {
+        await tx.store.put({ ...it, status: 'discarded', discardedAt: new Date().toISOString() });
+        n++;
+      }
+  await tx.done;
+  if (n) notify();
+  return n;
+}
+
 /** 전송 완료 후 7일 지난 outbox 항목 정리 (logs 자체는 유지) */
 export async function pruneSent(now = Date.now()): Promise<number> {
   const db = await getDB();

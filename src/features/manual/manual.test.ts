@@ -436,3 +436,64 @@ describe('목차·띄어쓰기 검색 (D-077)', () => {
     expect(search(pages, 'firetest')).toHaveLength(0);
   });
 });
+
+// Jeppesen Airway Manual (D-101) — 형식만 흉내 낸 가짜 문장
+const JEPP_MD = `# SAMPLE
+
+### AIRWAY MANUAL
+
+##### Issue Date 26 NOV 26
+
+Licensed by JEPPESEN for test.
+
+**STATE RULES AND PROCEDURES - TEST**
+
+**3**
+
+###### **ALPHA RULES**
+
+First page body about logon.
+
+**STATE RULES AND PROCEDURES - TEST**
+
+**4**
+
+Continued text on page four.
+
+###### **Datalink Section**
+
+CPDLC logon XXXX.
+
+**STATE RULES AND PROCEDURES - TEST**
+
+**2**
+
+Not a new page (number goes back).
+`;
+const JEPP_TOC = [
+  { title: 'Sample Book', page_id: 0, level: 1 },
+  { title: 'Air Traffic Control', page_id: 2, level: 2 },
+  { title: 'State Rules - Test', page_id: 2, level: 3 },
+  { title: 'Alpha - Rules', page_id: 2, level: 4 },
+  { title: 'General', page_id: 2, level: 5 },
+  { title: 'Datalink Section', page_id: 3, level: 5 },
+];
+
+describe('Jeppesen Airway Manual 묶음 (D-101)', () => {
+  it('표지로 알아보고 인쇄 쪽 번호로 나눈다 · 쪽 제목은 그 쪽이 시작하는 목차', () => {
+    expect(detectMeta(JEPP_MD, 'x.md')).toMatchObject({ docId: 'JEPP-SAMPLE', kind: 'OTHER', issueIso: '2026-11-26', title: 'Jeppesen Airway Manual — Sample' });
+    const b = buildManualBundle(JEPP_MD, 'eawm_sample.md', new Date('2026-11-27'), { toc: JEPP_TOC });
+    const p3 = b.pages.find((p) => p.pdfPage === 3)!;
+    const p4 = b.pages.find((p) => p.pdfPage === 4)!;
+    expect(p3.ref).toBe('p.3');
+    expect(p3.header).toBe('Air Traffic Control › State Rules - Test › Alpha - Rules › General');
+    expect(p3.text).not.toContain('STATE RULES AND PROCEDURES');
+    // 4쪽은 앞 절(General)의 이어지는 글로 시작 → 4쪽 첫 목차(Datalink Section)
+    expect(p4.header).toContain('Datalink Section');
+    expect(p4.text).toContain('Not a new page');
+    expect(b.pages[0].ref).toBeUndefined(); // 표지
+    const toc = buildToc(b.pages);
+    expect(toc.map((g) => g.title)).toEqual(['앞 쪽', 'Air Traffic Control › State Rules - Test › Alpha - Rules']);
+    expect(toc[1].entries.map((e) => e.title)).toEqual(['General', 'Datalink Section']);
+  });
+});

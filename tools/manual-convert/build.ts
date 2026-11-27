@@ -104,6 +104,12 @@ function main() {
     }
     // marker 변환이면 옆의 <이름>_meta.json 목차로 제목별 PDF 쪽 번호를 채운다 (없어도 됨)
     const metaJson = c.path.replace(/\.md$/i, '_meta.json');
+    // Jeppesen(D-101): 목차 파일이 없으면 inbox 원본 PDF 목차로 만든다 (쪽 제목·왼쪽 목차에 필요)
+    const jpdf = pdfByDoc.get(docId);
+    if (docId.startsWith('JEPP-') && jpdf && py && (!existsSync(metaJson) || statSync(metaJson).mtimeMs < statSync(jpdf).mtimeMs)) {
+      execFileSync(py, [PY_SCRIPT, 'toc', jpdf, metaJson]);
+      console.log(`  (${docId} PDF 목차 → ${basename(metaJson)})`);
+    }
     const toc = existsSync(metaJson) ? (JSON.parse(readFileSync(metaJson, 'utf8')).table_of_contents as TocEntry[] | undefined) : undefined;
     const b = buildManualBundle(readFileSync(c.path, 'utf8'), c.path, new Date(), { toc });
     const gz = gzipSync(JSON.stringify(b), { level: 9 });

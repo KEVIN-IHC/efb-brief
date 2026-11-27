@@ -82,6 +82,27 @@
 
 ## 8. 세션 인계 (가장 최근 작업)
 
+### 2026-11-27 (3) — 지도·탭 겹침 · 가져오기 JSON · 업로드 대기 지우기 (D-102) (다음 세션은 여기서 시작)
+- **사용자 아이패드 상황**: 배포판(build 11-22)에서 md를 직접 가져와 **EAWM-GENERAL(908쪽)·EAWM-PACIFIC(1130쪽)** 이 들어감(옛 코드라 Jeppesen 인식 없음). fir-comm·_meta.json은 "매뉴얼 묶음 파일이 아님". 업로드 대기 30건(Ops 시험 기록)
+- **완료**: 지도가 아래 탭을 덮지 않음, 매뉴얼 가져오기에서 FIR 통신표·목차 파일 받음, 업로드 대기 항목별·전부 지우기(discarded 상태)
+- **테스트**: `npm test` 293/293(새 1개), `tsc -b`, `npm run build` 통과. 개발 브라우저: 768 Map에서 탭바 5곳 눌림(수정 끄면 왼쪽이 지도에 가려짐 확인), 375도 3곳 눌림, 업로드 대기 시험 3건 → 하나 지우기(3→2) → 전부(0, 상단 숫자 0) → 시험 기록 삭제, 가짜 md+목차+FIR 파일 한 번에 가져오기 → 3줄 ✓·쪽 제목 목차 경로 → 지움. 375 주간 넘침 0. **아이패드 확인 전·배포 전**
+- **아이패드에서 (배포 후)**: Settings에서 EAWM-GENERAL·EAWM-PACIFIC 삭제 → JEPP 묶음 2개(.efbman.json.gz) 가져오기(또는 md + _meta.json 같이 고르기), fir-comm-jeppesen.json도 같은 버튼으로 가능. 업로드 대기 30건은 "전부 지우기"
+
+### 2026-11-27 (2) — Jeppesen Manual 묶음 (D-101)
+- **완료**: 매뉴얼 변환기가 Jeppesen Airway Manual을 알아보고 PDF 쪽 단위로 나눔 → `private/manuals/out/JEPP-GENERAL.efbman.json.gz`(0.8 MB, 1,399쪽) · `JEPP-PACIFIC.efbman.json.gz`(1.8 MB, 2,712쪽). 쪽 제목·왼쪽 목차 = PDF 목차 경로. 파일 위치 바뀜: PDF → `private/manuals/inbox/`, md → `private/manuals/md/`, 목차 `*_meta.json` 자동 생성
+- **변경 파일**: `src/features/manual/{parse.ts,lookup.ts,manual.test.ts}`, `tools/manual-convert/{pdf2md.py,build.ts}`, 문서 DECISIONS(D-101)·ARCHITECTURE. private: `jeppesen/build-fircomm.py`(md 경로)
+- **테스트**: `npm test` 292/292(새 1개), `tsc -b`, `npm run build` 통과. 개발 브라우저: JEPP-PACIFIC 묶음을 임시 127.0.0.1 서버로 넣어 "RKDA" 검색 → p.1474·1475·1840(경로 표시), p.1475 본문(인천 CPDLC 절), 목차(편 › 지역 › 나라, 쪽 수), 375 주간 넘침 0 → 확인 후 묶음 지우고 서버 종료·복사본 삭제. **아이패드 확인 전**
+- **한계**: 쪽 번호 줄이 없는 쪽(General 76·Pacific 126, 주로 그림·차트 쪽)은 앞 쪽에 합쳐짐. 그림만 있는 쪽(예: Pacific HF-Communications 지도, p.187 부근)은 글이 깨짐 — HF 주파수는 이 그림에 있음 → 필요하면 `npm run manuals -- --images`로 사진 묶음
+- **아이패드에서**: JEPP 묶음 2개를 구글드라이브에 올려 Settings → 매뉴얼 → 가져오기 (기존 5개 묶음은 그대로라 다시 올릴 필요 없음)
+
+### 2026-11-27 — Jeppesen Airway Manual md · FIR 통신표 파일
+- **완료**: 사용자가 Jeppesen Airway Manual General(1,649쪽)·Pacific(2,841쪽) PDF를 md로 변환(pdf2md.py, 지금 위치 `private/manuals/md/`). Pacific의 "Data link services by FIR" 표(PDF 189~197쪽, 23행)와 한국(1475쪽)·일본(1452~1454쪽)·NOPAC/오클랜드 본문으로 **FIR 통신표 가져오기 파일** `private/manuals/out/fir-comm-jeppesen.json` 생성(efb-fir-comm v1, FIR 23곳). 만드는 스크립트 `private/manuals/jeppesen/build-fircomm.py`. 우리 노선(RKRR·RJJJ·KZAK·PAZA·PGZU)은 한국어 요약 + 원문, 나머지는 원문. 출처 칸 = 책·쪽, 입력일 = 책 발행일 2026-11-26
+- **앱 코드 변경 없음** (기존 가져오기 형식 사용). 공개 저장소에 들어간 것 없음(전부 `/private`)
+- **확인**: 앱 `parseFirCommImport`로 23곳 읽힘. 개발 브라우저: RJJJ 항목을 넣고 NAV LOG FIR 줄 → 창에 CPDLC·HF·위치보고·SATCOM·메모·출처 표시, 375 주간 넘침 0 → 시험 값 지움. **아이패드 가져오기 전**
+- **빠진 것**: 미국 국내 FIR(KZOA·KZLA·KZSE)은 이 두 책에 없음(Jeppesen US 책 필요). HF 주파수는 Jeppesen 본문에 FIR별로 거의 없음(엔루트 차트에 있음) — 오클랜드·도쿄는 "무선국에서 배정받음"만. 인천 FIR CPDLC는 1500–1859 UTC만 운영. General md는 아직 안 씀(ICAO 공통 절차)
+- **아이패드에서**: `fir-comm-jeppesen.json`을 구글드라이브에 올림 → Briefing FIR·통신 카드 → 통신표 가져오기
+- **다음**: 아이패드 확인, 필요하면 Jeppesen md를 Manual 탭 검색용 묶음으로 넣기, HF 주파수는 차트 자료가 오면 추가
+
 ### 2026-11-22 (7) — SD 가이드 ECAM 화면 · ETP 카드 정리 (D-100) (다음 세션은 여기서 시작)
 - **완료**: 시안 SD-B·ETP-A 선택 → SD 가이드 ECAM 색 화면(한계는 회사 기준 파일 sdGuide), ETP 숫자 칸·Driftdown 표 삭제
 - **아이패드에서**: 새 `private/manuals/out/company-rules.json`(sdGuide 포함)을 구글드라이브에 올려 Settings → 매뉴얼 → 가져오기 해야 SD 화면이 나옴(FCOM 묶음도 있어야 원문·📖)

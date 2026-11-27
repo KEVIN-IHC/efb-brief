@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _resetDBForTests, getDB } from '../db/schema';
 import { setSetting } from '../db/settings';
-import { FAIL_THRESHOLD, flushOutbox, getOutboxCounts, NETWORK_RETRY_MS, pruneSent, saveLog } from './outbox';
+import { discardOutbox, FAIL_THRESHOLD, flushOutbox, getOutboxCounts, getUnsentItems, NETWORK_RETRY_MS, pruneSent, saveLog } from './outbox';
 
 // 서버(Apps Script) 흉내: logId 기준 멱등
 function fakeServer() {
@@ -150,5 +150,27 @@ describe('outbox', () => {
     expect(await pruneSent()).toBe(0);
     expect(await pruneSent(Date.now() + 8 * 24 * 3600 * 1000)).toBe(1);
     expect(await (await getDB()).count('logs')).toBe(1);
+  });
+});
+
+describe('업로드 대기 지우기', () => {
+  it('하나만/전부 지우면 보내지 않고, 기록은 기기에 남는다', async () => {
+    const { stored, fetchMock } = fakeServer();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('navigator', { onLine: false });
+    const a = await saveLog(memo('a'));
+    await saveLog(memo('b'));
+    await saveLog(memo('c'));
+    const [first] = await getUnsentItems();
+    expect(await discardOutbox([first.opId])).toBe(1);
+    expect(await getOutboxCounts()).toEqual({ pending: 2, failed: 0 });
+    expect(await discardOutbox()).toBe(2);
+    expect(await getOutboxCounts()).toEqual({ pending: 0, failed: 0 });
+    vi.stubGlobal('navigator', { onLine: true });
+    await flushOutbox();
+    expect(stored.size).toBe(0);
+    const db = await getDB();
+    expect(await db.get('logs', a.logId)).toBeTruthy();
+    expect((await db.getAll('outbox')).every((i) => i.status === 'discarded' && i.discardedAt)).toBe(true);
   });
 });

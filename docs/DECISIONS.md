@@ -761,3 +761,20 @@
   4. ECAM 색은 주간/야간과 상관없이 고정(`--ec-*` 토큰)
   5. ETP: 이름·공항(⇄) 크게, ETO·FOB·TO ALT·TIME(+CFR·EXC 있으면) 숫자 칸, Driftdown 표 삭제 — W 표시만 "DRIFTDOWN W: M LRC · M 2LE" 칸으로
 - **영향** `brief/rules.ts`(SdGuideData), `hourly/SdGuidePanel.tsx`, `ofp/doc/OfpDocument.tsx`(EtpBlock), `app/styles.css`. private: `build-sd.py`(신규), `company-rules.json`·`out/company-rules.json`(sdGuide 추가, 이전 파일은 세션 임시 폴더에 백업)
+
+### D-101 Jeppesen Airway Manual을 Manual 묶음으로 · FIR 통신표는 Jeppesen에서 만든 가져오기 파일
+- **날짜** 2026-11-27 (사용자: "젭슨 파일 md로 해서 넣자 … atc comm이랑 cpdlc 등 contact 방법들 넣자", "Manual에도 넣기")
+- **결정**
+  1. Jeppesen Airway Manual(General·Pacific) PDF → md(pdf2md.py, 사용자 Mac) → 매뉴얼 묶음 `JEPP-GENERAL`·`JEPP-PACIFIC`(kind OTHER). 표지 "AIRWAY MANUAL" + "JEPPESEN"으로 알아봄
+  2. 쪽 나누기: 쪽 머리 굵은 줄 다음 `**숫자**` = 인쇄 쪽 = PDF 쪽(`p.N`). 쪽 제목·왼쪽 목차는 PDF 목차(`pdf2md.py toc` → `<이름>_meta.json`, level 포함)에서 그 쪽이 시작하는 경로. 목차 묶음 = 앞 3단계(편 › 지역 › 나라), 항목 = 그 아래 2단계
+  3. FIR 통신표(D-055 개인 표)는 Jeppesen Pacific CPDLC 표 + 국가별 규정으로 만든 가져오기 파일(`private/manuals/jeppesen/build-fircomm.py` → `out/fir-comm-jeppesen.json`)로 채움. 출처 칸 = 책·쪽, 입력일 = 책 발행일
+  4. Jeppesen 자료는 저작권 → private·구글드라이브만(D-028)
+- **영향** `manual/parse.ts`(jeppesenArea·jeppesenPaths·splitJeppesen, TocEntry.level), `manual/lookup.ts`(buildToc Jeppesen), `manual/manual.test.ts`, `tools/manual-convert/{pdf2md.py,build.ts}`. MANUAL_PARSER_VERSION은 그대로(기존 묶음 결과 안 바뀜 → 다시 올릴 필요 없음)
+
+### D-102 지도가 아래 탭을 덮지 않게 · 매뉴얼 가져오기에서 FIR 통신표·목차 파일 받기 · 업로드 대기 지우기
+- **날짜** 2026-11-27 (사용자 아이패드 사진: 지도 때문에 아래 탭이 잘 안 눌림, 매뉴얼 가져오기에서 json "매뉴얼 묶음 파일이 아님", "업로드 저거 지울 수 있게")
+- **결정**
+  1. `.leaflet-container`에 `isolation: isolate; z-index: 0` — Leaflet 안쪽 z-index(200~1000)가 탭바(20) 위로 올라가지 않음
+  2. 매뉴얼 가져오기 한 곳에서 `efb-fir-comm` JSON → FIR 통신표로, `<이름>_meta.json` → 같이 고른 같은 이름 .md의 목차로 씀(따로 저장 안 함)
+  3. Settings 업로드 대기: 항목마다 "지우기" + "전부 지우기"(확인 창). 지우지 않고 outbox `status=discarded`로 바꿈 → 시트로 안 보내고, 기기 안 기록은 그대로, Inflight 기록 표시는 "–"(보내지 않음). DB 버전 그대로(상태 값만 추가)
+- **영향** `app/styles.css`, `manual/{ManualCard.tsx,store.ts}`, `sync/{outbox.ts,outbox.test.ts}`, `db/schema.ts`(OutboxStatus·discardedAt), `settings/SettingsPage.tsx`, `inflight/InflightPage.tsx`

@@ -8,7 +8,7 @@ import { ProfileCard } from '../brief/ProfileCard';
 import { DEFAULT_WX_PROXY, fetchJson, getWxProxyBase } from '../weather/api';
 import { formatDayZ } from '../../lib/time';
 import { pingGas } from '../../sync/gasClient';
-import { getUnsentItems, outboxEvents } from '../../sync/outbox';
+import { discardOutbox, getUnsentItems, outboxEvents } from '../../sync/outbox';
 import { syncNow, useSync } from '../../sync/syncManager';
 import { setThemePref, useTheme, type ThemePref } from '../../app/theme';
 
@@ -224,8 +224,19 @@ export function SettingsPage() {
       <section className="card">
         <div className="card-title">
           <h3>업로드 대기 ({unsent.length})</h3>
+          {unsent.length > 0 && (
+            <button
+              className="btn small"
+              onClick={() => {
+                if (confirm(`업로드 대기 ${unsent.length}건을 모두 지울까요?\n시트로 보내지 않습니다. 기기 안 기록은 그대로 남습니다. 되돌릴 수 없습니다.`)) void discardOutbox();
+              }}
+            >
+              전부 지우기
+            </button>
+          )}
         </div>
         {unsent.length === 0 && <p className="muted">대기 항목 없음</p>}
+        {unsent.length > 0 && <p className="small muted">지우면 시트로 보내지 않습니다 (기기 안 기록은 그대로).</p>}
         <ul className="loglist">
           {unsent.map((i) => (
             <li key={i.opId}>
@@ -234,6 +245,9 @@ export function SettingsPage() {
                 <span className={`mark ${i.status === 'failed' ? 'bad' : 'warn'}`}>
                   {i.status} ×{i.retries}
                 </span>
+                <button className="btn small outbox-del" aria-label="이 항목 업로드 대기에서 지우기" onClick={() => void discardOutbox([i.opId])}>
+                  지우기
+                </button>
               </div>
               <div className="lognote">{i.payload.note}</div>
               {i.lastError && <div className="small c-bad">{i.lastError}</div>}

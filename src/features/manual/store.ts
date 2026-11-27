@@ -1,6 +1,6 @@
 // 매뉴얼 묶음 가져오기·저장·교체·삭제 (D-044). 전부 기기 안(IndexedDB)에서만.
 import { getDB, type ManualImgIndex } from '../../db/schema';
-import { buildManualBundle, validateBundle } from './parse';
+import { buildManualBundle, validateBundle, type TocEntry } from './parse';
 import type { ManualBundle, ManualItem, ManualMeta, ManualPage } from './types';
 
 export type StoredManual = ManualMeta & { importedAt: string };
@@ -8,7 +8,8 @@ export type StoredManual = ManualMeta & { importedAt: string };
 export const manualEvents = new EventTarget();
 
 /** 가져온 파일 → 묶음. .efbman.json.gz / .json / 변환된 .md 를 받는다 */
-export async function readManualFile(file: File): Promise<ManualBundle> {
+/** opts.toc: 같은 이름의 _meta.json 목차 (Jeppesen md를 직접 가져올 때 쪽 제목·목차, D-101) */
+export async function readManualFile(file: File, opts: { toc?: TocEntry[] } = {}): Promise<ManualBundle> {
   const buf = new Uint8Array(await file.arrayBuffer());
   let text: string;
   if (buf[0] === 0x1f && buf[1] === 0x8b) {
@@ -30,7 +31,7 @@ export async function readManualFile(file: File): Promise<ManualBundle> {
     if (err) throw new Error(err);
     return json as ManualBundle;
   }
-  if (/\.(md|markdown|txt)$/i.test(file.name)) return buildManualBundle(text, file.name);
+  if (/\.(md|markdown|txt)$/i.test(file.name)) return buildManualBundle(text, file.name, new Date(), { toc: opts.toc });
   throw new Error('매뉴얼 묶음(.efbman.json.gz) 또는 변환된 .md 파일이 아님');
 }
 

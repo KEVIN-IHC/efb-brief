@@ -74,11 +74,101 @@ export function detectMeta(head: string, fileName: string): Pick<ManualMeta, 'do
   const revision = fr ? `R${fr[1]}` : /(?:^|[^A-Za-z])R(\d+)(?=[^0-9]|$)/.exec(stem0)?.[0].replace(/^[^R]*/, '');
   const replaces = new RegExp(String.raw`replacing last issue dated\s+(${DATE})`, 'i').exec(text)?.[1]?.toUpperCase();
   const stem = fileName.replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, '');
+  const jepp = jeppesenArea(text);
+  if (jepp)
+    return { docId: `JEPP-${jepp.replace(/\s+/g, '-')}`, kind: 'OTHER', aircraft: undefined, title: `Jeppesen Airway Manual — ${jepp.charAt(0)}${jepp.slice(1).toLowerCase()}`, issueDate, issueIso: issueToIso(issueDate), replaces, revision: undefined };
   const docId =
     kind === 'OTHER'
       ? stem.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase() || 'MANUAL'
       : `${aircraft ?? 'GEN'}-${kind}`;
   return { docId, kind, aircraft, title: title || stem, issueDate, issueIso: issueToIso(issueDate), replaces, revision };
+}
+
+/** Jeppesen Airway Manual 이면 지역 이름 (GENERAL · PACIFIC …). 표지: "# PACIFIC / ### AIRWAY MANUAL" 또는 "## GENERAL AIRWAY MANUAL" */
+export function jeppesenArea(head: string): string | undefined {
+  const h = head.slice(0, 20000);
+  if (!/JEPPESEN/i.test(h)) return undefined;
+  const m = /^#*\s*([A-Z][A-Z ]{2,30}?)\s*(?:\n+\s*#*\s*)?AIRWAY MANUAL\s*$/m.exec(h.slice(0, 3000));
+  return m?.[1].trim().toUpperCase();
+}
+
+// ---------- Jeppesen Airway Manual (D-101) ----------
+// 쪽 머리 "**STATE RULES AND PROCEDURES - FAR EAST**" 다음 줄 "**1475**" = PDF 쪽 번호(인쇄 쪽 = PDF 쪽). 그 줄부터 새 쪽.
+// 쪽 제목은 PDF 목차(_meta.json table_of_contents: title·page_id(0부터)·level)에서 그 쪽까지의 가장 깊은 경로.
+const JEPP_NUM = /^\*\*(\d{1,4})\*\*\s*$/;
+const JEPP_RUNNING = /^\*\*[^*]{3,120}\*\*\s*$/;
+
+/** 목차 → 쪽(1부터)마다 경로 "Air Traffic Control › … › Japan - Rules and Procedures › …" (책 제목 단계는 뺌) */
+export function jeppesenPaths(toc: TocEntry[] | undefined, pageCount: number): string[] {
+  const out: string[] = new Array(pageCount + 1).fill('');
+  if (!toc?.length) return out;
+  const list = toc.filter((t) => t.level && t.title.trim()).sort((a, b) => a.page_id - b.page_id);
+  const stack: string[] = [];
+  const apply = (t: TocEntry) => {
+    stack.length = Math.max(0, t.level! - 1);
+    stack[t.level! - 1] = normTitle(t.title);
+  };
+  let k = 0;
+  for (let p = 1; p <= pageCount; p++) {
+    // 쪽 제목 = 그 쪽이 시작하는 곳: 앞 쪽까지의 목차 + 이 쪽의 첫 목차(와 바로 이어 더 깊어지는 목차)
+    const first = k < list.length && list[k].page_id + 1 === p ? list[k] : undefined;
+    const view = [...stack];
+    if (first) {
+      apply(first);
+      for (let j = k + 1; j < list.length && list[j].page_id + 1 === p && list[j].level! > list[j - 1].level!; j++) apply(list[j]);
+      out[p] = stack.slice(1).filter(Boolean).join(' › ');
+      stack.length = 0;
+      stack.push(...view);
+    } else out[p] = view.slice(1).filter(Boolean).join(' › ');
+    while (k < list.length && list[k].page_id + 1 <= p) apply(list[k++]);
+  }
+  return out;
+}
+
+export function splitJeppesen(md: string, toc?: TocEntry[]): { pages: ManualPage[]; unlabeled: number } {
+  const lines = md.split(/\r?\n/);
+  const marks: { at: number; n: number }[] = [];
+  let last = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = JEPP_NUM.exec(lines[i]);
+    if (!m) continue;
+    const n = Number(m[1]);
+    if (n <= last || n > last + 60) continue;
+    let j = i - 1;
+    while (j >= 0 && !lines[j].trim()) j--;
+    if (j < 0 || !JEPP_RUNNING.test(lines[j])) continue;
+    marks.push({ at: j, n });
+    last = n;
+  }
+  const paths = jeppesenPaths(toc, last);
+  const pages: ManualPage[] = [];
+  let unlabeled = 0;
+  const push = (from: number, to: number, n?: number) => {
+    const body = lines.slice(from, to);
+    // 쪽 머리(구간 이름·쪽 번호) 두 줄은 본문에서 뺀다
+    if (n !== undefined) {
+      const k = body.findIndex((l) => JEPP_NUM.test(l));
+      if (k >= 0) body.splice(0, k + 1);
+    }
+    const text = body.map(cleanLine).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (!text) return;
+    const running = n !== undefined ? lines[from].replace(/\*/g, '').trim() : undefined;
+    pages.push({
+      seq: pages.length,
+      ref: n !== undefined ? `p.${n}` : undefined,
+      code: n !== undefined ? `JEPP-${n}` : undefined,
+      header: (n !== undefined && paths[n]) || running || undefined,
+      text,
+      line: from + 1,
+      pdfPage: n,
+    });
+  };
+  push(0, marks[0]?.at ?? lines.length);
+  for (let i = 0; i < marks.length; i++) {
+    if (i > 0 && marks[i].n > marks[i - 1].n + 1) unlabeled += marks[i].n - marks[i - 1].n - 1;
+    push(marks[i].at, marks[i + 1]?.at ?? lines.length, marks[i].n);
+  }
+  return { pages, unlabeled };
 }
 
 // 쪽 표시: "MI-36-11 P 2/8", "DSC-34-20-30-10 P 5/20", "27-10 P 1/2", "TRL P 1/2"
@@ -183,6 +273,8 @@ export function splitPages(md: string): { pages: ManualPage[]; unlabeled: number
 export interface TocEntry {
   title: string;
   page_id: number;
+  /** PDF 목차 깊이 (1 = 책 제목). Jeppesen 목차에만 있음 */
+  level?: number;
 }
 
 const SPAN_PAGE = /<span id="page-(\d+)-\d+"><\/span>/g;
@@ -398,6 +490,11 @@ function dedupe(items: ManualItem[]): ManualItem[] {
 /** MD 한 파일 → 묶음 */
 export function buildManualBundle(md: string, fileName: string, now = new Date(), opts: { toc?: TocEntry[] } = {}): ManualBundle {
   const meta0 = detectMeta(md, fileName);
+  if (meta0.docId.startsWith('JEPP-')) {
+    const { pages, unlabeled } = splitJeppesen(md, opts.toc);
+    const meta: ManualMeta = { ...meta0, sourceFile: fileName.replace(/^.*[\\/]/, ''), builtAt: now.toISOString(), parserVersion: MANUAL_PARSER_VERSION, splitMode: 'page', pageCount: pages.length, unlabeledPages: unlabeled, itemCount: 0 };
+    return { format: MANUAL_FORMAT, formatVersion: MANUAL_FORMAT_VERSION, meta, pages, items: [] };
+  }
   // 쪽 표시가 거의 없고 번호 제목이 많으면(marker 변환) 절 단위로 나눈다
   const footerCount = md.split('\n', 200000).filter((l) => FOOTER.test(l)).length;
   const numHeads = (md.match(/^#{1,6}\s+(?:<span[^>]*><\/span>)*\**S?\d+(?:\.\d+)+\s/gm) ?? []).length;

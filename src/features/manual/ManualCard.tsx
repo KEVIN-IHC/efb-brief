@@ -1,6 +1,7 @@
 // Settings → 매뉴얼: 묶음 가져오기(새 개정은 자동 교체)·목록·삭제 (D-044)
 import { useEffect, useRef, useState } from 'react';
-import { MANUAL_PARSER_VERSION } from './parse';
+import { MANUAL_PARSER_VERSION, type TocEntry } from './parse';
+import { FIR_COMM_FORMAT, mergeFirComm, parseFirCommImport } from '../fir/commTable';
 import { deleteManual, deleteManualImages, importImagePack, isImagePack, listImageIndexes, listManuals, manualEvents, OlderRevisionError, readManualFile, saveManual, type StoredManual } from './store';
 import type { ManualImgIndex } from '../../db/schema';
 import { deleteRules, isRulesJson, loadRules, rulesEvents, saveRules, type StoredRules } from '../brief/rules';
@@ -35,8 +36,10 @@ export function ManualCard() {
   const importFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const out: string[] = [];
-    // 글 묶음·기준 파일을 먼저, 사진 묶음은 나중에 (사진은 글 묶음이 있어야 들어감)
-    for (const f of Array.from(files).sort((a, b) => Number(isImagePack(a.name)) - Number(isImagePack(b.name)))) {
+    // 순서: 목차 파일(_meta.json) → 글 묶음·기준 파일 → 사진 묶음 (사진은 글 묶음이 있어야 들어감)
+    const rank = (n: string) => (/_meta\.json$/i.test(n) ? 0 : isImagePack(n) ? 2 : 1);
+    const tocs = new Map<string, TocEntry[]>();
+    for (const f of Array.from(files).sort((a, b) => rank(a.name) - rank(b.name))) {
       setBusy(`${f.name} 읽는 중…`);
       try {
         // 쪽 사진 묶음 (D-076): 글 묶음을 먼저 가져와야 함 → 같은 번에 고르면 글 묶음부터
@@ -54,13 +57,26 @@ export function ManualCard() {
           } catch {
             /* 매뉴얼 JSON 쪽에서 오류 안내 */
           }
+          // 목차 파일 (D-101): 같은 번에 고른 같은 이름의 .md 에 쓴다
+          const toc = (j as { table_of_contents?: unknown } | null)?.table_of_contents;
+          if (/_meta\.json$/i.test(f.name) && Array.isArray(toc)) {
+            tocs.set(f.name.replace(/_meta\.json$/i, '').toLowerCase(), toc as TocEntry[]);
+            out.push(`✓ ${f.name}: 목차 파일 — 같이 고른 .md의 쪽 제목·목차에 씀 (따로 저장 안 함)`);
+            continue;
+          }
+          // FIR 통신표 (D-055·D-101) — 여기서 골라도 통신표로 넣는다
+          if ((j as { format?: string } | null)?.format === FIR_COMM_FORMAT) {
+            const n = await mergeFirComm(parseFirCommImport(JSON.stringify(j)));
+            out.push(`✓ FIR 통신표 ${n}곳 가져옴 (${f.name}) — NAV LOG FIR 줄·Briefing FIR 카드에서 보임`);
+            continue;
+          }
           if (isRulesJson(j)) {
             await saveRules(j as never, f.name);
             out.push(`✓ 회사 기준 파일 — ${(j as { source?: string }).source ?? f.name}`);
             continue;
           }
         }
-        const b = await readManualFile(f);
+        const b = await readManualFile(f, { toc: tocs.get(f.name.replace(/\.(md|markdown|txt)$/i, '').toLowerCase()) });
         setBusy(`${b.meta.docId} 저장 중… (${b.meta.pageCount}쪽)`);
         let r;
         try {

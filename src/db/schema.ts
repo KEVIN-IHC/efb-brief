@@ -37,7 +37,8 @@ export interface LogRecord {
   createdAt: string; // ISO UTC
 }
 
-export type OutboxStatus = 'pending' | 'sent' | 'failed';
+/** discarded = 사용자가 업로드 대기에서 지움 (보내지 않음, 기록 자체는 기기에 남음) */
+export type OutboxStatus = 'pending' | 'sent' | 'failed' | 'discarded';
 
 export interface OutboxItem {
   opId: string;
@@ -50,6 +51,8 @@ export interface OutboxItem {
   lastError?: string;
   createdAt: string;
   sentAt?: string;
+  /** 업로드 대기에서 지운 시각 (status=discarded) */
+  discardedAt?: string;
 }
 
 export interface SettingRow {

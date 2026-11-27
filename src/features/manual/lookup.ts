@@ -365,6 +365,22 @@ export function buildToc(pages: { seq: number; ref?: string; code?: string; head
     return g;
   };
   const section = pages.some((p) => /^(FOM|FCRM)-/.test(p.code ?? ''));
+  // Jeppesen (D-101): 묶음 = 목차 앞 3단계(편 › 지역 › 나라), 항목 = 그 아래 2단계. 같은 항목이 이어지면 쪽 수만 늘림
+  if (pages.some((p) => p.code?.startsWith('JEPP-'))) {
+    for (const p of pages) {
+      const segs = (p.header ?? '').split(' › ').filter(Boolean);
+      if (!p.code || !segs.length) {
+        groupOf('front', '앞 쪽', p.seq).entries.push({ seq: p.seq, title: firstHeading(p.text) ?? '표지', depth: 0, pages: 1 });
+        continue;
+      }
+      const g = groupOf(segs.slice(0, 3).join(' › '), segs.slice(0, 3).join(' › '), p.seq);
+      const title = segs.slice(3, 5).join(' › ') || segs.at(-1)!;
+      const e = g.entries.at(-1);
+      if (e && e.title === title) e.pages++;
+      else g.entries.push({ seq: p.seq, code: p.ref, title, depth: 0, pages: 1 });
+    }
+    return groups;
+  }
   for (let i = 0; i < pages.length; i++) {
     const p = pages[i];
     if (section) {

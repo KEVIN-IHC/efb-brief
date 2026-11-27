@@ -28,6 +28,7 @@ function useSyncStatus() {
 
 function SyncMark({ ob }: { ob?: OutboxItem }) {
   if (!ob || ob.status === 'sent') return <span className="mark ok" title="동기화됨">✓</span>;
+  if (ob.status === 'discarded') return <span className="mark" title="업로드 대기에서 지움 — 시트로 보내지 않음">–</span>;
   if (ob.status === 'failed' || ob.retries >= FAIL_THRESHOLD) return <span className="mark bad" title={ob.lastError}>⚠</span>;
   return <span className="mark warn" title="업로드 대기">⏳</span>;
 }

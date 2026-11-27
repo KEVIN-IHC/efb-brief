@@ -3,6 +3,7 @@
 사용:
   python pdf2md.py convert <in.pdf> <out.md>   # 변환 (큰 매뉴얼은 오래 걸림)
   python pdf2md.py probe <in.pdf>              # 앞 6쪽 글만 출력 (종류·발행일 확인용, 빠름)
+  python pdf2md.py toc <in.pdf> <out_meta.json> # PDF 목차(제목·쪽·깊이) → <이름>_meta.json (Jeppesen, D-101)
 
 pymupdf-layout 이 설치돼 있으면 레이아웃 분석(표·그림 글)을 함께 쓴다.
 """
@@ -31,9 +32,20 @@ def convert(path: str, out: str) -> None:
         f.write(md)
 
 
+def toc(path: str, out: str) -> None:
+    import json
+    import pymupdf
+
+    entries = [{"title": t, "page_id": max(0, p - 1), "level": lv} for lv, t, p in pymupdf.open(path).get_toc()]
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"table_of_contents": entries}, f, ensure_ascii=False)
+
+
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "probe":
         probe(sys.argv[2])
+    elif len(sys.argv) >= 4 and sys.argv[1] == "toc":
+        toc(sys.argv[2], sys.argv[3])
     elif len(sys.argv) >= 4 and sys.argv[1] == "convert":
         convert(sys.argv[2], sys.argv[3])
     else:
