@@ -862,3 +862,12 @@
   2. 빌드 시각을 index.html `<meta name="efb-build">`에도 넣고, "새 버전 확인"이 서버 버전과 지금 버전을 비교해 보여 줌 (설치가 멈춰 있으면 그렇게 알림)
   3. 이미 멈춘 기기(옛 코드)는 이 고침을 아직 못 받음 → 앱 완전히 닫기·아이패드 재시동으로 먼저 풀어야 함
 - **영향** `vite.config.ts`(buildMetaPlugin), `settings/SettingsPage.tsx`(AppFiles)
+
+### D-112 NOTAM 카드 근거·약어 풀이 빼기 + 약어 사전(오른쪽 아래 버튼)
+- **날짜** 2026-11-28 (사용자: "근거는 굳이 필요 없어, 약어도 지워줘 · 오른쪽 밑 버튼 누르고 검색 · 배너 열어 둔 채 단어를 누르면 사전처럼 자동 찾기")
+- **결정**
+  1. NOTAM 카드에서 "근거"·"약어 풀이" 접기를 뺌 (원문 줄 링크는 남김). 요약의 "근거 문서"는 그대로
+  2. NOTAM 탭·브리핑에 오른쪽 아래 [Aa 약어] 버튼 → 약어 사전 창 (오프라인). 출처 = 앱 내장(abbr.ts, 한국어 뜻) + 기기에 가져온 Jeppesen General "ABBREVIATIONS USED IN AIRWAY MANUAL"(p.104~126)을 기기 안에서 읽음 → 항목마다 "Jeppesen p.xx 📖" 원문 쪽 링크. Jeppesen 본문은 코드·GitHub에 넣지 않음
+  3. 창을 열어 둔 채 NOTAM 본문(`data-abbr`) 낱말을 누르면 바로 찾음 (키보드 안 띄움). "RWY06L/24R" → RWY처럼 낱말 고름
+  4. 찾기 순서: 약어 같음 → 약어 앞부분 → 뜻(낱말 첫머리부터). Jeppesen 이어진 글은 "뜻의 첫 글자" 규칙으로 나눔 — 일부 어긋날 수 있어 📖 원문 링크로 확인
+- **영향** `notam/abbrDict.ts`(새), `notam/AbbrDock.tsx`(새), `notam/abbr.ts`(ABBR_BUILTIN 내보냄), `notam/NotamPage.tsx`, `brief/BriefPage.tsx`, `app/App.tsx`, `app/styles.css`, `notam/notam.test.ts`

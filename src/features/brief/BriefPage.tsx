@@ -92,7 +92,7 @@ function NotamBrief({ o }: { o: NonNullable<ReturnType<typeof useActiveFlight.ge
             <div key={r.it.line} className="brn-row">
               <span className={`ntm-g g-${r.c.group}`}>{groupLabel(r.c.group)}</span>
               <span className="mono small">{r.it.id}</span>
-              <span className="small brn-t">{r.it.text.replace(/\s+/g, ' ').slice(0, 160)}</span>
+              <span className="small brn-t" data-abbr>{r.it.text.replace(/\s+/g, ' ').slice(0, 160)}</span>
               {v.loc.role === 'FIR' ? (
                 r.note && <span className="small c-caution brn-note">{r.note}</span>
               ) : (

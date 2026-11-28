@@ -1,6 +1,6 @@
 // NOTAM 본문 약어 풀이 (D-093) — 가벼운 해독. OFP NOTAM에는 Q) 줄이 없어 Q-코드 대신 E) 본문 약어만 푼다.
 // 근거: ICAO Doc 8400 (PANS-ABC) 약어 · 일부 FAA JO 7930.2 (표시). 앱 참고용 — 원문이 기준, 뜻을 바꿔 쓰지 않는다
-const A: Record<string, string> = {
+export const ABBR_BUILTIN: Record<string, string> = {
   ABV: 'above · 이상',
   ACFT: 'aircraft · 항공기',
   ACT: 'active / activated · 활성',
@@ -118,14 +118,14 @@ export function notamAbbrs(text: string): { k: string; v: string }[] {
   const out: { k: string; v: string }[] = [];
   for (const m of text.toUpperCase().matchAll(/U\/S|[A-Z]{2,6}/g)) {
     const k = m[0];
-    if (seen.has(k) || !A[k]) continue;
+    if (seen.has(k) || !ABBR_BUILTIN[k]) continue;
     // 앞뒤가 글자면 긴 낱말의 일부 (예: "AVAILABLE" → AVAILA) — 숫자는 붙어도 됨 (RWY15L)
     const i = m.index ?? 0;
     const prev = text[i - 1] ?? ' ';
     const next = text[i + k.length] ?? ' ';
     if (/[A-Z]/i.test(prev) || /[A-Z]/i.test(next)) continue;
     seen.add(k);
-    out.push({ k, v: A[k] });
+    out.push({ k, v: ABBR_BUILTIN[k] });
   }
   return out;
 }

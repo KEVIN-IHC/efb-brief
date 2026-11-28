@@ -10,7 +10,6 @@ import { REFS } from './refs';
 import { firWindows, flightWindow, orderTime, rankOf, relation, ROLE_LABEL, roleColor, TIME_TEXT, timeNote, timeStatus, winDetail, winTime, type TimeStatus, type Window } from './relevance';
 import { NotamMap } from './NotamMap';
 import { flightAirports } from '../brief/assess';
-import { notamAbbrs } from './abbr';
 
 type Pkg = 0 | 1 | 2 | 3;
 const PKGS: { id: Pkg; label: string }[] = [
@@ -132,7 +131,7 @@ export function NotamPage() {
             })}
           </div>
           <p className="doc-foot">
-            규칙으로 숨긴 NOTAM은 없습니다. 분류는 OFP 제목(◼ …)과 본문의 공식 약어로 기기 안에서 계산합니다. 공항 순서 = 출발 → 도착 → 교체 → 3% ERA·Refile → ETP → ERA. 시간 = 그 공항을 쓰는 시각: 도착·교체 ETA±1h(FOM 5.7.1) · 3% ERA = OFP ERA ETA±1h(FOM 3% Contingency) · ETP = 예상 운항 시간대(FOM EDTO) · Refile = 결정 지점 기준 ETA±1h(앱 기준) · 출발 ETD±1h·순수 ERA = 앱 기준. FIR = 통과 시각. 공항 이름을 누르면 담당 구간 지도. D) 시간표는 해석하지 않으니 원문을 확인하세요. 약어 풀이는 앱 참고용(ICAO Doc 8400) — 원문이 기준. 보조 도구 — 승인된 EFB·원문이 우선합니다.
+            규칙으로 숨긴 NOTAM은 없습니다. 분류는 OFP 제목(◼ …)과 본문의 공식 약어로 기기 안에서 계산합니다. 공항 순서 = 출발 → 도착 → 교체 → 3% ERA·Refile → ETP → ERA. 시간 = 그 공항을 쓰는 시각: 도착·교체 ETA±1h(FOM 5.7.1) · 3% ERA = OFP ERA ETA±1h(FOM 3% Contingency) · ETP = 예상 운항 시간대(FOM EDTO) · Refile = 결정 지점 기준 ETA±1h(앱 기준) · 출발 ETD±1h·순수 ERA = 앱 기준. FIR = 통과 시각. 공항 이름을 누르면 담당 구간 지도. D) 시간표는 해석하지 않으니 원문을 확인하세요. 약어는 오른쪽 아래 [약어] 버튼으로 찾기(앱 내장 + 기기의 Jeppesen 약어 쪽) — 원문이 기준. 보조 도구 — 승인된 EFB·원문이 우선합니다.
           </p>
           <details className="ntm-refs">
             <summary>근거 문서</summary>
@@ -261,7 +260,6 @@ export function NotamPage() {
 
 function NotamCard({ r, wins }: { r: Row; wins?: Window[] }) {
   const { it, c, ts, note } = r;
-  const abbrs = notamAbbrs(it.text);
   const last = it.lines[it.lines.length - 1]?.n ?? it.line;
   return (
     <article className={`ntm-item g-${c.group} ${c.key ? 'key' : ''} ${ts === 'before' || ts === 'after' ? 'off-time' : ''}`}>
@@ -311,20 +309,7 @@ function NotamCard({ r, wins }: { r: Row; wins?: Window[] }) {
         </div>
       )}
       {it.schedule && <pre className="ntm-pre ntm-sub">D) {it.schedule}</pre>}
-      <pre className="ntm-pre">{it.text}</pre>
-      {abbrs.length > 0 && (
-        <details className="ntm-abbr">
-          <summary>약어 풀이 {abbrs.length}</summary>
-          <dl>
-            {abbrs.map((a) => (
-              <div key={a.k}>
-                <dt className="mono">{a.k}</dt>
-                <dd>{a.v}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      )}
+      <pre className="ntm-pre" data-abbr>{it.text}</pre>
       {(it.lower || it.upper) && (
         <p className="small mono">
           F) {it.lower ?? '—'} · G) {it.upper ?? '—'}
@@ -337,23 +322,7 @@ function NotamCard({ r, wins }: { r: Row; wins?: Window[] }) {
         </div>
       )}
       <div className="ntm-foot">
-        <details>
-          <summary>근거 {c.reasons.length + c.chips.length}</summary>
-          <ul className="ntm-why">
-            {[...c.reasons, ...c.chips.map((k) => k.reason)].map((x, i) => (
-              <li key={i}>
-                {x.text} <span className="muted">— {REFS[x.ref].short}</span>
-                {!REFS[x.ref].checked && <span className="muted"> (원문 대조 필요)</span>}
-                {x.line && (
-                  <button className="linkish mono" onClick={() => jumpToOfpSource(x.line!)}>
-                    L{x.line}
-                  </button>
-                )}
-              </li>
-            ))}
-            {ts !== 'unknown' && <li>시간: 유효기간 B)~C)와 위 시간대 비교 (D) 시간표 미반영)</li>}
-          </ul>
-        </details>
+        <span />
         <button className="linkish mono small" onClick={() => jumpToOfpSource(it.line)}>
           원문 L{it.line}
           {last !== it.line ? `–L${last}` : ''}

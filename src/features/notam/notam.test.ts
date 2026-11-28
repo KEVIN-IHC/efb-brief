@@ -207,3 +207,37 @@ describe('NOTAM 시간창 관계·약어 (D-093)', () => {
     expect(notamAbbrs('TWY A CLSD DUE WIP. RWY15L ILS U/S AVAILABLE').map((a) => a.k)).toEqual(['TWY', 'CLSD', 'WIP', 'RWY', 'U/S']);
   });
 });
+
+// 약어 사전 (D-112) — 형식만 흉내 낸 가짜 글 (Jeppesen 본문은 저장소에 넣지 않음)
+import { parseJeppAbbr, searchAbbr, tapWord, type AbbrEntry } from './abbrDict';
+describe('약어 사전', () => {
+  it('표 줄과 이어진 글 모두 읽기', () => {
+    const t = ['**ABBREVIATIONS USED IN AIRWAY MANUAL**', '|AERO|Aerodrome|', '|---|---|', 'AB Air Base ABM Abeam D-ATIS Digital ATIS DCL Data Link Clearance DL Category D (Large Aircraft) HS During Hours ATND SKD Attended Scheduled Hours'].join('\n');
+    const m = Object.fromEntries(parseJeppAbbr(t).map((e) => [e.k, e.v]));
+    expect(m).toMatchObject({ AERO: 'Aerodrome', AB: 'Air Base', ABM: 'Abeam', 'D-ATIS': 'Digital ATIS', DCL: 'Data Link Clearance', DL: 'Category D (Large Aircraft)', HS: 'During Hours', 'ATND SKD': 'Attended Scheduled Hours' });
+  });
+  it('찾기 순서: 같은 약어 → 앞부분 → 뜻, 누른 낱말 고르기', () => {
+    const d: AbbrEntry[] = [
+      { k: 'RWY', v: 'runway · 활주로', src: 'app' },
+      { k: 'RWY', v: 'Runway', src: 'jepp' },
+      { k: 'RWYCC', v: 'runway condition code', src: 'app' },
+      { k: 'U/S', v: 'unserviceable', src: 'app' },
+      { k: 'THR', v: 'threshold · 시단', src: 'app' },
+    ];
+    expect(searchAbbr(d, 'rwy').map((e) => `${e.k}:${e.src}`)).toEqual(['RWY:app', 'RWY:jepp', 'RWYCC:app']);
+    expect(searchAbbr(d, 'threshold')[0].k).toBe('THR');
+    expect(tapWord('RWY06L/24R', d)).toBe('RWY');
+    expect(tapWord('U/S', d)).toBe('U/S');
+    expect(tapWord('(THR)', d)).toBe('THR');
+  });
+});
+describe('약어 사전 — 뜻 찾기', () => {
+  it('낱말 첫머리만 (PPR ≠ approach)', () => {
+    const d: AbbrEntry[] = [
+      { k: 'PPR', v: 'prior permission required', src: 'app' },
+      { k: 'APCH', v: 'approach', src: 'app' },
+    ];
+    expect(searchAbbr(d, 'PPR').map((e) => e.k)).toEqual(['PPR']);
+    expect(searchAbbr(d, 'appr').map((e) => e.k)).toEqual(['APCH']);
+  });
+});

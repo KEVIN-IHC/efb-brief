@@ -20,6 +20,7 @@ import { PdfPage } from '../features/ofp/PdfPage';
 import { ManualPopup } from '../features/manual/ManualInline';
 import { TurbPopup } from '../features/ofp/doc/TurbPopup';
 import { FirPopup } from '../features/fir/FirPopup';
+import { AbbrDock } from '../features/notam/AbbrDock';
 import { AppKeyboard } from './AppKeyboard';
 import { loadActiveFlight, useActiveFlight } from '../features/flight/activeFlight';
 
@@ -149,6 +150,7 @@ export function App() {
         </div>
       )}
 
+      {(tab === 'notam' || tab === 'brief') && <AbbrDock lift={tab === 'brief'} />}
       <FirPopup />
       <ManualPopup />
       <TurbPopup />
