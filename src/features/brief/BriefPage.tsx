@@ -27,7 +27,8 @@ import { VerticalView } from '../vertical/VerticalView';
 import { PlanView } from '../vertical/PlanView';
 import { build as buildNotamViews } from '../notam/NotamPage';
 import { groupLabel } from '../notam/classify';
-import { ROLE_LABEL } from '../notam/relevance';
+import { relation, ROLE_LABEL, roleColor, winDetail, winTime } from '../notam/relevance';
+import { NotamMap } from '../notam/NotamMap';
 
 /** 회사 Pre-flight Briefing 점검 항목 순서 (Weather → NOTAM → OFP → ATS FPL 사본 대조 → 인가·Permit → 기타) */
 const STEPS: { id: string; t: string; sub: string }[] = [
@@ -54,28 +55,66 @@ const readStep = () => {
 /** NOTAM 요약: 강조 분류이거나 시간창과 겹치는 것만, 공항·FIR 순서대로 (전체는 NOTAM 탭) */
 function NotamBrief({ o }: { o: NonNullable<ReturnType<typeof useActiveFlight.getState>['ofp']>['parsed'] }) {
   const views = useMemo(() => (o?.notams ? buildNotamViews(o, o.notams) : []), [o]);
+  const [mapAt, setMapAt] = useState<number | null>(null);
   if (!o?.notams) return <p className="muted small span-all">이 OFP에는 NOTAM 패키지가 없습니다.</p>;
-  const shown = views.filter((v) => !v.loc.seeAlso).map((v) => ({ v, rows: v.rows.filter((r) => r.c.key && r.ts === 'overlap') }));
+  // 같은 공항이 다른 패키지에 NOTAM 0건으로 또 나오면 생략 (예: P2의 RKSI)
+  const shown = views.filter((v) => !v.loc.seeAlso && !(v.rows.length === 0 && views.some((x) => x !== v && x.loc.icao === v.loc.icao && x.rows.length))).map((v) => ({ v, rows: v.rows.filter((r) => r.c.key && r.ts === 'overlap') }));
   return (
     <DocSection title="NOTAM — 강조 · 시간창 겹침만" meta={`${shown.reduce((a, x) => a + x.rows.length, 0)} / ${views.reduce((a, v) => a + v.rows.length, 0)}`} className="span-all">
       {shown.map(({ v, rows }) => (
         <div key={`${v.loc.pkg}-${v.loc.line}`} className="brn-loc">
+          {mapAt === v.loc.line && <NotamMap o={o} icao={v.loc.icao} wins={v.wins} />}
           <div className="brn-h">
-            <b className="mono">{v.loc.icao}</b> <span className="small muted">{ROLE_LABEL[v.loc.role] ?? v.loc.role} · {v.loc.name}</span>
+            {v.loc.role === 'FIR' ? (
+              <b className="mono">{v.loc.icao}</b>
+            ) : (
+              <button className="ntm-ap-btn" aria-expanded={mapAt === v.loc.line} onClick={() => setMapAt((x) => (x === v.loc.line ? null : v.loc.line))}>
+                <span className="ntm-ap-ic mono">{v.loc.icao}</span>
+                <span className="ntm-ap-map">{mapAt === v.loc.line ? '지도 닫기' : '지도'}</span>
+              </button>
+            )}{' '}
+            <span className="small muted">{v.loc.name}</span>
             <span className="small muted mono">{rows.length ? `${rows.length}건` : '해당 없음'}</span>
           </div>
+          {v.loc.role !== 'FIR' && (
+            <ul className="ntm-uses">
+              {v.wins.map((w, i) => (
+                <li key={i}>
+                  <span className="ntm-key" style={{ background: roleColor(w.role) }} />
+                  <b className="ntm-rl">{ROLE_LABEL[w.role ?? ''] ?? w.role ?? ROLE_LABEL[v.loc.role] ?? v.loc.role}</b>
+                  <span className="mono strong">{winTime(w)}</span>
+                  <span className="ntm-bs small muted">{winDetail(w)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {rows.map((r) => (
             <div key={r.it.line} className="brn-row">
               <span className={`ntm-g g-${r.c.group}`}>{groupLabel(r.c.group)}</span>
               <span className="mono small">{r.it.id}</span>
               <span className="small brn-t">{r.it.text.replace(/\s+/g, ' ').slice(0, 160)}</span>
-              {r.note && <span className="small c-caution brn-note">{r.note}</span>}
+              {v.loc.role === 'FIR' ? (
+                r.note && <span className="small c-caution brn-note">{r.note}</span>
+              ) : (
+                <div className="ntm-rels brn-note">
+                  {v.wins.map((w, i) => {
+                    const x = relation(r.it, w);
+                    return x ? (
+                      <div key={i} className="ntm-rel">
+                        {v.wins.length > 1 && <span className="ntm-key" style={{ background: roleColor(w.role) }} title={ROLE_LABEL[w.role ?? ''] ?? w.role} />}
+                        <span className={`ntm-k ${x.k}`}>{x.a}</span>
+                        {x.b && <span className="small muted mono">{x.b}</span>}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>
       ))}
       <p className="doc-foot">
-        강조 분류(활주로·항행시설·공역)이면서 그 공항·FIR 시간창과 겹치는 것만. 나머지·원문은{' '}
+        강조 분류(활주로·항행시설·공역)이면서 그 공항·FIR 시간창과 겹치는 것만. 공항 순서 = 출발 → 도착 → 교체 → 3% ERA·Refile → ETP → ERA, 공항 이름을 누르면 담당 구간 지도. 나머지·원문은{' '}
         <a href="#notam" className="linkish">
           NOTAM 탭
         </a>

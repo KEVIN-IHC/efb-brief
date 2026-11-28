@@ -1563,3 +1563,6 @@ input[readonly].kb-in, input[readonly].fms-in { cursor: pointer; -webkit-user-se
 .nm-t.mono { font-family: var(--mono); }
 .nm-strong { fill: var(--text); font-weight: 800; }
 .nm-dim { fill: var(--text-dim); }
+.brn-h:has(.ntm-ap-btn) { align-items: center; }
+.brn-loc .ntm-map { margin: 0 0 var(--sp-2); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.brn-loc .ntm-uses { margin: var(--sp-1) 0 var(--sp-1) var(--sp-3); }
