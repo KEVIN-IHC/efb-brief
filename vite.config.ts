@@ -61,17 +61,22 @@ function wxProxyPlugin(): Plugin {
   };
 }
 
+// 빌드 시각: 화면 표시(__BUILD_TIME__) + index.html <meta name="efb-build"> — 설정의 "새 버전 확인"이 서버 버전과 비교 (D-111)
+const BUILD_TIME = new Date().toISOString().slice(0, 16) + 'Z';
+const buildMetaPlugin = (): Plugin => ({ name: 'efb-build-meta', transformIndexHtml: (html) => html.replace('</head>', `<meta name="efb-build" content="${BUILD_TIME}"></head>`) });
+
 // base: './' — GitHub Pages(하위 경로)와 Cloudflare Pages(루트) 어느 쪽이든 그대로 배포 가능
 export default defineConfig({
   base: './',
   define: {
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString().slice(0, 16) + 'Z'),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
   },
   server: {
     fs: { deny: ['.env', '.env.*', '**/private/**'] },
   },
   plugins: [
     react(),
+    buildMetaPlugin(),
     blockPrivatePlugin(),
     mockGasPlugin(),
     wxProxyPlugin(),

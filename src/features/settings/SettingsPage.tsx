@@ -308,32 +308,46 @@ function OutboxCard({ items }: { items: OutboxItem[] }) {
 }
 
 /**
- * 앱 파일(서비스 워커·저장된 화면 파일) 새로 받기 (D-091). 아이패드 Safari가 예전 앱을 붙잡을 때.
+ * 앱 파일(서비스 워커·저장된 화면 파일) 새로 받기 (D-091 · D-111). 아이패드 Safari가 예전 앱을 붙잡을 때.
  * 지우는 것: 서비스 워커 등록 + Cache Storage(앱 파일)뿐. 비행·기록·OUTBOX·설정(IndexedDB)은 그대로.
+ * D-111: 아이패드에서 새 버전 설치가 멈추면 해제(unregister)가 그 뒤에 줄 서서 영원히 기다림 → "새로 받는 중"에서 멈춤.
+ *        단계마다 시간 제한(5초)을 두고, 넘으면 건너뛰고 다시 불러온다. 서버 버전은 index.html의 efb-build 표시로 비교.
  */
+const LIMIT = 5000;
+const within = <T,>(p: Promise<T> | undefined, ms = LIMIT): Promise<T | undefined> =>
+  Promise.race([Promise.resolve(p).catch(() => undefined), new Promise<undefined>((r) => setTimeout(() => r(undefined), ms))]);
+
+/** 서버에 올라간 앱 버전 (주소 끝 ?v= 로 저장본 대신 서버에서 받음) */
+async function serverBuild(): Promise<string | null> {
+  const r = await within(fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' }), 8000);
+  if (!r?.ok) return null;
+  return /<meta name="efb-build" content="([^"]+)"/.exec(await r.text())?.[1] ?? '알 수 없음 (예전 배포)';
+}
+
 function AppFiles() {
   const [msg, setMsg] = useState('');
   const check = async () => {
     if (!navigator.onLine) return setMsg('오프라인 — 인터넷 연결 후 다시 눌러 주세요');
     setMsg('확인 중…');
-    try {
-      const r = await navigator.serviceWorker?.getRegistration();
-      await r?.update();
-      setMsg(r?.installing || r?.waiting ? '새 버전 받는 중 — 곧 다시 불러옵니다' : '서버 확인 완료. 화면이 그대로면 "앱 파일 새로 받기"를 눌러 주세요');
-    } catch {
-      setMsg('확인 실패 — 인터넷 연결을 확인해 주세요');
-    }
+    const sv = await serverBuild();
+    const r = await within(navigator.serviceWorker?.getRegistration());
+    const upd = r ? await within(r.update().then(() => true)) : undefined;
+    const stuck = r && !upd ? ' · 새 버전 설치가 멈춰 있는 것 같습니다' : r?.installing || r?.waiting ? ' · 새 버전 받는 중 — 곧 다시 불러옵니다' : '';
+    if (!sv) return setMsg(`서버 확인 실패 — 인터넷 연결을 확인해 주세요${stuck}`);
+    setMsg(sv === __BUILD_TIME__ ? `최신입니다 (서버 build ${sv})` : `서버 build ${sv} — 지금 ${__BUILD_TIME__}. "앱 파일 새로 받기"를 눌러 주세요${stuck}`);
   };
   const refetch = async () => {
     if (!navigator.onLine) return setMsg('오프라인에서는 하지 마세요 — 앱 파일이 없어져 화면이 안 열릴 수 있습니다');
     if (!confirm('앱 파일을 새로 받고 다시 불러올까요?\n비행·순항 기록·OUTBOX·설정은 지워지지 않습니다.')) return;
-    setMsg('새로 받는 중…');
-    try {
-      for (const r of (await navigator.serviceWorker?.getRegistrations()) ?? []) await r.unregister();
-      if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
-    } finally {
-      location.reload();
-    }
+    let skipped = 0;
+    setMsg('1/3 예전 앱 해제 중…');
+    const regs = (await within(navigator.serviceWorker?.getRegistrations())) ?? [];
+    for (const r of regs) if (!(await within(r.unregister()))) skipped++;
+    setMsg('2/3 저장된 앱 파일 지우는 중…');
+    const keys = 'caches' in window ? ((await within(caches.keys())) ?? []) : [];
+    for (const k of keys) if (!(await within(caches.delete(k)))) skipped++;
+    setMsg(`3/3 다시 불러오는 중…${skipped ? ` (멈춘 단계 ${skipped}개 건너뜀 — 그대로면 앱을 완전히 닫았다 여세요)` : ''}`);
+    setTimeout(() => location.replace(`./?v=${Date.now()}`), skipped ? 1500 : 200);
   };
   return (
     <>

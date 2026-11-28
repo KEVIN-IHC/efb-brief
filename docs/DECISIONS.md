@@ -853,3 +853,12 @@
   3. 시간창: Refile ETA = 결정 지점 ETO + "P TO R" 시간, ±1h. Refile 교체 ETA = Refile ETA + ALTN 시간, ±1h. **앱 기준** 표시 — FOM 5.10.1.1은 Refile 공항·교체도 "운항 시간대 기상 제한치 이내"라고만 하고 ±1h는 목적지 규정(5.7.1)을 준용
   4. 지도: 결정 지점 표시 + 결정 지점 → Refile 공항(→ 교체) 점선, 색은 3% ERA와 같은 주황 (두 방식은 한 비행에 같이 나오지 않음 — 샘플 10개 확인)
 - **영향** `ofp/types.ts`(refile), `ofp/parser/index.ts`(refilePlan), `brief/assess.ts`(Role REFILE·REFILE ALTN), `brief/BriefPage.tsx`(ROLE_ORDER), `notam/relevance.ts`(ROLE_LABEL), `brief/brief.test.ts`(샘플 02)
+
+### D-111 "앱 파일 새로 받기"가 멈추지 않게 + 서버 버전 비교
+- **날짜** 2026-11-28 (사용자: 아이패드가 build 11/27 0610Z에 멈춤, "앱 파일 새로 받기"가 "새로 받는 중"에서 멈춤)
+- **원인(추정)** 서비스 워커의 등록·갱신·해제는 한 줄로 처리됨 → 아이패드에서 새 버전 설치가 중간에 멈추면 해제(unregister)가 영원히 기다림 → 다시 불러오기까지 못 감. 서버 쪽(배포·파일 22개 모두 200)은 정상 확인
+- **결정**
+  1. 새로 받기 단계마다 5초 제한, 넘으면 건너뛰고 `./?v=시각`으로 다시 불러옴. 단계 표시(1/3 해제 · 2/3 파일 지우기 · 3/3 다시 불러오기)
+  2. 빌드 시각을 index.html `<meta name="efb-build">`에도 넣고, "새 버전 확인"이 서버 버전과 지금 버전을 비교해 보여 줌 (설치가 멈춰 있으면 그렇게 알림)
+  3. 이미 멈춘 기기(옛 코드)는 이 고침을 아직 못 받음 → 앱 완전히 닫기·아이패드 재시동으로 먼저 풀어야 함
+- **영향** `vite.config.ts`(buildMetaPlugin), `settings/SettingsPage.tsx`(AppFiles)
